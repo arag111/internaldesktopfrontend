@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  input {
+    width: 100%;
+    padding: 0.5rem;
+    margin-top: 1rem;
+  }
+ /* 👇 Base button style */
+button {
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    background-color: #096eb6;
+    color: white;
+    border: none;
+    border-radius: 0.375rem; /* matches Tailwind's rounded-md */
+    transition: background-color 0.2s ease;
+  }
+
+  /* 👇 Hover effect */
+  button:hover {
+    background-color: #075a96; /* darker shade of primary */
+  }
+
+  /* 👇 Clicked/active effect */
+  button:active {
+    background-color: #05497c;
+  }

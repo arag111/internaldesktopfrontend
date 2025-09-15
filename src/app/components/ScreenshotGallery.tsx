@@ -1,0 +1,202 @@
+import React, { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+interface Screenshot {
+  _id: string;
+  url: string;
+  timestamp: Date | string;
+}
+
+interface ScreenshotGalleryProps {
+  screenshots: Screenshot[];
+}
+
+const formatDate = (date: Date, includeTime = true) => {
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = date.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
+  const year = date.getUTCFullYear();
+  
+  let time = '';
+  if (includeTime) {
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    time = ` ${hours}:${minutes}`;
+  }
+
+  return `${day} ${month} ${year}${time}`;
+};
+
+const groupByDateHour = (screenshots: Screenshot[]) => {
+  const map: { [date: string]: { [hour: string]: Screenshot[] } } = {};
+
+  screenshots.forEach(s => {
+    const dateObj = new Date(s.timestamp);
+    const dateKey = dateObj.toISOString().slice(0, 10); // YYYY-MM-DD
+    const hourKey = dateObj.toISOString().slice(11, 13); // HH
+
+    if (!map[dateKey]) map[dateKey] = {};
+    if (!map[dateKey][hourKey]) map[dateKey][hourKey] = [];
+
+    map[dateKey][hourKey].push(s);
+  });
+
+  return Object.entries(map)
+    .sort(([a], [b]) => b.localeCompare(a)) // Desc by date
+    .map(([dateKey, hours]) => ({
+      date: new Date(dateKey),
+      hours: Object.entries(hours)
+        .sort(([a], [b]) => b.localeCompare(a)) // Desc by hour
+        .map(([hourKey, shots]) => ({
+          hour: parseInt(hourKey),
+          screenshots: shots.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        }))
+    }));
+};
+
+const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) => {
+  const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
+  const [flatScreenshots, setFlatScreenshots] = useState<Screenshot[]>([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const filteredScreenshots = useMemo(() => {
+    if (!startDate && !endDate) return screenshots;
+
+    return screenshots.filter((screenshot) => {
+      const timestamp = new Date(screenshot.timestamp).getTime();
+      const start = startDate ? new Date(startDate).getTime() : -Infinity;
+      const end = endDate ? new Date(endDate).getTime() + 86400000 : Infinity;
+      return timestamp >= start && timestamp <= end;
+    });
+  }, [screenshots, startDate, endDate]);
+
+  const grouped = useMemo(() => {
+    const sorted = [...filteredScreenshots].sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+    const flat = [...sorted];
+    setFlatScreenshots(flat);
+    return groupByDateHour(sorted);
+  }, [filteredScreenshots]);
+
+  const openModal = (index: number) => setSelectedImageIndex(index);
+
+  const navigate = (dir: 'left' | 'right') => {
+    if (selectedImageIndex === null) return;
+    const newIndex = dir === 'left' ? selectedImageIndex - 1 : selectedImageIndex + 1;
+    if (newIndex >= 0 && newIndex < flatScreenshots.length) {
+      setSelectedImageIndex(newIndex);
+    }
+  };
+
+  return (
+    <>
+      {/* Filter UI */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-start mb-8 bg-white p-4 rounded-xl shadow border w-full max-w-4xl mx-auto">
+        <label className="text-sm text-gray-700 mb-1 mr-6 font-medium">Search In Range</label>
+        <div className="flex flex-col">
+          <label className="text-sm text-gray-700 mb-1 font-medium">Start Date</label>
+          <input
+            type="date"
+            className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col">
+          <label className="text-sm text-gray-700 mb-1 font-medium">End Date</label>
+          <input
+            type="date"
+            className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Screenshot Grid */}
+      {filteredScreenshots.length === 0 ? (
+        <div className="text-center text-gray-500 mt-10">No screenshots available for the selected date range.</div>
+      ) : (
+        <div className="space-y-10 max-w-6xl mx-auto px-4">
+          {grouped.map(({ date, hours }) => (
+            <div key={date.toDateString()} className="space-y-6">
+              <h2 className="text-2xl font-bold text-gray-900">{formatDate(date, false)}</h2>
+              {hours.map(({ hour, screenshots }) => (
+                <div key={hour} className="space-y-3">
+                  <h3 className="text-lg font-semibold text-gray-700">
+                    {String(hour).padStart(2, '0')}:00 - {String(hour + 1).padStart(2, '0')}:00
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+                    {screenshots.map((s, i) => {
+                      const globalIndex = flatScreenshots.findIndex((fs) => fs._id === s._id);
+                      return (
+                        <div
+                          key={s._id}
+                          className="bg-white rounded-xl overflow-hidden shadow hover:shadow-lg border cursor-pointer transition-all"
+                          onClick={() => openModal(globalIndex)}
+                        >
+                          <div className="aspect-w-4 aspect-h-3 bg-gray-100">
+                            <img src={s.url} alt="Screenshot" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-3 border-t text-sm text-gray-600 font-medium">
+                            {formatDate(new Date(s.timestamp))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal */}
+      {selectedImageIndex !== null && flatScreenshots[selectedImageIndex] && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur">
+          <div className="relative max-w-5xl w-full mx-6 flex items-center justify-center">
+            {/* Close Button */}
+            <button
+              className="absolute top-4 right-4 text-white text-3xl font-bold hover:text-red-400 transition"
+              onClick={() => setSelectedImageIndex(null)}
+              style={{ zIndex: 10 }}
+            >
+              &times;
+            </button>
+
+            {/* Left Arrow */}
+            {selectedImageIndex > 0 && (
+              <button
+                className="absolute left-4 text-white bg-black/60 p-3 rounded-full hover:bg-black"
+                onClick={() => navigate('left')}
+              >
+                <ChevronLeft size={28} />
+              </button>
+            )}
+
+            {/* Image */}
+            <img
+              src={flatScreenshots[selectedImageIndex].url}
+              alt="Full Screenshot"
+              className="w-full h-auto max-h-[80vh] rounded-lg shadow-lg"
+            />
+
+            {/* Right Arrow */}
+            {selectedImageIndex < flatScreenshots.length - 1 && (
+              <button
+                className="absolute right-4 text-white bg-black/60 p-3 rounded-full hover:bg-black"
+                onClick={() => navigate('right')}
+              >
+                <ChevronRight size={28} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+export default ScreenshotGallery;
