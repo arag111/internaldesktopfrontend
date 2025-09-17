@@ -6,6 +6,11 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Image optimization
+  images: {
+    domains: ['appnode.tracknexus.in', 'app.tracknexus.in'],
+  },
 };
 
 module.exports = nextConfig;
