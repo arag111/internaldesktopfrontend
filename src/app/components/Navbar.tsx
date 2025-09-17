@@ -3,15 +3,34 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../lib/authService';
 import Image from 'next/image';
-import { LogOut, CloudDownload } from 'lucide-react';
+import { LogOut, CloudDownload, Calendar } from 'lucide-react';
 export default function Navbar() {
   const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
+  const [currentDate, setCurrentDate] = useState<string>('');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUserName(localStorage.getItem('userName'));
     }
+
+    // Set current date
+    const updateDate = () => {
+      const now = new Date();
+      const options: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      };
+      setCurrentDate(now.toLocaleDateString('en-US', options));
+    };
+
+    updateDate();
+    // Update date every minute to keep it current
+    const interval = setInterval(updateDate, 60000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = async () => {
@@ -43,8 +62,15 @@ export default function Navbar() {
         />
       </div>
 
-      {/* Download Button - Only on medium screens and up */}
-      <div className="hidden sm:flex absolute left-1/2 transform -translate-x-1/2">
+      {/* Current Date and Download Button */}
+      <div className="hidden sm:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-4">
+        {/* Current Date */}
+        <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded bg-gray-50 text-[#075a96] border border-gray-200">
+          <Calendar size={16} />
+          <span>{currentDate}</span>
+        </div>
+
+        {/* Download Button */}
         <a
           href="https://drive.google.com/file/d/1scJ_sJtXxaxQkZ19w7j1GIR3oOhgTDl2/view?usp=sharing"
           target="_blank"

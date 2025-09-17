@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { baseUrl } from '../utils/config';
 
 interface Company {
   _id: string;
@@ -73,7 +74,7 @@ export default function SuperAdminDashboard() {
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5002/api/companies', {
+      const response = await fetch(`${baseUrl}/api/companies`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
@@ -105,7 +106,7 @@ export default function SuperAdminDashboard() {
 
   const handleSuspendCompany = async (companyId: string, suspend: boolean) => {
     try {
-      const response = await fetch(`http://localhost:5002/api/companies/${companyId}/suspend`, {
+      const response = await fetch(`${baseUrl}/api/companies/${companyId}/suspend`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -131,7 +132,7 @@ export default function SuperAdminDashboard() {
     if (!editingCompany) return;
 
     try {
-      const response = await fetch(`http://localhost:5002/api/companies/${editingCompany._id}`, {
+      const response = await fetch(`${baseUrl}/api/companies/${editingCompany._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -173,7 +174,7 @@ export default function SuperAdminDashboard() {
     }
 
     try {
-      const response = await fetch('http://localhost:5002/api/companies', {
+      const response = await fetch(`${baseUrl}/api/companies`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
