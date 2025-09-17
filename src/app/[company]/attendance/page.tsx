@@ -22,17 +22,27 @@ interface User {
   email: string;
 }
 
+interface UserStat {
+  user: User;
+  stats: any[];
+}
+
+interface UserStatus {
+  status: string;
+  timestamp: string;
+}
+
 export default function AttendancePage() {
   const params = useParams();
   const router = useRouter();
   const company = params.company as string;
 
-  const [stats, setStats] = useState([]);
-  const [allUserStats, setAllUserStats] = useState([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [allUserStats, setAllUserStats] = useState<UserStat[]>([]);
   const [selectedRange, setSelectedRange] = useState(rangePresets[0].range);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [role, setRole] = useState(null);
-  const [userStatuses, setUserStatuses] = useState({});
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [userStatuses, setUserStatuses] = useState<Record<string, UserStatus>>({});
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -77,7 +87,7 @@ export default function AttendancePage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const handleStatusUpdate = ({ userId, status, timestamp }) => {
+      const handleStatusUpdate = ({ userId, status, timestamp }: { userId: string, status: string, timestamp: string }) => {
         setUserStatuses((prev) => ({
           ...prev,
           [userId]: { status, timestamp },
