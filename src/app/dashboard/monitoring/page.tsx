@@ -14,7 +14,7 @@ import {
   Typography,
   TextField,
   Button,
-  Grid,
+  Grid2 as Grid,
   Paper,
   List,
   ListItem,
