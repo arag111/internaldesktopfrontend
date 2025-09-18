@@ -10,7 +10,7 @@ const nextConfig = {
 
   // Image optimization domains
   images: {
-    domains: ['appnode.tracknexus.in', 'client.tracknexus.in'],
+    domains: ['appnode.tracknexus.in', 'app.tracknexus.in'],
   },
 
   // Production settings
