@@ -72,7 +72,7 @@ export default function Navbar() {
 
         {/* Download Button */}
         <a
-          href="https://drive.google.com/file/d/1NCeYjDh3f75b27dbb385_z81wI0MVNld/view?usp=sharing"
+          href="https://drive.google.com/drive/folders/1X1n-CLC2yR6I6sXrs48MCpMvcFP9Prz0?usp=sharing"
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded border border-[#075a96]/40 bg-[#075a96]/10 text-[#075a96] hover:bg-[#075a96] hover:text-white transition shadow"
