@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import {
@@ -28,9 +28,6 @@ import {
 import { baseUrl } from '@/app/utils/config';
 import Navbar from '@/app/components/Navbar';
 import CompanySidebar from '@/app/components/CompanySidebar';
-import UserSidebar from '@/app/components/UserSidebar';
-
-const socket = io(baseUrl);
 
 const theme = createTheme({
   palette: {
@@ -144,6 +141,7 @@ export default function DashboardPage() {
   const [userStatuses, setUserStatuses] = useState({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -191,44 +189,104 @@ export default function DashboardPage() {
     fetchData();
   }, [router, selectedRange, selectedUserId]);
 
+  const handleStatusUpdate = useCallback(({ userId, status, timestamp }) => {
+    setUserStatuses((prev) => ({
+      ...prev,
+      [userId]: { status, timestamp },
+    }));
+  }, []);
+
+  // Initialize socket connection
   useEffect(() => {
     if (role === 'admin' || role === 'manager') {
-      const token = localStorage.getItem('token');
-      if (!token) return;
+      const socketInstance = io(baseUrl, {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-      const handleStatusUpdate = ({ userId, status, timestamp }) => {
-        setUserStatuses((prev) => ({
-          ...prev,
-          [userId]: { status, timestamp },
-        }));
-      };
-
-      socket.on('status:update', handleStatusUpdate);
+      socketInstance.on('status:update', handleStatusUpdate);
+      setSocket(socketInstance);
 
       return () => {
-        socket.off('status:update', handleStatusUpdate);
+        socketInstance.off('status:update', handleStatusUpdate);
+        socketInstance.disconnect();
       };
     }
-  }, [role]);
+  }, [role, handleStatusUpdate]);
 
-  const currentStats =
-    role === 'admin' || role === 'manager'
+  const currentStats = useMemo(
+    () => role === 'admin' || role === 'manager'
       ? allUserStats.find((u) => u.user.id === selectedUserId)?.stats || []
-      : stats;
+      : stats,
+    [role, allUserStats, selectedUserId, stats]
+  );
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setRefreshing(true);
     const [start, end] = selectedRange;
     setSelectedRange([start, end]);
-  };
+  }, [selectedRange]);
 
-  const handleRangeChange = (index: number) => {
+  const handleRangeChange = useCallback((index: number) => {
     setSelectedPreset(index);
     setSelectedRange(rangePresets[index].range);
-  };
+  }, []);
 
-  // Calculate summary stats
-  const calculateSummaryStats = () => {
+  // Calculate summary stats with memoization
+  const summaryStats = useMemo(() => {
+    // For admin/manager: aggregate stats across ALL users
+    if (role === 'admin' || role === 'manager') {
+      if (!allUserStats || allUserStats.length === 0) {
+        return {
+          totalHours: 0,
+          avgProductivity: 0,
+          activeDays: 0,
+          peakHours: '0',
+          totalUsers: 0,
+          activeUsers: 0
+        };
+      }
+
+      // Aggregate across all users
+      let totalSeconds = 0;
+      let totalBreakSeconds = 0;
+      let totalIdleSeconds = 0;
+      let totalActiveDays = 0;
+
+      allUserStats.forEach(userStat => {
+        userStat.stats.forEach(day => {
+          const workingSeconds = day.workingTimeInSeconds || 0;
+          const breakSeconds = day.breakTimeInSeconds || 0;
+          const idleSeconds = day.idleTimeInSeconds || 0;
+
+          totalSeconds += workingSeconds;
+          totalBreakSeconds += breakSeconds;
+          totalIdleSeconds += idleSeconds;
+
+          if (workingSeconds > 0) {
+            totalActiveDays++;
+          }
+        });
+      });
+
+      const totalHours = Math.round((totalSeconds / 3600) * 10) / 10;
+      // Calculate productivity: (working - breaks - idle) / working * 100
+      const productiveSeconds = totalSeconds - totalBreakSeconds - totalIdleSeconds;
+      const avgProductivity = totalSeconds > 0 ? Math.round((productiveSeconds / totalSeconds) * 100) : 0;
+
+      return {
+        totalHours,
+        avgProductivity: Math.max(0, Math.min(100, avgProductivity)), // Clamp between 0-100
+        activeDays: totalActiveDays,
+        peakHours: '0',
+        totalUsers: allUserStats.length,
+        activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online').length
+      };
+    }
+
+    // For regular users: show their own stats
     if (!currentStats || currentStats.length === 0) {
       return {
         totalHours: 0,
@@ -240,61 +298,106 @@ export default function DashboardPage() {
       };
     }
 
-    const totalMinutes = currentStats.reduce((sum, day) => sum + (day.totalMinutes || 0), 0);
-    const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
-    const avgProductivity = currentStats.reduce((sum, day) => sum + (day.productivity || 0), 0) / currentStats.length;
-    const activeDays = currentStats.filter(day => day.totalMinutes > 0).length;
-    const peakHours = Math.max(...currentStats.map(day => day.totalMinutes || 0)) / 60;
+    let totalSeconds = 0;
+    let totalBreakSeconds = 0;
+    let totalIdleSeconds = 0;
+    let activeDays = 0;
+    let peakSeconds = 0;
+
+    currentStats.forEach(day => {
+      const workingSeconds = day.workingTimeInSeconds || 0;
+      const breakSeconds = day.breakTimeInSeconds || 0;
+      const idleSeconds = day.idleTimeInSeconds || 0;
+
+      totalSeconds += workingSeconds;
+      totalBreakSeconds += breakSeconds;
+      totalIdleSeconds += idleSeconds;
+
+      if (workingSeconds > 0) activeDays++;
+      if (workingSeconds > peakSeconds) peakSeconds = workingSeconds;
+    });
+
+    const totalHours = Math.round((totalSeconds / 3600) * 10) / 10;
+    const productiveSeconds = totalSeconds - totalBreakSeconds - totalIdleSeconds;
+    const avgProductivity = totalSeconds > 0 ? Math.round((productiveSeconds / totalSeconds) * 100) : 0;
+    const peakHours = (peakSeconds / 3600).toFixed(1);
 
     return {
       totalHours,
-      avgProductivity: Math.round(avgProductivity),
+      avgProductivity: Math.max(0, Math.min(100, avgProductivity)),
       activeDays,
-      peakHours: peakHours.toFixed(1),
+      peakHours,
       totalUsers: allUserStats.length,
       activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online').length
     };
-  };
+  }, [role, currentStats, allUserStats, userStatuses]);
 
-  const summaryStats = calculateSummaryStats();
+  // Prepare chart data with memoization
+  const chartData = useMemo(() => currentStats.map(day => {
+    const workingSeconds = day.workingTimeInSeconds || 0;
+    const breakSeconds = day.breakTimeInSeconds || 0;
+    const idleSeconds = day.idleTimeInSeconds || 0;
+    const productiveSeconds = workingSeconds - breakSeconds - idleSeconds;
+    const productivity = workingSeconds > 0 ? Math.round((productiveSeconds / workingSeconds) * 100) : 0;
 
-  // Prepare chart data
-  const chartData = currentStats.map(day => ({
-    date: format(new Date(day.date), 'MMM dd'),
-    hours: Math.round(day.totalMinutes / 60 * 10) / 10,
-    productivity: day.productivity || 0,
-    screenshots: day.screenshots || 0
-  }));
+    return {
+      date: format(new Date(day.date), 'MMM dd'),
+      hours: Math.round((workingSeconds / 3600) * 10) / 10,
+      productivity: Math.max(0, Math.min(100, productivity)),
+      screenshots: day.screenshots || 0
+    };
+  }), [currentStats]);
 
-  const pieData = [
+  const pieData = useMemo(() => [
     { name: 'Productive', value: summaryStats.avgProductivity, color: theme.palette.success.main },
     { name: 'Neutral', value: 30, color: theme.palette.warning.main },
     { name: 'Unproductive', value: 100 - summaryStats.avgProductivity - 30, color: theme.palette.error.main }
-  ];
+  ], [summaryStats.avgProductivity]);
 
-  const StatCard = ({ title, value, icon, color, trend, subtitle }) => (
+  const StatCard = memo(({ title, value, icon, color, trend, subtitle }: any) => (
     <Grow in={!loading} timeout={600}>
       <Card sx={{
         height: '100%',
-        background: `linear-gradient(135deg, ${alpha(theme.palette[color].main, 0.1)} 0%, ${alpha(theme.palette[color].light, 0.05)} 100%)`,
-        border: `1px solid ${alpha(theme.palette[color].main, 0.1)}`
+        backgroundColor: 'white',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        transition: 'all 0.2s ease',
+        '&:hover': {
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+          borderColor: theme.palette[color].main,
+        }
       }}>
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             <Box sx={{ flex: 1 }}>
-              <Typography color="textSecondary" variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+              <Typography variant="body2" sx={{
+                mb: 1.5,
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                color: '#6b7280',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}>
                 {title}
               </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette[color].main, mb: 0.5 }}>
+              <Typography variant="h4" sx={{
+                fontWeight: 700,
+                color: '#111827',
+                mb: 0.5,
+                fontSize: '1.875rem'
+              }}>
                 {loading ? <Skeleton width={100} /> : value}
               </Typography>
               {subtitle && (
-                <Typography variant="caption" color="textSecondary">
+                <Typography variant="caption" sx={{
+                  color: '#6b7280',
+                  fontSize: '0.75rem'
+                }}>
                   {subtitle}
                 </Typography>
               )}
               {trend !== undefined && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1.5 }}>
                   {trend > 0 ? (
                     <TrendingUp sx={{ fontSize: 16, color: theme.palette.success.main, mr: 0.5 }} />
                   ) : (
@@ -302,31 +405,37 @@ export default function DashboardPage() {
                   )}
                   <Typography variant="caption" sx={{
                     color: trend > 0 ? theme.palette.success.main : theme.palette.error.main,
-                    fontWeight: 600
+                    fontWeight: 600,
+                    fontSize: '0.75rem'
                   }}>
                     {Math.abs(trend)}% from last period
                   </Typography>
                 </Box>
               )}
             </Box>
-            <Avatar sx={{
-              bgcolor: alpha(theme.palette[color].main, 0.15),
-              width: 56,
-              height: 56
+            <Box sx={{
+              width: 48,
+              height: 48,
+              borderRadius: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: alpha(theme.palette[color].main, 0.1),
+              color: theme.palette[color].main,
             }}>
               {icon}
-            </Avatar>
+            </Box>
           </Box>
         </CardContent>
       </Card>
     </Grow>
-  );
+  ));
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        backgroundColor: '#f9fafb',
         display: 'flex',
         flexDirection: 'column'
       }}>
@@ -334,91 +443,76 @@ export default function DashboardPage() {
 
         <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           <CompanySidebar />
-          {(role === 'admin' || role === 'manager') && (
-            <UserSidebar
-              allUserStats={allUserStats}
-              selectedUserId={selectedUserId}
-              setSelectedUserId={setSelectedUserId}
-              userStatuses={userStatuses}
-            />
-          )}
 
           <Box sx={{
             flex: 1,
             overflow: 'auto',
-            p: { xs: 2, sm: 3, md: 4 }
+            p: { xs: 2, sm: 3, md: 4 },
+            pt: { xs: 10, sm: 11, md: 12 },
+            ml: '256px'
           }}>
             <Container maxWidth={false}>
               {/* Header */}
               <Fade in timeout={500}>
-                <Paper sx={{
-                  p: 3,
-                  mb: 3,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  borderRadius: 3,
-                  color: 'white'
+                <Box sx={{
+                  mb: 4,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 2
                 }}>
-                  <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: 2
-                  }}>
-                    <Box>
-                      <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-                        {role === 'admin' ? 'Admin Dashboard' : role === 'manager' ? 'Manager Dashboard' : 'My Dashboard'}
-                      </Typography>
-                      <Typography variant="body1" sx={{ opacity: 0.9 }}>
-                        Track productivity and manage your team effectively
-                      </Typography>
-                    </Box>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                      <FormControl size="small" sx={{ minWidth: 150 }}>
-                        <Select
-                          value={selectedPreset}
-                          onChange={(e) => handleRangeChange(e.target.value as number)}
-                          sx={{
-                            bgcolor: alpha('#fff', 0.2),
-                            color: 'white',
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              borderColor: alpha('#fff', 0.3)
-                            },
-                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                              borderColor: alpha('#fff', 0.5)
-                            },
-                            '& .MuiSvgIcon-root': {
-                              color: 'white'
-                            }
-                          }}
-                        >
-                          {rangePresets.map((preset, index) => (
-                            <MenuItem key={index} value={index}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {preset.icon}
-                                {preset.label}
-                              </Box>
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <Tooltip title="Refresh Data">
-                        <IconButton
-                          onClick={handleRefresh}
-                          sx={{
-                            color: 'white',
-                            bgcolor: alpha('#fff', 0.2),
-                            '&:hover': {
-                              bgcolor: alpha('#fff', 0.3)
-                            }
-                          }}
-                        >
-                          <Refresh className={refreshing ? 'animate-spin' : ''} />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
+                  <Box>
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#111827', mb: 0.5 }}>
+                      {role === 'admin' ? 'Admin Dashboard' : role === 'manager' ? 'Manager Dashboard' : 'My Dashboard'}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#6b7280' }}>
+                      Track productivity and manage your team effectively
+                    </Typography>
                   </Box>
-                </Paper>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <FormControl size="small" sx={{ minWidth: 150 }}>
+                      <Select
+                        value={selectedPreset}
+                        onChange={(e) => handleRangeChange(e.target.value as number)}
+                        sx={{
+                          bgcolor: 'white',
+                          border: '1px solid #e5e7eb',
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            border: 'none'
+                          },
+                          '&:hover': {
+                            borderColor: '#d1d5db'
+                          }
+                        }}
+                      >
+                        {rangePresets.map((preset, index) => (
+                          <MenuItem key={index} value={index}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              {preset.icon}
+                              {preset.label}
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <Tooltip title="Refresh Data">
+                      <IconButton
+                        onClick={handleRefresh}
+                        sx={{
+                          bgcolor: 'white',
+                          border: '1px solid #e5e7eb',
+                          '&:hover': {
+                            bgcolor: '#f9fafb',
+                            borderColor: '#d1d5db'
+                          }
+                        }}
+                      >
+                        <Refresh className={refreshing ? 'animate-spin' : ''} />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Box>
               </Fade>
 
               {/* Summary Stats */}
@@ -694,8 +788,8 @@ export default function DashboardPage() {
                                           sx={{ height: 20 }}
                                         />
                                         <Typography variant="caption" color="textSecondary">
-                                          {userStat.stats[0]?.totalMinutes
-                                            ? `${Math.round(userStat.stats[0].totalMinutes / 60)}h today`
+                                          {userStat.stats[0]?.workingTimeInSeconds
+                                            ? `${Math.round(userStat.stats[0].workingTimeInSeconds / 3600)}h today`
                                             : 'No activity today'
                                           }
                                         </Typography>
@@ -705,7 +799,16 @@ export default function DashboardPage() {
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Computer sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
                                     <Typography variant="body2" color="textSecondary">
-                                      {userStat.stats[0]?.productivity || 0}%
+                                      {(() => {
+                                        const day = userStat.stats[0];
+                                        if (!day) return '0%';
+                                        const working = day.workingTimeInSeconds || 0;
+                                        const breaks = day.breakTimeInSeconds || 0;
+                                        const idle = day.idleTimeInSeconds || 0;
+                                        const productive = working - breaks - idle;
+                                        const productivity = working > 0 ? Math.round((productive / working) * 100) : 0;
+                                        return `${Math.max(0, Math.min(100, productivity))}%`;
+                                      })()}
                                     </Typography>
                                   </Box>
                                 </ListItem>

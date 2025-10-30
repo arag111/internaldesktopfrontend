@@ -62,15 +62,15 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Punching Time',
             tooltip: 'Employee First Login time',
-            render: (s: any) => s.punchInTime ? moment.utc(s.punchInTime).format('hh:mm A') : '-'
+            render: (s: any) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-'
         },
         {
             label: 'Last Seen',
             tooltip: 'Last active timestamp',
-            render: (s: any) => s.lastSeen 
-  ? (moment.utc(s.lastSeen).format('HH:mm') === moment.utc(new Date(Date.now() + 5.5 * 60 * 60 * 1000)).format('HH:mm')
+            render: (s: any) => s.lastSeen
+  ? (moment(s.lastSeen).utcOffset('+05:30').format('HH:mm') === moment().utcOffset('+05:30').format('HH:mm')
       ? 'Active Now'
-      : moment.utc(s.lastSeen).format('hh:mm A'))
+      : moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A'))
   : '-'
         },
         {
@@ -131,8 +131,8 @@ const Attendance: React.FC<AttendanceProps> = ({
 
             return [
                 moment(s.date).format('DD-MM-YY'),
-                s.punchInTime ? moment.utc(s.punchInTime).format('hh:mm A') : '-',
-                s.lastSeen ? moment.utc(s.lastSeen).format('hh:mm A') : '-',
+                s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
+                s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
                 formatDuration(displayWorking),
                 formatDuration(totalBreak),
                 formatDuration(idle),

@@ -7,11 +7,12 @@ import { baseUrl } from '@/app/utils/config';
 import CompanySidebar from '@/app/components/CompanySidebar';
 
 interface User {
-  _id: string;
+  id: number;
   name: string;
   username: string;
   email: string;
   role: string;
+  jobRole?: string;
   manager: string;
   teams: string[];
   desktop: string;
@@ -41,6 +42,7 @@ export default function UserManagementPage() {
     email: '',
     password: '',
     role: '',
+    jobRole: '',
     manager: '',
     desktop: '',
     teams: '',
@@ -94,24 +96,26 @@ export default function UserManagementPage() {
     }
 
     try {
+      // Prepare payload with teams converted to array
+      const payload = {
+        ...formData,
+        teams: formData.teams ? formData.teams.split(',').map((t: string) => t.trim()).filter(t => t) : [],
+      };
+
       if (selectedUser) {
         // Update user
-        await axios.put(`${baseUrl}/api/users/${selectedUser._id}`, formData, {
+        await axios.put(`${baseUrl}/api/users/${selectedUser.id}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSuccess('User updated successfully!');
       } else {
         // Create user
-        const payload = {
-          ...formData,
-          teams: formData.teams.split(',').map((t: string) => t.trim()),
-        };
         await axios.post(`${baseUrl}/api/users/signup`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setSuccess('User created successfully!');
       }
-      setFormData({ name: '', username: '', email: '', password: '', role: '', manager: '', desktop: '', teams: '', tracktype: '24x7' });
+      setFormData({ name: '', username: '', email: '', password: '', role: '', jobRole: '', manager: '', desktop: '', teams: '', tracktype: '24x7' });
       setSelectedUser(null);
       fetchUsers();
       fetchCompanyInfo();
@@ -142,6 +146,7 @@ export default function UserManagementPage() {
       username: user.username,
       email: user.email,
       role: user.role,
+      jobRole: user.jobRole || '',
       manager: user.manager,
       desktop: user.desktop,
       teams: user.teams.join(', '),
@@ -149,7 +154,7 @@ export default function UserManagementPage() {
     });
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: number) => {
     try {
       await axios.delete(`${baseUrl}/api/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -180,7 +185,7 @@ export default function UserManagementPage() {
               </div>
             </div>
 
-            {company && (
+            {company && company.subscription && (
               <div className="bg-[#096eb6] text-white p-4 rounded-lg min-w-[280px]">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-sm opacity-90">User Capacity</span>
@@ -281,6 +286,20 @@ export default function UserManagementPage() {
                 className="border rounded-md p-2"
                 required
               />
+              <select
+                name="jobRole"
+                value={formData.jobRole}
+                onChange={handleInputChange}
+                className="border rounded-md p-2"
+              >
+                <option value="">Select Job Role (Optional)</option>
+                <option value="Software Developer">Software Developer</option>
+                <option value="Designer">Designer</option>
+                <option value="Manager">Manager</option>
+                <option value="Sales">Sales</option>
+                <option value="HR">HR</option>
+                <option value="Marketing">Marketing</option>
+              </select>
               <input
                 name="manager"
                 placeholder="Manager"
@@ -336,7 +355,7 @@ export default function UserManagementPage() {
             <div className="p-4 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-[#075a96]">Team Members ({users.length})</h3>
-                {company && users.length >= company.subscription.userLimit && (
+                {company && company.subscription && users.length >= company.subscription.userLimit && (
                   <span className="px-3 py-1 text-sm bg-red-100 text-red-800 rounded border border-red-300">
                     User limit reached - Upgrade plan to add more
                   </span>
@@ -360,7 +379,7 @@ export default function UserManagementPage() {
                 </thead>
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user._id} className="border-b hover:bg-gray-50">
+                    <tr key={user.id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 bg-[#096eb6] rounded-full flex items-center justify-center text-white text-sm">
@@ -392,7 +411,7 @@ export default function UserManagementPage() {
                             Edit
                           </button>
                           <button
-                            onClick={() => handleDelete(user._id)}
+                            onClick={() => handleDelete(user.id)}
                             className="px-3 py-1 text-sm bg-transparent text-red-600 hover:bg-red-50 border-none"
                           >
                             Delete

@@ -12,6 +12,8 @@ interface Screenshot {
   _id: string;
   url: string;
   timestamp: string;
+  textExtracted?: boolean;
+  embeddingDone?: boolean;
 }
 
 interface UserScreenshots {
@@ -25,27 +27,24 @@ interface UserScreenshots {
   };
 }
 
-function getDefaultStartTime(): string {
-  const now = new Date();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0); // today at 9:00 AM
-  return start.toISOString().slice(0, 16);
-}
-
-function getDefaultEndTime(): string {
-  const end = new Date();
-  end.setHours(23, 99, 0, 0);
-  return end.toISOString().slice(0, 16); // current time
-}
-
 export default function MonitoringPage() {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [userScreenshots, setUserScreenshots] = useState<UserScreenshots>({});
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [searchUser, setSearchUser] = useState('');
   const [role, setRole] = useState<string | null>(null);
-  const [startDateTime, setStartDateTime] = useState<string>(getDefaultStartTime());
-  const [endDateTime, setEndDateTime] = useState<string>(getDefaultEndTime());
+
+  // Set default to today
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+
+  const [startDateTime, setStartDateTime] = useState<string>(
+    todayStart.toISOString().slice(0, 16)
+  );
+  const [endDateTime, setEndDateTime] = useState<string>(
+    todayEnd.toISOString().slice(0, 16)
+  );
 
   const router = useRouter();
 
@@ -108,24 +107,30 @@ export default function MonitoringPage() {
 
       <div className=" ml-60 pt-20 px-6 pb-6 bg-gray-50 min-h-screen overflow-y-auto">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-[#075a96] mb-2">Monitoring</h1>
-            <div className="flex flex-col md:flex-row items-center gap-3 ">
-              <input
-                type="datetime-local"
-                className="border rounded-md px-3 py-2 text-sm"
-                value={startDateTime}
-                onChange={(e) => setStartDateTime(e.target.value)}
-              />
-              <span className="text-gray-600">to</span>
-              <input
-                type="datetime-local"
-                className="border rounded-md px-3 py-2 text-sm"
-                value={endDateTime}
-                onChange={(e) => setEndDateTime(e.target.value)}
-              />
+          <div className="w-full">
+            <h1 className="text-3xl font-bold text-[#075a96] mb-4">Monitoring</h1>
+            <div className="flex flex-col md:flex-row items-start md:items-end gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700">Start Date & Time</label>
+                <input
+                  type="datetime-local"
+                  className="border rounded-md px-3 py-2 text-sm"
+                  value={startDateTime}
+                  onChange={(e) => setStartDateTime(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-medium text-gray-700">End Date & Time</label>
+                <input
+                  type="datetime-local"
+                  className="border rounded-md px-3 py-2 text-sm"
+                  value={endDateTime}
+                  onChange={(e) => setEndDateTime(e.target.value)}
+                />
+              </div>
+
               <button
-                className="bg-[#075a96] text-white px-4 py-2 rounded-md hover:bg-[#064b7d] transition text-sm"
+                className="bg-[#075a96] text-white px-6 py-2 rounded-md hover:bg-[#064b7d] transition text-sm font-medium mt-auto"
                 onClick={handleFetchClick}
               >
                 Fetch
