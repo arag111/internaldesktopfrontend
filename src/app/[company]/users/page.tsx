@@ -13,6 +13,8 @@ interface User {
   email: string;
   role: string;
   jobRole?: string;
+  productiveActivities?: any;
+  unproductiveActivities?: any;
   manager: string;
   teams: string[];
   desktop: string;
@@ -43,6 +45,8 @@ export default function UserManagementPage() {
     password: '',
     role: '',
     jobRole: '',
+    productiveActivities: [],
+    unproductiveActivities: [],
     manager: '',
     desktop: '',
     teams: '',
@@ -51,6 +55,7 @@ export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [generatingActivities, setGeneratingActivities] = useState<boolean>(false);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -81,9 +86,49 @@ export default function UserManagementPage() {
     }
   };
 
+  const generateActivitiesForJobRole = async (jobRole: string) => {
+    if (!jobRole) {
+      setError('Please select a job role first');
+      return;
+    }
+
+    try {
+      setGeneratingActivities(true);
+      setError('');
+
+      const res = await axios.post(
+        `${baseUrl}/api/users/generate-activities`,
+        { jobRole },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (res.data.success) {
+        setFormData((prev: any) => ({
+          ...prev,
+          productiveActivities: res.data.data.productive,
+          unproductiveActivities: res.data.data.unproductive,
+        }));
+        setSuccess(`AI generated ${res.data.data.productive.length} productive and ${res.data.data.unproductive.length} unproductive activities!`);
+        setTimeout(() => setSuccess(''), 5000);
+      }
+    } catch (err: any) {
+      console.error('Error generating activities:', err);
+      setError(err.response?.data?.msg || 'Failed to generate activities');
+    } finally {
+      setGeneratingActivities(false);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
+  };
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    // Convert comma-separated string to array
+    const activities = value.split('\n').map(line => line.trim()).filter(line => line);
+    setFormData((prev: any) => ({ ...prev, [name]: activities }));
   };
 
   const handleSubmit = async () => {
@@ -115,7 +160,20 @@ export default function UserManagementPage() {
         });
         setSuccess('User created successfully!');
       }
-      setFormData({ name: '', username: '', email: '', password: '', role: '', jobRole: '', manager: '', desktop: '', teams: '', tracktype: '24x7' });
+      setFormData({
+        name: '',
+        username: '',
+        email: '',
+        password: '',
+        role: '',
+        jobRole: '',
+        productiveActivities: [],
+        unproductiveActivities: [],
+        manager: '',
+        desktop: '',
+        teams: '',
+        tracktype: '24x7'
+      });
       setSelectedUser(null);
       fetchUsers();
       fetchCompanyInfo();
@@ -147,6 +205,8 @@ export default function UserManagementPage() {
       email: user.email,
       role: user.role,
       jobRole: user.jobRole || '',
+      productiveActivities: user.productiveActivities || [],
+      unproductiveActivities: user.unproductiveActivities || [],
       manager: user.manager,
       desktop: user.desktop,
       teams: user.teams.join(', '),
@@ -331,6 +391,88 @@ export default function UserManagementPage() {
                 <option value="24x7">24x7 Tracking</option>
               </select>
             </div>
+
+            {/* AI-Generated Activity Lists Section */}
+            {formData.jobRole && (
+              <div className="mt-6 border-t pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-[#075a96] flex items-center gap-2">
+                      🤖 AI Productivity Criteria
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Define what counts as productive/unproductive for {formData.jobRole}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => generateActivitiesForJobRole(formData.jobRole)}
+                    disabled={generatingActivities}
+                    className={`px-4 py-2 rounded-md flex items-center gap-2 ${
+                      generatingActivities
+                        ? 'bg-gray-300 cursor-not-allowed'
+                        : 'bg-purple-600 hover:bg-purple-700 text-white'
+                    }`}
+                  >
+                    {generatingActivities ? (
+                      <>
+                        <span className="animate-spin">⏳</span>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <span>✨</span>
+                        Generate with AI
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Productive Activities */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ✅ Productive Activities
+                    </label>
+                    <textarea
+                      name="productiveActivities"
+                      value={Array.isArray(formData.productiveActivities) ? formData.productiveActivities.join('\n') : ''}
+                      onChange={handleTextareaChange}
+                      placeholder="Enter productive activities (one per line)&#10;Example:&#10;Code editors (VS Code, IntelliJ)&#10;Terminal and command line&#10;API testing (Postman, browser)&#10;Git and version control&#10;Documentation and research"
+                      className="w-full h-48 border rounded-md p-3 text-sm font-mono"
+                      style={{ resize: 'vertical' }}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {Array.isArray(formData.productiveActivities) ? formData.productiveActivities.length : 0} activities defined
+                    </p>
+                  </div>
+
+                  {/* Unproductive Activities */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      ❌ Unproductive Activities
+                    </label>
+                    <textarea
+                      name="unproductiveActivities"
+                      value={Array.isArray(formData.unproductiveActivities) ? formData.unproductiveActivities.join('\n') : ''}
+                      onChange={handleTextareaChange}
+                      placeholder="Enter unproductive activities (one per line)&#10;Example:&#10;Social media (Facebook, Twitter)&#10;Entertainment websites&#10;Gaming platforms&#10;Shopping sites&#10;Non-work videos"
+                      className="w-full h-48 border rounded-md p-3 text-sm font-mono"
+                      style={{ resize: 'vertical' }}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      {Array.isArray(formData.unproductiveActivities) ? formData.unproductiveActivities.length : 0} activities defined
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 p-3 bg-blue-50 rounded-md">
+                  <p className="text-sm text-blue-800">
+                    💡 <strong>Tip:</strong> These lists help the AI accurately analyze productivity. You can edit them manually or regenerate with AI.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 flex gap-3">
               <button onClick={handleSubmit} className="px-6 py-2">
