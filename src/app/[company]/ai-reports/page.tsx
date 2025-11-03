@@ -544,11 +544,17 @@ export default function AIReportsPage() {
                             const officeStartHour = 10; // 10 AM
                             const minutesFromStart = (punchInHour * 60 + punchInMinute) - (officeStartHour * 60);
 
-                            // Helper function to convert minutes to HH:MM format
-                            const minutesToHHMM = (minutes: number) => {
+                            // Helper function to convert minutes to readable format
+                            const minutesToReadable = (minutes: number) => {
                               const hours = Math.floor(Math.abs(minutes) / 60);
                               const mins = Math.abs(minutes) % 60;
-                              return `${hours}:${String(mins).padStart(2, '0')}`;
+                              if (hours > 0 && mins > 0) {
+                                return `${hours}hrs ${mins}min`;
+                              } else if (hours > 0) {
+                                return `${hours}hrs`;
+                              } else {
+                                return `${mins}min`;
+                              }
                             };
 
                             let punctualityIcon = '';
@@ -557,19 +563,19 @@ export default function AIReportsPage() {
 
                             if (minutesFromStart < -30) {
                               punctualityIcon = '✅';
-                              punctualityText = `EARLY LOGIN - Arrived ${minutesToHHMM(minutesFromStart)} before office time`;
+                              punctualityText = `Early Login - Early by ${minutesToReadable(minutesFromStart)}`;
                               punctualityColor = 'text-green-700 bg-green-50';
                             } else if (minutesFromStart <= 0) {
                               punctualityIcon = '✅';
-                              punctualityText = 'ON TIME - Arrived on time';
+                              punctualityText = 'On Time - Arrived on time';
                               punctualityColor = 'text-green-700 bg-green-50';
                             } else if (minutesFromStart <= 15) {
                               punctualityIcon = '⚠️';
-                              punctualityText = `SLIGHTLY LATE - Arrived ${minutesToHHMM(minutesFromStart)} after office time`;
+                              punctualityText = `Slightly Late - Late by ${minutesToReadable(minutesFromStart)}`;
                               punctualityColor = 'text-yellow-700 bg-yellow-50';
                             } else {
                               punctualityIcon = '❌';
-                              punctualityText = `LATE LOGIN - Arrived ${minutesToHHMM(minutesFromStart)} after office time`;
+                              punctualityText = `Late Login - Late by ${minutesToReadable(minutesFromStart)}`;
                               punctualityColor = 'text-red-700 bg-red-50';
                             }
 
