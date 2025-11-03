@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Play } from 'lucide-react';
+import axios from 'axios';
+import { baseUrl } from '@/app/utils/config';
 
 interface Screenshot {
   _id: string;
+  id?: number;
   url: string;
   timestamp: Date | string;
   textExtracted?: boolean;
@@ -28,10 +31,39 @@ const formatDate = (date: Date, includeTime = true) => {
   return `${day} ${month} ${year}${time}`;
 };
 
-const ProcessingStatusBadge: React.FC<{ textExtracted?: boolean; embeddingDone?: boolean }> = ({
-  textExtracted,
-  embeddingDone
-}) => {
+const ProcessingStatusBadge: React.FC<{
+  textExtracted?: boolean;
+  embeddingDone?: boolean;
+  screenshotId?: string | number;
+  onProcessingUpdate?: () => void;
+}> = ({ textExtracted, embeddingDone, screenshotId, onProcessingUpdate }) => {
+  const [processing, setProcessing] = useState(false);
+
+  const handleProcess = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening modal
+
+    if (!screenshotId || processing) return;
+
+    try {
+      setProcessing(true);
+      const token = localStorage.getItem('token');
+
+      await axios.post(
+        `${baseUrl}/api/screenshot-processing/process`,
+        { screenshotId: screenshotId },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      alert('Processing triggered! Check backend console for detailed logs.');
+      if (onProcessingUpdate) onProcessingUpdate();
+    } catch (error: any) {
+      console.error('Processing error:', error);
+      alert(`Error: ${error.response?.data?.msg || error.message}`);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <div className="flex gap-1 items-center">
       {/* OCR Status */}
@@ -53,6 +85,23 @@ const ProcessingStatusBadge: React.FC<{ textExtracted?: boolean; embeddingDone?:
         {embeddingDone ? <CheckCircle2 size={12} /> : <Clock size={12} />}
         <span>EMB</span>
       </div>
+
+      {/* Manual Trigger Button */}
+      {screenshotId && (
+        <button
+          onClick={handleProcess}
+          disabled={processing}
+          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
+            processing
+              ? 'bg-gray-300 text-gray-500 cursor-wait'
+              : 'bg-purple-500 text-white hover:bg-purple-600 active:bg-purple-700'
+          }`}
+          title="Manually trigger OCR and Embedding processing"
+        >
+          <Play size={12} />
+          <span>{processing ? 'Processing...' : 'Process'}</span>
+        </button>
+      )}
     </div>
   );
 };
@@ -170,10 +219,11 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
                           <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
                             <img src={s.url} alt="Screenshot" className="w-full h-full object-cover" />
                             {/* Processing status overlay */}
-                            <div className="absolute top-2 right-2">
+                            <div className="absolute top-2 right-2 bg-white/80 backdrop-blur-sm rounded-lg p-1">
                               <ProcessingStatusBadge
                                 textExtracted={s.textExtracted}
                                 embeddingDone={s.embeddingDone}
+                                screenshotId={s.id || s._id}
                               />
                             </div>
                           </div>
@@ -185,6 +235,7 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
                               <ProcessingStatusBadge
                                 textExtracted={s.textExtracted}
                                 embeddingDone={s.embeddingDone}
+                                screenshotId={s.id || s._id}
                               />
                             </div>
                           </div>
@@ -237,6 +288,7 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
               <ProcessingStatusBadge
                 textExtracted={flatScreenshots[selectedImageIndex].textExtracted}
                 embeddingDone={flatScreenshots[selectedImageIndex].embeddingDone}
+                screenshotId={flatScreenshots[selectedImageIndex].id || flatScreenshots[selectedImageIndex]._id}
               />
             </div>
 
