@@ -52,6 +52,7 @@ export default function AttendanceReport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState<number | null>(null);
+  const [officeIp, setOfficeIp] = useState<string | null>(null);
 
   useEffect(() => {
     loadAttendanceReport();
@@ -157,7 +158,8 @@ export default function AttendanceReport() {
             Attendance Report
           </h2>
           <p className="text-sm text-gray-600 mt-1">
-            Track punctuality and work location (Office: 183.82.122.144)
+            Track punctuality and work location
+            {officeIp && ` (Office IP: ${officeIp})`}
           </p>
         </div>
 
