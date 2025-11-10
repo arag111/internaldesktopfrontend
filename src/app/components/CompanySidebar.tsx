@@ -1,7 +1,7 @@
 'use client';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import { CalendarDays, BarChart2, Settings, Users, ClockPlus, Home, LogOut, User, FileText, Brain } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 export default function CompanySidebar() {
   const router = useRouter();
@@ -19,7 +19,7 @@ export default function CompanySidebar() {
 
   const company = params.company as string;
 
-  const navItems = [
+  const navItems = useMemo(() => [
     { label: 'Dashboard', icon: <Home size={20} />, route: `/${company}` },
     { label: 'Attendance', icon: <CalendarDays size={20} />, route: `/${company}/attendance` },
     { label: 'Time Claim', icon: <ClockPlus size={20} />, route: `/${company}/timeClaim` },
@@ -36,7 +36,7 @@ export default function CompanySidebar() {
           { label: 'Configuration', icon: <Settings size={20} />, route: `/${company}/configuration` },
         ]
       : []),
-  ];
+  ], [company, role]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -46,24 +46,11 @@ export default function CompanySidebar() {
   const isActive = (route: string) => pathname === route;
 
   return (
-    <aside className="w-64 fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 flex flex-col z-10 shadow-sm">
+    <aside className="w-64 fixed top-16 left-0 bottom-0 bg-white border-r border-slate-200 flex flex-col z-10">
       {/* Content */}
       <div className="flex flex-col h-full">
-        {/* User Profile at top */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
-              <User size={20} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-gray-900 font-semibold text-sm truncate">{userName}</p>
-              <p className="text-gray-500 text-xs">{role || 'User'}</p>
-            </div>
-          </div>
-        </div>
-
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
           {navItems.map(({ label, icon, route }) => {
             const active = isActive(route);
             return (
@@ -71,33 +58,51 @@ export default function CompanySidebar() {
                 key={label}
                 onClick={() => router.push(route)}
                 className={`
-                  group flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-all duration-200
+                  group relative flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors duration-200
                   ${active
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-slate-100 text-slate-900 font-semibold border border-slate-200'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }
                 `}
               >
                 {/* Icon */}
-                <div className={`transition-colors ${active ? 'text-blue-600' : 'text-gray-500 group-hover:text-gray-700'}`}>
+                <div className={`
+                  transition-colors duration-200
+                  ${active 
+                    ? 'text-slate-900' 
+                    : 'text-slate-500 group-hover:text-slate-700'
+                  }
+                `}>
                   {icon}
                 </div>
 
                 {/* Label */}
-                <span className="text-sm">{label}</span>
+                <span className="text-sm font-medium">{label}</span>
               </div>
             );
           })}
         </nav>
 
-        {/* Logout button at bottom */}
-        <div className="p-4 border-t border-gray-200">
+        {/* User Profile and Logout button at bottom */}
+        <div className="p-5 border-t border-slate-200 bg-white space-y-4">
+          {/* User Profile at bottom */}
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center border border-slate-200">
+              <User size={20} className="text-blue-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-slate-900 font-bold text-sm truncate">{userName}</p>
+              <p className="text-slate-500 text-xs font-medium capitalize">{role || 'User'}</p>
+            </div>
+          </div>
+          
+          {/* Logout button */}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors text-sm font-medium shadow-sm"
+            className="w-full flex items-center justify-center gap-2.5 px-4 py-3 bg-white hover:bg-white text-slate-900 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-sm font-medium"
           >
-            <LogOut size={16} />
-            Logout
+            <LogOut size={18} className="text-slate-900" />
+            <span>Logout</span>
           </button>
         </div>
       </div>

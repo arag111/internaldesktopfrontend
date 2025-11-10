@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { DateRange, RangeKeyDict } from 'react-date-range';
-import { addDays } from 'date-fns';
+import { addDays, format } from 'date-fns';
 import 'react-date-range/dist/styles.css'; // main css file
 import 'react-date-range/dist/theme/default.css'; // theme css file
 
@@ -26,30 +26,34 @@ export default function DateRangePickerComponent({
     }
   };
 
+  const formatDate = (date: Date) => {
+    return format(date, 'MMM dd yyyy');
+  };
+
   return (
     <div className="relative z-50 not-prose"> {/* not-prose disables global prose styling */}
-  <button
-    onClick={() => setShowPicker(!showPicker)}
-    className="!bg-gray-100 !text-gray-700 !text-sm !px-3 !py-2 !rounded !shadow !border !border-gray-300"
-  >
-    {selectedRange[0].toDateString()} - {selectedRange[1].toDateString()}
-  </button>
+        <button
+          onClick={() => setShowPicker(!showPicker)}
+          className="!bg-gray-100 !text-gray-700 !text-sm !px-3 !py-2 !rounded !shadow !border !border-gray-300 whitespace-nowrap"
+        >
+          {formatDate(selectedRange[0])} - {formatDate(selectedRange[1])}
+        </button>
 
-  {showPicker && (
-    <div className="absolute mt-2 bg-white rounded shadow border">
-      <DateRange
-        editableDateInputs
-        onChange={handleSelect}
-        moveRangeOnFirstSelection={false}
-        ranges={[
-          {
-            startDate: selectedRange[0],
-            endDate: selectedRange[1],
-            key: 'selection',
-          },
-        ]}
-        maxDate={new Date()}
-      />
+        {showPicker && (
+          <div className="absolute mt-2 bg-white rounded shadow border">
+            <DateRange
+              editableDateInputs
+              onChange={handleSelect}
+              moveRangeOnFirstSelection={false}
+              ranges={[
+                {
+                  startDate: selectedRange[0],
+                  endDate: selectedRange[1],
+                  key: 'selection',
+                },
+              ]}
+              maxDate={new Date()}
+            />
 
       {/* Preset Buttons */}
       <div className="flex flex-wrap gap-2 p-2">
@@ -71,14 +75,13 @@ export default function DateRangePickerComponent({
       <div className="flex justify-end p-2">
         <button
           onClick={() => setShowPicker(false)}
-          className="!bg-gray-100 !text-sm !text-gray-600 hover:!bg-gray-300 "
+          className="!bg-gray-100 !text-sm !text-gray-600 hover:!bg-gray-300 !px-4 !py-2 !rounded-md !transition-colors"
         >
           Close
         </button>
-      </div>
+          </div>
+        </div>
+      )}
     </div>
-  )}
-</div>
-
   );
 }

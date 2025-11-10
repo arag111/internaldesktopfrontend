@@ -47,27 +47,31 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white text-[#075a96] h-16 flex items-center justify-between px-4 sm:px-6 shadow-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 backdrop-blur-xl bg-white/80 border-b border-gray-200/50 shadow-lg shadow-gray-900/5">
+      {/* Background gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/5 via-transparent to-[#075a96]/5 pointer-events-none" />
+      
       {/* Logo */}
       <div
-        className="cursor-pointer flex items-center h-full"
+        className="relative cursor-pointer flex items-center h-full group transition-transform duration-300 hover:scale-105"
         onClick={() => router.push('/dashboard')}
       >
+        <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/10 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <Image
           src="/logo.png"
           alt="Time Nexus Logo"
           width={140}
           height={60}
-          className="object-contain"
+          className="object-contain relative z-10"
         />
       </div>
 
       {/* Current Date and Download Button */}
-      <div className="hidden sm:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-4">
+      <div className="hidden sm:flex absolute left-1/2 transform -translate-x-1/2 items-center gap-3">
         {/* Current Date */}
-        <div className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded bg-gray-50 text-[#075a96] border border-gray-200">
-          <Calendar size={16} />
-          <span>{currentDate}</span>
+        <div className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/80 text-[#075a96] border border-gray-200/60 shadow-sm backdrop-blur-sm hover:shadow-md transition-all duration-300 hover:scale-105">
+          <Calendar size={17} className="text-[#075a96]/70" />
+          <span className="text-[#075a96]">{currentDate}</span>
         </div>
 
         {/* Download Button */}
@@ -75,30 +79,36 @@ export default function Navbar() {
           href="https://drive.google.com/drive/folders/1X1n-CLC2yR6I6sXrs48MCpMvcFP9Prz0?usp=sharing"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded border border-[#075a96]/40 bg-[#075a96]/10 text-[#075a96] hover:bg-[#075a96] hover:text-white transition shadow"
+          className="group relative flex items-center gap-2.5 px-5 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-[#075a96] to-[#0a6fb8] text-white border border-[#075a96]/20 shadow-lg shadow-[#075a96]/20 hover:shadow-xl hover:shadow-[#075a96]/30 transition-all duration-300 hover:scale-105 hover:from-[#0a6fb8] hover:to-[#075a96]"
           title="Download Desktop App"
         >
-          <CloudDownload size={18} />
-          Download App
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <CloudDownload size={18} className="relative z-10" />
+          <span className="relative z-10">Download App</span>
         </a>
       </div>
 
       {/* Username and Logout */}
       <div className="flex items-center gap-3">
         {userName && (
-          <span
-            className="text-sm font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-300"
-            title="User Name"
-          >
-            Hi! {userName}
-          </span>
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/20 to-[#0a6fb8]/20 rounded-full blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <span
+              className="relative text-sm font-semibold px-4 py-2 rounded-full bg-gradient-to-br from-gray-50 to-white text-[#075a96] border border-gray-200/60 shadow-sm backdrop-blur-sm hover:shadow-md transition-all duration-300 hover:scale-105"
+              title="User Name"
+            >
+              <span className="text-gray-500 font-normal">Hi! </span>
+              <span className="text-[#075a96]">{userName}</span>
+            </span>
+          </div>
         )}
         <button
           onClick={handleLogout}
-          className="!p-2 !rounded-full !bg-gray-300 !text-gray-600 hover:!bg-gray-200 hover:!text-black transition-shadow shadow"
+          className="group relative !p-2.5 !rounded-xl !bg-gradient-to-br from-gray-100 to-gray-200 !text-[#075a96] hover:!from-red-50 hover:!to-red-100 hover:!text-red-600 transition-all duration-300 shadow-sm hover:shadow-md hover:scale-110 border border-gray-200/60 hover:border-red-200/60"
           title="Sign Out"
         >
-          <LogOut size={20} />
+          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <LogOut size={20} className="relative z-10 transition-transform duration-300 group-hover:rotate-12" />
         </button>
       </div>
     </nav>

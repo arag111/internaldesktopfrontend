@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { startOfMonth, endOfMonth, format, eachDayOfInterval, isWeekend } from 'date-fns';
-import { Download, Calendar, FileText, User as UserIcon, Clock, CheckCircle, XCircle, FileDown, Mail, X } from 'lucide-react';
+import { Download, Calendar, FileText, User as UserIcon, Clock, CheckCircle, XCircle, FileDown, Mail, X, ChevronLeft, ChevronRight, TrendingUp, BarChart3, Users, Activity } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -530,35 +530,48 @@ export default function ReportsPage() {
       <Navbar />
       <CompanySidebar />
 
-      <main className="ml-64 mt-16 p-8 bg-gray-50 min-h-screen">
+      <main className="ml-64 mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-screen">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Attendance Reports</h1>
-            <p className="text-gray-600">Monthly attendance summary for all team members</p>
-          </div>
-
-          {/* Controls */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
+          {/* Hero Banner Section */}
+          <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
+            <div className="flex items-start justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-semibold text-slate-900 mb-0.5">
+                    Attendance Reports
+                  </h1>
+                  <p className="text-sm text-slate-500">Monthly attendance summary for all team members</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Month Selector and Export Controls */}
+            <div className="flex items-center justify-between flex-wrap gap-4 pt-4">
               {/* Month Selector */}
               <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-gray-500" />
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                </div>
                 <button
                   onClick={() => handleMonthChange('prev')}
-                  className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm font-medium"
+                  className="group px-4 py-2 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2"
                 >
+                  <ChevronLeft size={16} className="group-hover:text-blue-600" />
                   Previous
                 </button>
-                <span className="text-lg font-semibold text-gray-900 min-w-[180px] text-center">
+                <span className="text-lg font-bold text-slate-800 min-w-[180px] text-center px-4 py-2 bg-slate-50 rounded-lg border border-slate-200">
                   {format(selectedMonth, 'MMMM yyyy')}
                 </span>
                 <button
                   onClick={() => handleMonthChange('next')}
-                  className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-sm font-medium"
+                  className="group px-4 py-2 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={selectedMonth >= new Date()}
                 >
                   Next
+                  <ChevronRight size={16} className="group-hover:text-blue-600" />
                 </button>
               </div>
 
@@ -566,126 +579,147 @@ export default function ReportsPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#075a96] text-white rounded-md hover:bg-[#064a7d] transition-colors"
+                  className="group flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-white text-black rounded-lg text-sm font-medium border border-slate-200 hover:border-slate-300 transition-colors duration-200"
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 text-black" />
                   Export Report
                 </button>
 
                 {showExportMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10">
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 z-10 overflow-hidden">
                     <button
                       onClick={exportToExcel}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 border-b border-slate-100 last:border-b-0"
                     >
+                      <FileText className="w-4 h-4 text-blue-600" />
                       Export to Excel
                     </button>
                     <button
                       onClick={exportToPDF}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 border-b border-slate-100 last:border-b-0"
                     >
+                      <FileText className="w-4 h-4 text-blue-600" />
                       Export to PDF
                     </button>
                     <button
                       onClick={exportToCSV}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2"
                     >
+                      <FileText className="w-4 h-4 text-blue-600" />
                       Export to CSV
                     </button>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Employees</p>
-                  <p className="text-2xl font-bold text-gray-900">{userReports.length}</p>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
+            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Employees</span>
                 </div>
-                <UserIcon className="w-10 h-10 text-blue-500 opacity-20" />
+                <TrendingUp className="w-4 h-4 text-blue-500 opacity-60" />
               </div>
+              <p className="text-2xl font-bold text-slate-900 mb-1">{userReports.length}</p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Avg Attendance</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {userReports.length > 0
-                      ? Math.round(
-                          userReports.reduce((sum, r) => {
-                            const total = r.presentDays + r.absentDays;
-                            return sum + (total > 0 ? (r.presentDays / total) * 100 : 0);
-                          }, 0) / userReports.length
-                        )
-                      : 0}%
-                  </p>
+            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-green-300 hover:shadow-md transition-all duration-200">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Avg Attendance</span>
                 </div>
-                <CheckCircle className="w-10 h-10 text-green-500 opacity-20" />
+                <TrendingUp className="w-4 h-4 text-green-500 opacity-60" />
               </div>
+              <p className="text-2xl font-bold text-slate-900 mb-1">
+                {userReports.length > 0
+                  ? Math.round(
+                      userReports.reduce((sum, r) => {
+                        const total = r.presentDays + r.absentDays;
+                        return sum + (total > 0 ? (r.presentDays / total) * 100 : 0);
+                      }, 0) / userReports.length
+                    )
+                  : 0}%
+              </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Hours</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {Math.round(userReports.reduce((sum, r) => sum + r.totalWorkingHours, 0))}h
-                  </p>
+            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all duration-200">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                    <Clock className="w-4 h-4 text-purple-600" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Hours</span>
                 </div>
-                <Clock className="w-10 h-10 text-purple-500 opacity-20" />
+                <TrendingUp className="w-4 h-4 text-purple-500 opacity-60" />
               </div>
+              <p className="text-2xl font-bold text-slate-900 mb-1">
+                {Math.round(userReports.reduce((sum, r) => sum + r.totalWorkingHours, 0))}h
+              </p>
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Avg Productivity</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {userReports.length > 0
-                      ? Math.round(userReports.reduce((sum, r) => sum + r.avgProductivity, 0) / userReports.length)
-                      : 0}%
-                  </p>
+            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-orange-300 hover:shadow-md transition-all duration-200">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+                    <Activity className="w-4 h-4 text-orange-600" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Avg Productivity</span>
                 </div>
-                <FileText className="w-10 h-10 text-orange-500 opacity-20" />
+                <TrendingUp className="w-4 h-4 text-orange-500 opacity-60" />
               </div>
+              <p className="text-2xl font-bold text-slate-900 mb-1">
+                {userReports.length > 0
+                  ? Math.round(userReports.reduce((sum, r) => sum + r.avgProductivity, 0) / userReports.length)
+                  : 0}%
+              </p>
+            </div>
             </div>
           </div>
 
           {/* Reports Table */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#075a96] text-white">
+                <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Employee</th>
-                    <th className="px-6 py-3 text-left text-sm font-semibold">Email</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Working Days</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Half Days</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">LOP</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Present</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Worked Hours</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Expected Hours</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Productivity</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Attendance %</th>
-                    <th className="px-6 py-3 text-center text-sm font-semibold">Action</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Employee</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Working Days</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Half Days</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">LOP</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Present</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Worked Hours</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Expected Hours</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Productivity</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Attendance %</th>
+                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody className="divide-y divide-slate-200">
                   {loading ? (
                     <tr>
-                      <td colSpan={11} className="px-6 py-12 text-center text-gray-500">
-                        Loading report data...
+                      <td colSpan={11} className="px-6 py-16 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                          <p className="text-slate-500 font-medium">Loading report data...</p>
+                        </div>
                       </td>
                     </tr>
                   ) : userReports.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-6 py-12 text-center text-gray-500">
-                        No data available for this month
+                      <td colSpan={11} className="px-6 py-16 text-center">
+                        <div className="flex flex-col items-center gap-3">
+                          <BarChart3 className="w-12 h-12 text-slate-300" />
+                          <p className="text-slate-500 font-medium">No data available for this month</p>
+                        </div>
                       </td>
                     </tr>
                   ) : (
@@ -694,51 +728,51 @@ export default function ReportsPage() {
                       const attendancePercent = totalDays > 0 ? ((report.presentDays / totalDays) * 100).toFixed(1) : '0';
 
                       return (
-                        <tr key={report.userId} className="hover:bg-gray-50">
+                        <tr key={report.userId} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-slate-50 transition-all duration-200 border-b border-slate-100">
                           <td className="px-6 py-4">
-                            <div className="font-medium text-gray-900">{report.userName}</div>
+                            <div className="font-semibold text-slate-900">{report.userName}</div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-600">{report.email}</td>
+                          <td className="px-6 py-4 text-sm text-slate-600">{report.email}</td>
                           <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 border border-blue-200">
                               {report.workingDays}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border border-yellow-200">
                               {report.halfDays}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200">
                               {report.lopDays}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200">
                               {report.presentDays}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center text-sm font-medium text-gray-900">
+                          <td className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
                             {report.totalWorkingHours.toFixed(1)}h
                           </td>
-                          <td className="px-6 py-4 text-center text-sm text-gray-600">
+                          <td className="px-6 py-4 text-center text-sm text-slate-600 font-medium">
                             {report.expectedWorkingHours}h
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              report.avgProductivity >= 70 ? 'bg-green-100 text-green-800' :
-                              report.avgProductivity >= 50 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
+                            <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${
+                              report.avgProductivity >= 70 ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200' :
+                              report.avgProductivity >= 50 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border-yellow-200' :
+                              'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-200'
                             }`}>
                               {report.avgProductivity}%
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              parseFloat(attendancePercent) >= 90 ? 'bg-green-100 text-green-800' :
-                              parseFloat(attendancePercent) >= 75 ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
+                            <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${
+                              parseFloat(attendancePercent) >= 90 ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200' :
+                              parseFloat(attendancePercent) >= 75 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border-yellow-200' :
+                              'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-200'
                             }`}>
                               {attendancePercent}%
                             </span>
@@ -747,18 +781,18 @@ export default function ReportsPage() {
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => exportIndividualReport(report)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-[#075a96] rounded hover:bg-[#064a7d] transition-colors"
+                                className="group inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
                                 title="Export detailed daily report"
                               >
-                                <FileDown className="w-3 h-3" />
+                                <FileDown className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
                                 Export
                               </button>
                               <button
                                 onClick={() => handleSendEmail(report)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors"
+                                className="group inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
                                 title="Send report via email"
                               >
-                                <Mail className="w-3 h-3" />
+                                <Mail className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
                                 Email
                               </button>
                             </div>
@@ -776,55 +810,60 @@ export default function ReportsPage() {
 
       {/* Email Confirmation Modal */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-semibold text-gray-900">Send Report via Email</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-slate-200/60">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-slate-50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                  <Mail className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900">Send Report via Email</h3>
+              </div>
               <button
                 onClick={() => setShowEmailModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-white rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6">
-              <p className="text-sm text-gray-600 mb-4">
-                Send the attendance report for <strong>{selectedReport?.userName}</strong> ({format(selectedMonth, 'MMMM yyyy')}) to:
+              <p className="text-sm text-slate-600 mb-6">
+                Send the attendance report for <strong className="text-slate-900">{selectedReport?.userName}</strong> ({format(selectedMonth, 'MMMM yyyy')}) to:
               </p>
 
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Recipient Email
                 </label>
                 <input
                   type="email"
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#075a96] focus:border-transparent"
+                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 bg-slate-50 hover:bg-white"
                   placeholder="Enter email address"
                 />
               </div>
 
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-                <p className="text-xs text-blue-800">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100/50 border-2 border-blue-200 rounded-xl p-4 mb-6">
+                <p className="text-xs text-blue-800 font-medium">
                   <strong>Note:</strong> The report will include daily punch in/out times, working hours, and productivity metrics.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-white rounded-b-2xl">
               <button
                 onClick={() => setShowEmailModal(false)}
                 disabled={sendingEmail}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border-2 border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={sendEmailWithReport}
                 disabled={sendingEmail || !recipientEmail}
-                className="px-4 py-2 text-sm font-medium text-white bg-[#075a96] rounded-md hover:bg-[#064a7d] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 {sendingEmail ? (
                   <>

@@ -28,7 +28,6 @@ import {
 import { baseUrl } from '@/app/utils/config';
 import Navbar from '@/app/components/Navbar';
 import Sidebar from '@/app/components/Sidebar';
-import UserSidebar from '@/app/components/UserSidebar';
 
 const socket = io(baseUrl);
 
@@ -135,15 +134,16 @@ export default function DashboardPage() {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [stats, setStats] = useState([]);
-  const [allUserStats, setAllUserStats] = useState([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [allUserStats, setAllUserStats] = useState<any[]>([]);
   const [selectedRange, setSelectedRange] = useState(rangePresets[0].range);
   const [selectedPreset, setSelectedPreset] = useState(0);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [role, setRole] = useState(null);
-  const [userStatuses, setUserStatuses] = useState({});
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [userStatuses, setUserStatuses] = useState<Record<string, { status: string; timestamp: string }>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -196,12 +196,12 @@ export default function DashboardPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const handleStatusUpdate = ({ userId, status, timestamp }) => {
-        setUserStatuses((prev) => ({
-          ...prev,
-          [userId]: { status, timestamp },
-        }));
-      };
+  const handleStatusUpdate = ({ userId, status, timestamp }: { userId: number; status: string; timestamp: string }) => {
+    setUserStatuses((prev) => ({
+      ...prev,
+      [userId]: { status, timestamp },
+    }));
+  };
 
       socket.on('status:update', handleStatusUpdate);
 
@@ -240,11 +240,11 @@ export default function DashboardPage() {
       };
     }
 
-    const totalMinutes = currentStats.reduce((sum, day) => sum + (day.totalMinutes || 0), 0);
+    const totalMinutes = currentStats.reduce((sum: number, day: any) => sum + (day.totalMinutes || 0), 0);
     const totalHours = Math.round(totalMinutes / 60 * 10) / 10;
-    const avgProductivity = currentStats.reduce((sum, day) => sum + (day.productivity || 0), 0) / currentStats.length;
-    const activeDays = currentStats.filter(day => day.totalMinutes > 0).length;
-    const peakHours = Math.max(...currentStats.map(day => day.totalMinutes || 0)) / 60;
+    const avgProductivity = currentStats.reduce((sum: number, day: any) => sum + (day.productivity || 0), 0) / currentStats.length;
+    const activeDays = currentStats.filter((day: any) => day.totalMinutes > 0).length;
+    const peakHours = Math.max(...currentStats.map((day: any) => day.totalMinutes || 0)) / 60;
 
     return {
       totalHours,
@@ -259,7 +259,7 @@ export default function DashboardPage() {
   const summaryStats = calculateSummaryStats();
 
   // Prepare chart data
-  const chartData = currentStats.map(day => ({
+  const chartData = currentStats.map((day: any) => ({
     date: format(new Date(day.date), 'MMM dd'),
     hours: Math.round(day.totalMinutes / 60 * 10) / 10,
     productivity: day.productivity || 0,
@@ -272,55 +272,67 @@ export default function DashboardPage() {
     { name: 'Unproductive', value: 100 - summaryStats.avgProductivity - 30, color: theme.palette.error.main }
   ];
 
-  const StatCard = ({ title, value, icon, color, trend, subtitle }) => (
-    <Grow in={!loading} timeout={600}>
-      <Card sx={{
-        height: '100%',
-        background: `linear-gradient(135deg, ${alpha(theme.palette[color].main, 0.1)} 0%, ${alpha(theme.palette[color].light, 0.05)} 100%)`,
-        border: `1px solid ${alpha(theme.palette[color].main, 0.1)}`
-      }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography color="textSecondary" variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
-                {title}
-              </Typography>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: theme.palette[color].main, mb: 0.5 }}>
-                {loading ? <Skeleton width={100} /> : value}
-              </Typography>
-              {subtitle && (
-                <Typography variant="caption" color="textSecondary">
-                  {subtitle}
+  interface StatCardProps {
+    title: string;
+    value: string | number;
+    icon: React.ReactNode;
+    color: 'primary' | 'secondary' | 'success' | 'warning' | 'error';
+    trend?: number;
+    subtitle?: string;
+  }
+
+  const StatCard = ({ title, value, icon, color, trend, subtitle }: StatCardProps) => {
+    const colorPalette = theme.palette[color] as { main: string; light: string };
+    return (
+      <Grow in={!loading} timeout={600}>
+        <Card sx={{
+          height: '100%',
+          background: `linear-gradient(135deg, ${alpha(colorPalette.main, 0.1)} 0%, ${alpha(colorPalette.light, 0.05)} 100%)`,
+          border: `1px solid ${alpha(colorPalette.main, 0.1)}`
+        }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+              <Box sx={{ flex: 1 }}>
+                <Typography color="textSecondary" variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+                  {title}
                 </Typography>
-              )}
-              {trend !== undefined && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                  {trend > 0 ? (
-                    <TrendingUp sx={{ fontSize: 16, color: theme.palette.success.main, mr: 0.5 }} />
-                  ) : (
-                    <TrendingDown sx={{ fontSize: 16, color: theme.palette.error.main, mr: 0.5 }} />
-                  )}
-                  <Typography variant="caption" sx={{
-                    color: trend > 0 ? theme.palette.success.main : theme.palette.error.main,
-                    fontWeight: 600
-                  }}>
-                    {Math.abs(trend)}% from last period
+                <Typography variant="h4" sx={{ fontWeight: 700, color: colorPalette.main, mb: 0.5 }}>
+                  {loading ? <Skeleton width={100} /> : value}
+                </Typography>
+                {subtitle && (
+                  <Typography variant="caption" color="textSecondary">
+                    {subtitle}
                   </Typography>
-                </Box>
-              )}
+                )}
+                {trend !== undefined && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                    {trend > 0 ? (
+                      <TrendingUp sx={{ fontSize: 16, color: theme.palette.success.main, mr: 0.5 }} />
+                    ) : (
+                      <TrendingDown sx={{ fontSize: 16, color: theme.palette.error.main, mr: 0.5 }} />
+                    )}
+                    <Typography variant="caption" sx={{
+                      color: trend > 0 ? theme.palette.success.main : theme.palette.error.main,
+                      fontWeight: 600
+                    }}>
+                      {Math.abs(trend)}% from last period
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+              <Avatar sx={{
+                bgcolor: alpha(colorPalette.main, 0.15),
+                width: 56,
+                height: 56
+              }}>
+                {icon}
+              </Avatar>
             </Box>
-            <Avatar sx={{
-              bgcolor: alpha(theme.palette[color].main, 0.15),
-              width: 56,
-              height: 56
-            }}>
-              {icon}
-            </Avatar>
-          </Box>
-        </CardContent>
-      </Card>
-    </Grow>
-  );
+          </CardContent>
+        </Card>
+      </Grow>
+    );
+  };
 
   return (
     <ThemeProvider theme={theme}>
@@ -335,12 +347,110 @@ export default function DashboardPage() {
         <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           <Sidebar />
           {(role === 'admin' || role === 'manager') && (
-            <UserSidebar
-              allUserStats={allUserStats}
-              selectedUserId={selectedUserId}
-              setSelectedUserId={setSelectedUserId}
-              userStatuses={userStatuses}
-            />
+            <aside className="w-64 fixed top-16 left-64 bottom-0 backdrop-blur-xl bg-gradient-to-b from-white via-gray-50/95 to-white border-r border-gray-200/60 shadow-2xl shadow-gray-900/10 p-5 overflow-y-auto z-10">
+              {/* Header with gradient */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/10 via-[#0a6fb8]/5 to-transparent rounded-xl blur-sm"></div>
+                <h2 className="relative text-2xl font-bold bg-gradient-to-r from-[#075a96] to-[#0a6fb8] bg-clip-text text-transparent mb-1">
+                  Users
+                </h2>
+                <p className="relative text-xs text-gray-500 font-medium">Select a team member</p>
+              </div>
+
+              {/* Modern Search Input */}
+              <div className="relative mb-5 group">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/20 to-[#0a6fb8]/20 rounded-xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <input
+                  type="text"
+                  placeholder="Search users..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="relative w-full px-4 py-3 bg-white/80 backdrop-blur-sm border-2 border-gray-200/60 rounded-xl shadow-sm focus:shadow-lg focus:border-[#075a96]/40 focus:outline-none transition-all duration-300 placeholder:text-gray-400 text-sm font-medium"
+                />
+              </div>
+
+              {/* User List */}
+              <ul className="space-y-2.5">
+                {allUserStats.filter(({ user }) =>
+                  user.name.toLowerCase().includes(searchTerm.toLowerCase())
+                ).map(({ user }) => {
+                  const isSelected = user.id === selectedUserId;
+                  const statusInfo = userStatuses[user.id];
+                  const status = statusInfo?.status || 'offline';
+                  const statusColor =
+                    status === 'online'
+                      ? 'bg-green-500'
+                      : status === 'on break'
+                      ? 'bg-yellow-500'
+                      : status === 'idle'
+                      ? 'bg-red-500'
+                      : 'bg-gray-400';
+                  const statusGlow =
+                    status === 'online'
+                      ? 'shadow-green-500/50'
+                      : status === 'on break'
+                      ? 'shadow-yellow-500/50'
+                      : status === 'idle'
+                      ? 'shadow-red-500/50'
+                      : 'shadow-gray-400/30';
+
+                  return (
+                    <li
+                      key={user.id}
+                      onClick={() => setSelectedUserId(user.id)}
+                      className={`group relative cursor-pointer transition-all duration-300 ${
+                        isSelected 
+                          ? 'transform scale-[1.02]' 
+                          : 'hover:transform hover:scale-[1.01]'
+                      }`}
+                    >
+                      {/* Background gradient for selected */}
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/15 via-[#0a6fb8]/10 to-[#075a96]/15 rounded-xl blur-sm"></div>
+                      )}
+                      
+                      {/* Main card */}
+                      <div className={`relative px-4 py-3.5 rounded-xl border-2 transition-all duration-300 ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-[#075a96]/10 via-white to-[#0a6fb8]/5 border-[#075a96]/30 shadow-lg shadow-[#075a96]/10'
+                          : 'bg-white/60 backdrop-blur-sm border-gray-200/40 hover:border-[#075a96]/20 hover:bg-white/80 hover:shadow-md'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          {/* User name with avatar circle */}
+                          <div className="flex items-center gap-3">
+                            <div className={`relative w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm text-white shadow-lg transition-all duration-300 ${
+                              isSelected
+                                ? 'bg-gradient-to-br from-[#075a96] to-[#0a6fb8] scale-110'
+                                : 'bg-gradient-to-br from-gray-400 to-gray-500 group-hover:from-[#075a96]/80 group-hover:to-[#0a6fb8]/80'
+                            }`}>
+                              {user.name?.charAt(0).toUpperCase() || 'U'}
+                              {isSelected && (
+                                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-transparent"></div>
+                              )}
+                            </div>
+                            <span className={`font-semibold text-sm transition-colors duration-300 ${
+                              isSelected ? 'text-[#075a96]' : 'text-gray-700 group-hover:text-[#075a96]'
+                            }`}>
+                              {user.name}
+                            </span>
+                          </div>
+
+                          {/* Status indicator with glow */}
+                          <div className="relative">
+                            <span className={`w-3.5 h-3.5 rounded-full ${statusColor} block shadow-lg ${statusGlow} transition-all duration-300 ${
+                              isSelected ? 'scale-125' : 'group-hover:scale-110'
+                            }`}></span>
+                            {status === 'online' && (
+                              <span className={`absolute inset-0 rounded-full ${statusColor} animate-ping opacity-75`}></span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
           )}
 
           <Box sx={{
