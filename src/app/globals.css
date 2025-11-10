@@ -1,33 +1,226 @@
 @import "tailwindcss";
-@tailwind base;
+
+/* @tailwind base;
 @tailwind components;
-@tailwind utilities;
+@tailwind utilities; */
+
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-  }
-  input {
+}
+
+input {
     width: 100%;
     padding: 0.5rem;
     margin-top: 1rem;
-  }
- /* 👇 Base button style */
-button {
+}
+
+
+/* 👇 Base button style - only applies to buttons without Tailwind classes */
+
+button:not([class*="bg-"]):not([class*="text-"]) {
     padding: 0.5rem 1rem;
     cursor: pointer;
     background-color: #096eb6;
     color: white;
     border: none;
-    border-radius: 0.375rem; /* matches Tailwind's rounded-md */
+    border-radius: 0.375rem;
+    /* matches Tailwind's rounded-md */
     transition: background-color 0.2s ease;
-  }
+}
 
-  /* 👇 Hover effect */
-  button:hover {
-    background-color: #075a96; /* darker shade of primary */
-  }
 
-  /* 👇 Clicked/active effect */
-  button:active {
+/* 👇 Hover effect */
+
+button:not([class*="bg-"]):not([class*="text-"]):hover {
+    background-color: #075a96;
+    /* darker shade of primary */
+}
+
+
+/* 👇 Clicked/active effect */
+
+button:not([class*="bg-"]):not([class*="text-"]):active {
     background-color: #05497c;
-  }
+}
+
+
+/* Override react-date-range default styles - make default dates white with dark text */
+
+.rdrDay {
+    background-color: white !important;
+}
+
+.rdrDay .rdrDayNumber,
+.rdrDay .rdrDayNumber span {
+    color: #111827 !important;
+}
+
+.rdrDay:not(.rdrDayPassive):not(.rdrDayInRange):not(.rdrDayStartEdge):not(.rdrDayEndEdge):not(.rdrDaySelected):not(.rdrDayInPreview):not(.rdrDayStartPreview):not(.rdrDayEndPreview) {
+    background-color: white !important;
+}
+
+.rdrDay:not(.rdrDayPassive):not(.rdrDayInRange):not(.rdrDayStartEdge):not(.rdrDayEndEdge):not(.rdrDaySelected):not(.rdrDayInPreview):not(.rdrDayStartPreview):not(.rdrDayEndPreview) .rdrDayNumber,
+.rdrDay:not(.rdrDayPassive):not(.rdrDayInRange):not(.rdrDayStartEdge):not(.rdrDayEndEdge):not(.rdrDaySelected):not(.rdrDayInPreview):not(.rdrDayStartPreview):not(.rdrDayEndPreview) .rdrDayNumber span {
+    color: #111827 !important;
+}
+
+.rdrDayPassive {
+    background-color: white !important;
+}
+
+.rdrDayPassive .rdrDayNumber,
+.rdrDayPassive .rdrDayNumber span {
+    color: #9ca3af !important;
+}
+
+.rdrDayInPreview {
+    background-color: white !important;
+    position: relative !important;
+}
+
+.rdrDayInPreview .rdrDayNumber,
+.rdrDayInPreview .rdrDayNumber span {
+    color: #111827 !important;
+    display: block !important;
+    position: relative !important;
+    z-index: 10 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.rdrDayStartPreview,
+.rdrDayEndPreview {
+    background-color: white !important;
+    position: relative !important;
+}
+
+.rdrDayStartPreview .rdrDayNumber,
+.rdrDayStartPreview .rdrDayNumber span,
+.rdrDayEndPreview .rdrDayNumber,
+.rdrDayEndPreview .rdrDayNumber span {
+    color: #111827 !important;
+    display: block !important;
+    position: relative !important;
+    z-index: 10 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+
+/* Only selected dates and range should have blue background */
+
+.rdrDaySelected,
+.rdrDayInRange,
+.rdrDayStartEdge,
+.rdrDayEndEdge {
+    background-color: #3b82f6 !important;
+}
+
+.rdrDaySelected .rdrDayNumber,
+.rdrDaySelected .rdrDayNumber span,
+.rdrDayInRange .rdrDayNumber,
+.rdrDayInRange .rdrDayNumber span,
+.rdrDayStartEdge .rdrDayNumber,
+.rdrDayStartEdge .rdrDayNumber span,
+.rdrDayEndEdge .rdrDayNumber,
+.rdrDayEndEdge .rdrDayNumber span {
+    color: white !important;
+    font-weight: 600 !important;
+}
+
+.rdrDayStartEdge.rdrDayEndEdge {
+    background-color: #3b82f6 !important;
+}
+
+.rdrDayToday .rdrDayNumber span:after {
+    background-color: #3b82f6 !important;
+}
+
+.rdrDayHovered {
+    background-color: #e0e7ff !important;
+}
+
+.rdrDayHovered .rdrDayNumber,
+.rdrDayHovered .rdrDayNumber span {
+    color: #111827 !important;
+}
+
+.rdrDay:hover {
+    background-color: #f3f4f6 !important;
+}
+
+.rdrDay:hover .rdrDayNumber,
+.rdrDay:hover .rdrDayNumber span {
+    color: #111827 !important;
+}
+
+
+/* Navigation arrow buttons - make them white */
+
+.rdrNextPrevButton,
+.rdrPprevButton,
+.rdrNextButton,
+.rdrMonthAndYearWrapper button,
+.rdrMonthAndYearPickers button {
+    background-color: white !important;
+    border: 1px solid #e5e7eb !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.rdrNextPrevButton:hover,
+.rdrPprevButton:hover,
+.rdrNextButton:hover,
+.rdrMonthAndYearWrapper button:hover,
+.rdrMonthAndYearPickers button:hover {
+    background-color: #f9fafb !important;
+}
+
+.rdrNextPrevButton i,
+.rdrPprevButton i,
+.rdrNextButton i,
+.rdrMonthAndYearWrapper button i,
+.rdrMonthAndYearPickers button i {
+    color: #374151 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+}
+
+
+/* Center arrow icons in navigation buttons */
+
+.rdrNextPrevButton svg,
+.rdrPprevButton svg,
+.rdrNextButton svg,
+.rdrMonthAndYearWrapper button svg,
+.rdrMonthAndYearPickers button svg {
+    display: block !important;
+    margin: 0 auto !important;
+}
+
+.rdrNextPrevButton button svg,
+.rdrPprevButton button svg,
+.rdrNextButton button svg {
+    display: block !important;
+    margin: 0 auto !important;
+}
+
+.rdrNextPrevButton button,
+.rdrPprevButton button,
+.rdrNextButton button {
+    background-color: white !important;
+    border: 1px solid #e5e7eb !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.rdrNextPrevButton button:hover,
+.rdrPprevButton button:hover,
+.rdrNextButton button:hover {
+    background-color: #f9fafb !important;
+}

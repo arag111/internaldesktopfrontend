@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback, memo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
@@ -86,13 +86,9 @@ const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)',
-          borderRadius: 16,
-          transition: 'all 0.3s ease',
-          '&:hover': {
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-            transform: 'translateY(-2px)'
-          }
+          boxShadow: 'none',
+          borderRadius: 8,
+          transition: 'all 0.2s ease',
         }
       }
     },
@@ -127,27 +123,45 @@ const rangePresets = [
   { label: 'This Month', icon: <CalendarMonth />, range: [startOfMonth(new Date()), endOfMonth(new Date())] }
 ];
 
+interface UserStats {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  stats: any[];
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.down('md'));
 
-  const [stats, setStats] = useState([]);
-  const [allUserStats, setAllUserStats] = useState([]);
+  const [stats, setStats] = useState<any[]>([]);
+  const [allUserStats, setAllUserStats] = useState<UserStats[]>([]);
   const [selectedRange, setSelectedRange] = useState(rangePresets[0].range);
   const [selectedPreset, setSelectedPreset] = useState(0);
-  const [selectedUserId, setSelectedUserId] = useState(null);
-  const [role, setRole] = useState(null);
-  const [userStatuses, setUserStatuses] = useState({});
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [userStatuses, setUserStatuses] = useState<Record<string, { status: string; timestamp: string }>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
 
+  // Initialize role on mount
+  useEffect(() => {
+    const storedRole = localStorage.getItem('role');
+    setRole(storedRole);
+  }, []);
+
+  // Fetch data when range changes (not when selectedUserId changes)
   useEffect(() => {
     const token = localStorage.getItem('token');
     const storedRole = localStorage.getItem('role');
-    setRole(storedRole);
-    if (!token) return router.push('/');
+    if (!token) {
+      router.push('/');
+      return;
+    }
 
     const [start, end] = selectedRange;
     const toISTDate = (date: Date) => {
@@ -167,7 +181,8 @@ export default function DashboardPage() {
             { headers: { Authorization: `Bearer ${token}` } }
           );
           setAllUserStats(data);
-          if (!selectedUserId && data.length > 0) {
+          // Only set selectedUserId if it's not already set
+          if (selectedUserId === null && data.length > 0) {
             setSelectedUserId(data[0].user.id);
           }
         } else {
@@ -187,9 +202,16 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, [router, selectedRange, selectedUserId]);
+  }, [router, selectedRange]);
 
-  const handleStatusUpdate = useCallback(({ userId, status, timestamp }) => {
+  // Initialize selectedUserId from allUserStats if needed
+  useEffect(() => {
+    if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0) {
+      setSelectedUserId(allUserStats[0].user.id);
+    }
+  }, [allUserStats, role, selectedUserId]);
+
+  const handleStatusUpdate = useCallback(({ userId, status, timestamp }: { userId: number; status: string; timestamp: string }) => {
     setUserStatuses((prev) => ({
       ...prev,
       [userId]: { status, timestamp },
@@ -354,88 +376,86 @@ export default function DashboardPage() {
     { name: 'Unproductive', value: 100 - summaryStats.avgProductivity - 30, color: theme.palette.error.main }
   ], [summaryStats.avgProductivity]);
 
-  const StatCard = memo(({ title, value, icon, color, trend, subtitle }: any) => (
-    <Grow in={!loading} timeout={600}>
-      <Card sx={{
-        height: '100%',
-        backgroundColor: 'white',
-        border: '1px solid #e5e7eb',
-        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-        transition: 'all 0.2s ease',
-        '&:hover': {
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-          borderColor: theme.palette[color].main,
-        }
-      }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" sx={{
-                mb: 1.5,
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                color: '#6b7280',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                {title}
-              </Typography>
+  const StatCard = memo(({ title, value, icon, color, trend, subtitle }: any) => {
+    const colorMap: any = {
+      primary: { iconColor: '#3b82f6', accent: '#3b82f6' },
+      success: { iconColor: '#10b981', accent: '#10b981' },
+      secondary: { iconColor: '#8b5cf6', accent: '#8b5cf6' },
+      warning: { iconColor: '#f59e0b', accent: '#f59e0b' }
+    };
+    const colors = colorMap[color] || colorMap.primary;
+
+    return (
+      <Grow in={!loading} timeout={600}>
+        <Card sx={{
+          height: '100%',
+          backgroundColor: 'white',
+          border: 'none',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+          transition: 'all 0.2s ease',
+          '&:hover': {
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+          }
+        }}>
+          <CardContent sx={{ p: 3 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="body2" sx={{
+                  fontWeight: 500,
+                  fontSize: '0.8125rem',
+                  color: '#6b7280',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  {title}
+                </Typography>
+                <Box sx={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: alpha(colors.iconColor, 0.1),
+                }}>
+                  {React.isValidElement(icon) 
+                    ? React.cloneElement(icon as React.ReactElement<any>, { 
+                        sx: { fontSize: 18, color: colors.iconColor } 
+                      })
+                    : icon
+                  }
+                </Box>
+              </Box>
               <Typography variant="h4" sx={{
                 fontWeight: 700,
                 color: '#111827',
-                mb: 0.5,
-                fontSize: '1.875rem'
+                fontSize: '2rem',
+                lineHeight: 1.2
               }}>
-                {loading ? <Skeleton width={100} /> : value}
+                {loading ? <Skeleton width={100} height={40} /> : value}
               </Typography>
               {subtitle && (
-                <Typography variant="caption" sx={{
-                  color: '#6b7280',
-                  fontSize: '0.75rem'
+                <Typography variant="body2" sx={{
+                  color: '#9ca3af',
+                  fontSize: '0.875rem',
+                  fontWeight: 400
                 }}>
                   {subtitle}
                 </Typography>
               )}
-              {trend !== undefined && (
-                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1.5 }}>
-                  {trend > 0 ? (
-                    <TrendingUp sx={{ fontSize: 16, color: theme.palette.success.main, mr: 0.5 }} />
-                  ) : (
-                    <TrendingDown sx={{ fontSize: 16, color: theme.palette.error.main, mr: 0.5 }} />
-                  )}
-                  <Typography variant="caption" sx={{
-                    color: trend > 0 ? theme.palette.success.main : theme.palette.error.main,
-                    fontWeight: 600,
-                    fontSize: '0.75rem'
-                  }}>
-                    {Math.abs(trend)}% from last period
-                  </Typography>
-                </Box>
-              )}
             </Box>
-            <Box sx={{
-              width: 48,
-              height: 48,
-              borderRadius: '12px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: alpha(theme.palette[color].main, 0.1),
-              color: theme.palette[color].main,
-            }}>
-              {icon}
-            </Box>
-          </Box>
-        </CardContent>
-      </Card>
-    </Grow>
-  ));
+          </CardContent>
+        </Card>
+      </Grow>
+    );
+  });
 
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{
         minHeight: '100vh',
-        backgroundColor: '#f9fafb',
+        backgroundColor: '#fafafa',
         display: 'flex',
         flexDirection: 'column'
       }}>
@@ -447,76 +467,91 @@ export default function DashboardPage() {
           <Box sx={{
             flex: 1,
             overflow: 'auto',
-            p: { xs: 2, sm: 3, md: 4 },
+            p: { xs: 3, sm: 4, md: 5 },
             pt: { xs: 10, sm: 11, md: 12 },
-            ml: '256px'
+            ml: '256px',
+            backgroundColor: '#fafafa'
           }}>
             <Container maxWidth={false}>
               {/* Header */}
               <Fade in timeout={500}>
-                <Box sx={{
-                  mb: 4,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 2
-                }}>
-                  <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#111827', mb: 0.5 }}>
-                      {role === 'admin' ? 'Admin Dashboard' : role === 'manager' ? 'Manager Dashboard' : 'My Dashboard'}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#6b7280' }}>
-                      Track productivity and manage your team effectively
-                    </Typography>
+                <Box sx={{ mb: 4 }}>
+                  <Box sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    flexWrap: 'wrap',
+                    gap: 3
+                  }}>
+                    <Box>
+                      <Typography variant="h4" sx={{ 
+                        fontWeight: 700, 
+                        color: '#111827', 
+                        mb: 0.5,
+                        fontSize: '2rem',
+                        letterSpacing: '-0.025em'
+                      }}>
+                        {role === 'admin' ? 'Admin Dashboard' : role === 'manager' ? 'Manager Dashboard' : 'My Dashboard'}
+                      </Typography>
+                      <Typography variant="body1" sx={{ 
+                        color: '#6b7280', 
+                        fontSize: '1rem',
+                        fontWeight: 400
+                      }}>
+                        Track productivity and manage your team effectively
+                      </Typography>
+                    </Box>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <FormControl size="small" sx={{ minWidth: 140 }}>
+                        <Select
+                          value={selectedPreset}
+                          onChange={(e) => handleRangeChange(e.target.value as number)}
+                          sx={{
+                            bgcolor: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              border: 'none'
+                            },
+                            '&:hover': {
+                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)'
+                            }
+                          }}
+                        >
+                          {rangePresets.map((preset, index) => (
+                            <MenuItem key={index} value={index}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {preset.icon}
+                                {preset.label}
+                              </Box>
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <Tooltip title="Refresh Data">
+                        <IconButton
+                          onClick={handleRefresh}
+                          sx={{
+                            bgcolor: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                            '&:hover': {
+                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)'
+                            }
+                          }}
+                        >
+                          <Refresh className={refreshing ? 'animate-spin' : ''} />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                   </Box>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <FormControl size="small" sx={{ minWidth: 150 }}>
-                      <Select
-                        value={selectedPreset}
-                        onChange={(e) => handleRangeChange(e.target.value as number)}
-                        sx={{
-                          bgcolor: 'white',
-                          border: '1px solid #e5e7eb',
-                          '& .MuiOutlinedInput-notchedOutline': {
-                            border: 'none'
-                          },
-                          '&:hover': {
-                            borderColor: '#d1d5db'
-                          }
-                        }}
-                      >
-                        {rangePresets.map((preset, index) => (
-                          <MenuItem key={index} value={index}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              {preset.icon}
-                              {preset.label}
-                            </Box>
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                    <Tooltip title="Refresh Data">
-                      <IconButton
-                        onClick={handleRefresh}
-                        sx={{
-                          bgcolor: 'white',
-                          border: '1px solid #e5e7eb',
-                          '&:hover': {
-                            bgcolor: '#f9fafb',
-                            borderColor: '#d1d5db'
-                          }
-                        }}
-                      >
-                        <Refresh className={refreshing ? 'animate-spin' : ''} />
-                      </IconButton>
-                    </Tooltip>
-                  </Stack>
                 </Box>
               </Fade>
 
               {/* Summary Stats */}
-              <Grid container spacing={3} sx={{ mb: 3 }}>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <StatCard
                     title="Total Hours"
@@ -569,28 +604,21 @@ export default function DashboardPage() {
                 {/* Activity Chart */}
                 <Grid size={{ xs: 12, lg: 8 }}>
                   <Fade in={!loading} timeout={700}>
-                    <Card>
-                      <CardContent>
+                    <Card sx={{
+                      backgroundColor: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                    }}>
+                      <CardContent sx={{ p: 3 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                          <Typography variant="h6" sx={{ 
+                            fontWeight: 600,
+                            color: '#111827',
+                            fontSize: '1.125rem'
+                          }}>
                             Activity Overview
                           </Typography>
-                          <Stack direction="row" spacing={1}>
-                            <Chip
-                              icon={<BarChartIcon />}
-                              label="Hours"
-                              size="small"
-                              color="primary"
-                              variant="outlined"
-                            />
-                            <Chip
-                              icon={<Assessment />}
-                              label="Productivity"
-                              size="small"
-                              color="success"
-                              variant="outlined"
-                            />
-                          </Stack>
                         </Box>
                         {loading ? (
                           <Skeleton variant="rectangular" height={300} />
@@ -607,29 +635,35 @@ export default function DashboardPage() {
                                   <stop offset="95%" stopColor={theme.palette.success.main} stopOpacity={0.1}/>
                                 </linearGradient>
                               </defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke={alpha('#000', 0.05)} />
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                               <XAxis
                                 dataKey="date"
-                                tick={{ fontSize: 12 }}
-                                stroke={theme.palette.text.secondary}
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                stroke="#e2e8f0"
+                                axisLine={false}
+                                tickLine={false}
                               />
                               <YAxis
                                 yAxisId="left"
-                                tick={{ fontSize: 12 }}
-                                stroke={theme.palette.text.secondary}
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                stroke="#e2e8f0"
+                                axisLine={false}
+                                tickLine={false}
                               />
                               <YAxis
                                 yAxisId="right"
                                 orientation="right"
-                                tick={{ fontSize: 12 }}
-                                stroke={theme.palette.text.secondary}
+                                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                                stroke="#e2e8f0"
+                                axisLine={false}
+                                tickLine={false}
                               />
                               <RechartsTooltip
                                 contentStyle={{
-                                  backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                  border: 'none',
+                                  backgroundColor: '#ffffff',
+                                  border: '1px solid #e2e8f0',
                                   borderRadius: 8,
-                                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
                                 }}
                               />
                               <Area
@@ -663,9 +697,20 @@ export default function DashboardPage() {
                 {/* Productivity Breakdown */}
                 <Grid size={{ xs: 12, lg: 4 }}>
                   <Fade in={!loading} timeout={800}>
-                    <Card sx={{ height: '100%' }}>
-                      <CardContent>
-                        <Typography variant="h6" sx={{ fontWeight: 600, mb: 3 }}>
+                    <Card sx={{
+                      height: '100%',
+                      backgroundColor: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                    }}>
+                      <CardContent sx={{ p: 3 }}>
+                        <Typography variant="h6" sx={{ 
+                          fontWeight: 600, 
+                          mb: 3,
+                          color: '#111827',
+                          fontSize: '1.125rem'
+                        }}>
                           Productivity Breakdown
                         </Typography>
                         {loading ? (
@@ -726,16 +771,32 @@ export default function DashboardPage() {
                 {(role === 'admin' || role === 'manager') && (
                   <Grid size={12}>
                     <Fade in={!loading} timeout={900}>
-                      <Card>
-                        <CardContent>
+                      <Card sx={{
+                        backgroundColor: 'white',
+                        border: 'none',
+                        borderRadius: '12px',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                      }}>
+                        <CardContent sx={{ p: 3 }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            <Typography variant="h6" sx={{ 
+                              fontWeight: 600,
+                              color: '#111827',
+                              fontSize: '1.125rem'
+                            }}>
                               Team Activity
                             </Typography>
                             <Button
                               size="small"
                               startIcon={<Visibility />}
-                              sx={{ textTransform: 'none' }}
+                              sx={{ 
+                                textTransform: 'none',
+                                color: '#6b7280',
+                                fontWeight: 500,
+                                '&:hover': {
+                                  bgcolor: '#f9fafb'
+                                }
+                              }}
                             >
                               View All
                             </Button>
@@ -752,9 +813,9 @@ export default function DashboardPage() {
                                     borderRadius: 2,
                                     mb: 1,
                                     bgcolor: selectedUserId === userStat.user.id ?
-                                      alpha(theme.palette.primary.main, 0.08) : 'transparent',
+                                      '#f3f4f6' : 'transparent',
                                     '&:hover': {
-                                      bgcolor: alpha(theme.palette.primary.main, 0.04)
+                                      bgcolor: '#f9fafb'
                                     }
                                   }}
                                 >
@@ -778,7 +839,7 @@ export default function DashboardPage() {
                                     </Badge>
                                   </ListItemAvatar>
                                   <ListItemText
-                                    primary={userStat.user.name || userStat.user.username}
+                                    primary={userStat.user.name || userStat.user.email}
                                     secondary={
                                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                         <Chip

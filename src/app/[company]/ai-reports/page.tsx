@@ -1,10 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { Brain, Calendar, TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowLeft, User, Clock } from 'lucide-react';
+import { Brain, Calendar, TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowLeft, User, Clock, Sparkles, Zap, Activity, Mail, BarChart3, ChevronRight } from 'lucide-react';
 import Navbar from '../../components/Navbar';
 import CompanySidebar from '../../components/CompanySidebar';
 import AttendanceReport from './AttendanceReport';
+import DateRangePickerComponent from '../../components/DateRangePicker2';
+import { rangePresets } from '../../utils/constants';
 
 interface UserSummary {
   user: {
@@ -58,14 +60,13 @@ interface AIReport {
   analyses: Analysis[];
 }
 
-type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'custom';
+type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days';
 
 export default function AIReportsPage() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5002';
   const [view, setView] = useState<'overview' | 'detail' | 'attendance'>('overview');
-  const [datePreset, setDatePreset] = useState<DatePreset>('today');
-  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [datePreset, setDatePreset] = useState<DatePreset | null>(null);
+  const [selectedRange, setSelectedRange] = useState<[Date, Date]>(rangePresets[0].range as [Date, Date]);
   const [userSummaries, setUserSummaries] = useState<UserSummary[]>([]);
   const [selectedReport, setSelectedReport] = useState<AIReport | null>(null);
   const [loading, setLoading] = useState(false);
@@ -78,10 +79,10 @@ export default function AIReportsPage() {
 
   useEffect(() => {
     // Reload overview when date changes
-    if (view === 'overview' && datePreset !== 'custom') {
+    if (view === 'overview') {
       loadOverview();
     }
-  }, [startDate, endDate]);
+  }, [selectedRange]);
 
   const handleDatePresetChange = (preset: DatePreset) => {
     setDatePreset(preset);
@@ -89,26 +90,24 @@ export default function AIReportsPage() {
 
     switch (preset) {
       case 'today':
-        setStartDate(format(now, 'yyyy-MM-dd'));
-        setEndDate(format(now, 'yyyy-MM-dd'));
+        setSelectedRange([now, now]);
         break;
       case 'yesterday':
         const yesterday = subDays(now, 1);
-        setStartDate(format(yesterday, 'yyyy-MM-dd'));
-        setEndDate(format(yesterday, 'yyyy-MM-dd'));
+        setSelectedRange([yesterday, yesterday]);
         break;
       case 'last7days':
-        setStartDate(format(subDays(now, 6), 'yyyy-MM-dd'));
-        setEndDate(format(now, 'yyyy-MM-dd'));
+        setSelectedRange([subDays(now, 6), now]);
         break;
       case 'last30days':
-        setStartDate(format(subDays(now, 29), 'yyyy-MM-dd'));
-        setEndDate(format(now, 'yyyy-MM-dd'));
-        break;
-      case 'custom':
-        // User will manually set dates
+        setSelectedRange([subDays(now, 29), now]);
         break;
     }
+  };
+
+  const handleCustomRangeChange = (range: [Date, Date]) => {
+    setDatePreset(null);
+    setSelectedRange(range);
   };
 
   const loadOverview = async () => {
@@ -117,8 +116,9 @@ export default function AIReportsPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const startDateTime = startOfDay(new Date(startDate)).toISOString();
-      const endDateTime = endOfDay(new Date(endDate)).toISOString();
+      const [start, end] = selectedRange;
+      const startDateTime = startOfDay(start).toISOString();
+      const endDateTime = endOfDay(end).toISOString();
 
       const response = await fetch(
         `${API_BASE_URL}/api/ai-reports/summary?startDate=${startDateTime}&endDate=${endDateTime}`,
@@ -149,8 +149,9 @@ export default function AIReportsPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const startDateTime = startOfDay(new Date(startDate)).toISOString();
-      const endDateTime = endOfDay(new Date(endDate)).toISOString();
+      const [start, end] = selectedRange;
+      const startDateTime = startOfDay(start).toISOString();
+      const endDateTime = endOfDay(end).toISOString();
 
       const response = await fetch(`${API_BASE_URL}/api/ai-reports/generate`, {
         method: 'POST',
@@ -185,8 +186,9 @@ export default function AIReportsPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const startDateTime = startOfDay(new Date(startDate)).toISOString();
-      const endDateTime = endOfDay(new Date(endDate)).toISOString();
+      const [start, end] = selectedRange;
+      const startDateTime = startOfDay(start).toISOString();
+      const endDateTime = endOfDay(end).toISOString();
 
       const response = await fetch(`${API_BASE_URL}/api/ai-reports/send-email`, {
         method: 'POST',
@@ -224,186 +226,161 @@ export default function AIReportsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <Navbar />
       <CompanySidebar />
 
-      <main className="ml-64 mt-16 p-8">
+      <main className="ml-64 mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <Brain className="w-8 h-8 text-blue-600" />
-                  <h1 className="text-3xl font-bold text-gray-900">AI Productivity Reports</h1>
+          {/* Hero Banner Section */}
+          <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
+            <div className="flex items-start justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
                 </div>
-                <p className="text-gray-600">
-                  AI-powered analysis of employee productivity based on screenshots and job roles
-                </p>
+                <div>
+                  <h1 className="text-xl font-semibold text-slate-900 mb-0.5">
+                    AI Productivity Reports
+                  </h1>
+                  <p className="text-sm text-slate-500">
+                    AI-powered analysis of employee productivity based on screenshots and job roles
+                  </p>
+                </div>
               </div>
               {view === 'detail' && (
                 <button
                   onClick={handleBackToOverview}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+                  className="group px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors duration-200 flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-blue-600"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   Back to Overview
                 </button>
               )}
             </div>
-          </div>
 
-          {/* Tab Navigation */}
-          {view !== 'detail' && (
-            <div className="flex gap-2 mb-6 bg-white rounded-xl shadow-sm border border-gray-200 p-2">
-              <button
-                onClick={() => setView('overview')}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${
-                  view === 'overview'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Brain className="w-5 h-5" />
-                  <span>AI Productivity Reports</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setView('attendance')}
-                className={`flex-1 px-6 py-3 rounded-lg font-medium transition-all ${
-                  view === 'attendance'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <Calendar className="w-5 h-5" />
-                  <span>Attendance Report</span>
-                </div>
-              </button>
-            </div>
-          )}
+            {/* Tab Navigation */}
+            {view !== 'detail' && (
+              <div className="flex gap-3 mb-5 pt-4">
+                <button
+                  onClick={() => setView('overview')}
+                  className={`group flex-1 px-6 py-4 rounded-lg text-sm font-medium transition-colors duration-200 border ${
+                    view === 'overview'
+                      ? 'bg-slate-100 text-slate-900 border-slate-200'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Brain className={`w-4 h-4 ${view === 'overview' ? 'text-purple-500' : 'text-purple-500'}`} />
+                    <span>AI Productivity Reports</span>
+                  </div>
+                </button>
+                <button
+                  onClick={() => setView('attendance')}
+                  className={`group flex-1 px-6 py-4 rounded-lg text-sm font-medium transition-colors duration-200 border ${
+                    view === 'attendance'
+                      ? 'bg-slate-100 text-slate-900 border-slate-200'
+                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Calendar className={`w-4 h-4 ${view === 'attendance' ? 'text-blue-500' : 'text-blue-500'}`} />
+                    <span>Attendance Report</span>
+                  </div>
+                </button>
+              </div>
+            )}
 
-          {/* Date Filter - Only show for AI Reports view */}
-          {view === 'overview' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-            <div className="flex flex-col gap-4">
-              {/* Preset Buttons */}
-              <div className="flex flex-wrap gap-2">
+            {/* Date Filter - Only show for AI Reports view */}
+            {view === 'overview' && (
+              <div className="flex items-center gap-3 flex-wrap pt-4">
+                {/* Preset Buttons */}
                 <button
                   onClick={() => handleDatePresetChange('today')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
                     datePreset === 'today'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   Today
                 </button>
                 <button
                   onClick={() => handleDatePresetChange('yesterday')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
                     datePreset === 'yesterday'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   Yesterday
                 </button>
                 <button
                   onClick={() => handleDatePresetChange('last7days')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
                     datePreset === 'last7days'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   Last 7 Days
                 </button>
                 <button
                   onClick={() => handleDatePresetChange('last30days')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
                     datePreset === 'last30days'
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   Last 30 Days
                 </button>
-                <button
-                  onClick={() => handleDatePresetChange('custom')}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    datePreset === 'custom'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  Custom Range
-                </button>
-              </div>
 
-              {/* Custom Date Range */}
-              {datePreset === 'custom' && (
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
-                    <input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-                  <button
-                    onClick={loadOverview}
-                    disabled={loading}
-                    className="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    Apply
-                  </button>
+                {/* Custom Date Range Picker */}
+                <DateRangePickerComponent
+                  selectedRange={selectedRange}
+                  setSelectedRange={handleCustomRangeChange}
+                  rangePresets={rangePresets}
+                />
+
+                {/* Date Range Display */}
+                <div className="flex items-center gap-2 text-sm text-slate-600 font-medium px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  Data from {format(selectedRange[0], 'PPP')} to {format(selectedRange[1], 'PPP')}
                 </div>
-              )}
-
-              {/* Date Range Display */}
-              <div className="text-sm text-gray-600">
-                <Calendar className="w-4 h-4 inline mr-2" />
-                Showing data from {format(new Date(startDate), 'PPP')} to {format(new Date(endDate), 'PPP')}
               </div>
-            </div>
+            )}
           </div>
-          )}
 
           {/* Attendance View */}
           {view === 'attendance' && <AttendanceReport />}
 
           {/* Error Message */}
           {view === 'overview' && error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-8 flex items-start gap-4">
+              <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+              </div>
               <div>
-                <p className="font-medium text-red-900">Error</p>
-                <p className="text-red-700 text-sm">{error}</p>
+                <p className="font-bold text-red-900 mb-1">Error</p>
+                <p className="text-red-700 text-sm font-medium">{error}</p>
               </div>
             </div>
           )}
 
           {/* Loading State */}
           {view === 'overview' && loading && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-              <Loader2 className="w-16 h-16 text-blue-600 mx-auto mb-4 animate-spin" />
-              <h3 className="text-xl font-medium text-gray-900 mb-2">Analyzing with AI...</h3>
-              <p className="text-gray-600">This may take a minute for large datasets</p>
+            <div className="bg-white rounded-lg border border-slate-200 p-16 text-center">
+              <div className="relative inline-block mb-6">
+                <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Sparkles className="w-6 h-6 text-blue-600 animate-pulse" />
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">
+                Analyzing with AI...
+              </h3>
+              <p className="text-slate-600 text-sm font-medium">This may take a minute for large datasets</p>
             </div>
           )}
 
@@ -414,26 +391,30 @@ export default function AIReportsPage() {
                 <div
                   key={userSummary.user.id}
                   onClick={() => userSummary.hasData && handleCardClick(userSummary.user.id)}
-                  className={`bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all ${
+                  className={`group bg-white rounded-lg border border-slate-200 p-6 transition-all duration-200 ${
                     userSummary.hasData
-                      ? 'hover:shadow-lg hover:scale-105 cursor-pointer'
+                      ? 'hover:shadow-md hover:border-blue-300 cursor-pointer'
                       : 'opacity-60'
                   }`}
                 >
                   {/* User Info */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <User className="w-5 h-5 text-gray-400" />
-                        <h3 className="font-bold text-gray-900">{userSummary.user.name}</h3>
+                  <div className="flex items-start justify-between mb-5">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                          <User className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-900 text-base">{userSummary.user.name}</h3>
+                          <p className="text-xs text-slate-500 font-medium">{userSummary.user.jobRole}</p>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-600">{userSummary.user.jobRole}</p>
-                      <p className="text-xs text-gray-500">{userSummary.user.email}</p>
+                      <p className="text-xs text-slate-400 ml-11">{userSummary.user.email}</p>
                     </div>
                     {userSummary.hasData && (
                       <div className="text-center">
                         <div
-                          className={`text-3xl font-bold ${
+                          className={`text-2xl font-bold ${
                             userSummary.summary.productivityPercentage >= 70
                               ? 'text-green-600'
                               : userSummary.summary.productivityPercentage >= 40
@@ -443,63 +424,66 @@ export default function AIReportsPage() {
                         >
                           {userSummary.summary.productivityPercentage}%
                         </div>
-                        <p className="text-xs text-gray-500">Score</p>
+                        <p className="text-xs text-slate-500 font-medium">Score</p>
                       </div>
                     )}
                   </div>
 
                   {/* Summary Stats */}
                   {userSummary.hasData ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600">Total Screenshots:</span>
-                        <span className="font-medium text-gray-900">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-sm p-2 bg-slate-50 rounded-lg">
+                        <span className="text-slate-600 font-medium">Total Screenshots:</span>
+                        <span className="font-bold text-slate-900 px-3 py-1 bg-white rounded-lg border border-slate-200">
                           {userSummary.summary.totalScreenshots}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 flex items-center gap-1">
+                      <div className="flex items-center justify-between text-sm p-2 bg-green-50 rounded-lg border border-green-100">
+                        <span className="text-slate-700 font-medium flex items-center gap-2">
                           <CheckCircle className="w-4 h-4 text-green-600" />
                           Productive:
                         </span>
-                        <span className="font-medium text-green-600">
+                        <span className="font-bold text-green-700 px-3 py-1 bg-white rounded-lg border border-green-200">
                           {userSummary.summary.productiveCount}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 flex items-center gap-1">
+                      <div className="flex items-center justify-between text-sm p-2 bg-red-50 rounded-lg border border-red-100">
+                        <span className="text-slate-700 font-medium flex items-center gap-2">
                           <AlertCircle className="w-4 h-4 text-red-600" />
                           Unproductive:
                         </span>
-                        <span className="font-medium text-red-600">
+                        <span className="font-bold text-red-700 px-3 py-1 bg-white rounded-lg border border-red-200">
                           {userSummary.summary.unproductiveCount}
                         </span>
                       </div>
 
                       {/* Progress Bar */}
                       <div className="mt-4">
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
                           <div
-                            className={`h-2 rounded-full ${
+                            className={`h-2 rounded-full transition-all duration-500 ${
                               userSummary.summary.productivityPercentage >= 70
-                                ? 'bg-green-600'
+                                ? 'bg-green-500'
                                 : userSummary.summary.productivityPercentage >= 40
-                                ? 'bg-yellow-600'
-                                : 'bg-red-600'
+                                ? 'bg-yellow-500'
+                                : 'bg-red-500'
                             }`}
                             style={{ width: `${userSummary.summary.productivityPercentage}%` }}
                           />
                         </div>
                       </div>
 
-                      <p className="text-xs text-center text-gray-500 mt-2">
+                      <div className="flex items-center justify-center gap-2 mt-3 text-xs text-slate-500 font-medium group-hover:text-blue-600 transition-colors">
+                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         Click to view detailed analysis
-                      </p>
+                      </div>
                     </div>
                   ) : (
-                    <div className="text-center py-4">
-                      <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                      <p className="text-sm text-gray-500">No screenshots for this period</p>
+                    <div className="text-center py-6">
+                      <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                        <AlertCircle className="w-6 h-6 text-slate-400" />
+                      </div>
+                      <p className="text-sm text-slate-500 font-medium">No screenshots for this period</p>
                     </div>
                   )}
                 </div>
@@ -856,10 +840,12 @@ export default function AIReportsPage() {
 
           {/* Empty State */}
           {view === 'overview' && !loading && userSummaries.length === 0 && !error && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-              <Brain className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-medium text-gray-900 mb-2">No Data Available</h3>
-              <p className="text-gray-600">
+            <div className="bg-white rounded-2xl shadow-xl shadow-slate-900/5 border border-slate-200/60 p-16 text-center backdrop-blur-sm">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center mx-auto mb-6">
+                <Brain className="w-10 h-10 text-slate-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-900 mb-3">No Data Available</h3>
+              <p className="text-slate-600 font-medium">
                 No users with job roles and screenshots found for the selected period
               </p>
             </div>

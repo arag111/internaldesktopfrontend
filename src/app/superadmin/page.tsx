@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { baseUrl } from '../utils/config';
-import { Home, Building2, Menu, X } from 'lucide-react';
+import { Home, Building2, Menu, X, BarChart3, Plus } from 'lucide-react';
 import Image from 'next/image';
 
 interface Company {
@@ -211,7 +211,8 @@ export default function SuperAdminDashboard() {
         fetchCompanies(); // Refresh the data
       } else {
         const error = await response.json();
-        alert(`Error: ${error.message || 'Failed to create company'}`);
+        // Backend returns 'msg' property, not 'message'
+        alert(`Error: ${error.msg || error.message || 'Failed to create company'}`);
       }
     } catch (error) {
       console.error('Add company error:', error);
@@ -255,7 +256,7 @@ export default function SuperAdminDashboard() {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
-          companyId: company._id,
+          companyId: Number(company._id), // Ensure companyId is sent as a number
           companySlug: company.slug,
           companyName: company.name
         })
@@ -275,7 +276,8 @@ export default function SuperAdminDashboard() {
         router.push('/admin');
       } else {
         const error = await response.json();
-        alert(`Failed to login as company admin: ${error.message || 'Unknown error'}`);
+        // Backend returns 'msg' property, not 'message'
+        alert(`Failed to login as company admin: ${error.msg || error.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Login as company admin error:', error);
@@ -309,202 +311,108 @@ export default function SuperAdminDashboard() {
       return (
         <div>
           {/* Companies Table */}
-          <div style={{
-            background: 'white',
-            borderRadius: '10px',
-            boxShadow: '0 2px 15px rgba(0, 0, 0, 0.08)',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              padding: '20px',
-              borderBottom: '1px solid #e5e7eb',
-              background: '#f9fafb',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            {/* Banner Section */}
+            <div className="p-6 border-b border-slate-200 bg-white flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                </div>
               <div>
-                <h2 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '600',
-                  color: '#374151',
-                  margin: '0 0 5px 0',
-                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                }}>
+                  <h2 className="text-2xl font-semibold text-slate-900 mb-0.5">
                   Companies Management
                 </h2>
-                <p style={{
-                  color: '#6b7280',
-                  margin: 0,
-                  fontSize: '14px',
-                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                }}>
+                  <p className="text-sm text-slate-500">
                   Manage all registered companies and their settings
                 </p>
+                </div>
               </div>
               <button
                 onClick={handleAddCompany}
-                style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '10px 20px',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                }}
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-sm font-medium"
               >
-                <span style={{ fontSize: '16px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>+</span>
+                <Plus className="w-4 h-4 text-slate-900" />
                 Add Company
               </button>
             </div>
 
             {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center' }}>
-                <div style={{ color: '#6b7280', fontSize: '16px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>Loading companies...</div>
+              <div className="p-10 text-center">
+                <div className="text-slate-500 text-sm">Loading companies...</div>
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{
-                  width: '100%',
-                  borderCollapse: 'collapse'
-                }}>
-                  <thead style={{ background: '#f3f4f6' }}>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-slate-50">
                     <tr>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>Company</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>Plan</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>Users</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>Status</th>
-                      <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#374151', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>Actions</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Company</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Plan</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Users</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {companies.map((company) => (
-                      <tr key={company._id} style={{
-                        borderBottom: '1px solid #f3f4f6',
-                        transition: 'background-color 0.2s'
-                      }}>
-                        <td style={{ padding: '16px' }}>
+                      <tr key={company._id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200">
+                        <td className="px-4 py-4">
                           <div>
-                            <div style={{ fontWeight: '600', color: '#111827', fontSize: '14px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>
+                            <div className="font-semibold text-slate-900 text-sm">
                               {company.name}
                             </div>
-                            <div style={{ color: '#6b7280', fontSize: '12px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>
+                            <div className="text-slate-500 text-xs mt-0.5">
                               {company.email}
                             </div>
-                            <div style={{ color: '#9ca3af', fontSize: '11px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>
+                            <div className="text-slate-400 text-[11px] mt-0.5">
                               /{company.slug}
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '16px' }}>
-                          <span style={{
-                            background: getPlanColor(company.subscription?.plan),
-                            color: 'white',
-                            padding: '4px 8px',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            textTransform: 'uppercase',
-                            fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                          }}>
+                        <td className="px-4 py-4">
+                          <span
+                            className="px-2 py-1 rounded text-[11px] font-semibold text-white uppercase"
+                            style={{ backgroundColor: getPlanColor(company.subscription?.plan) }}
+                          >
                             {company.subscription?.plan || 'free'}
                           </span>
                         </td>
-                        <td style={{ padding: '16px', color: '#374151', fontSize: '14px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>
+                        <td className="px-4 py-4 text-slate-900 text-sm">
                           {company.stats?.currentUsers || 0} / {company.subscription?.userLimit || 10}
                         </td>
-                        <td style={{ padding: '16px' }}>
+                        <td className="px-4 py-4">
                           {company.isSuspended ? (
-                            <span style={{
-                              background: '#fee2e2',
-                              color: '#dc2626',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                            }}>
+                            <span className="px-2 py-1 rounded text-[11px] font-semibold bg-red-50 text-red-600">
                               Suspended
                             </span>
                           ) : company.isActive ? (
-                            <span style={{
-                              background: '#dcfce7',
-                              color: '#16a34a',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                            }}>
+                            <span className="px-2 py-1 rounded text-[11px] font-semibold bg-green-50 text-green-600">
                               Active
                             </span>
                           ) : (
-                            <span style={{
-                              background: '#fef3c7',
-                              color: '#d97706',
-                              padding: '4px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              fontWeight: '600',
-                              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                            }}>
+                            <span className="px-2 py-1 rounded text-[11px] font-semibold bg-yellow-50 text-yellow-600">
                               Inactive
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <td className="px-4 py-4">
+                          <div className="flex gap-2 flex-wrap">
                             <button
                               onClick={() => handleLoginAsCompanyAdmin(company)}
-                              style={{
-                                background: '#10b981',
-                                color: 'white',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                              }}
+                              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-900 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-xs font-medium"
                             >
                               Login as Admin
                             </button>
                             <button
                               onClick={() => handleEditCompany(company)}
-                              style={{
-                                background: '#3b82f6',
-                                color: 'white',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                              }}
+                              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-900 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-xs font-medium"
                             >
                               Edit
                             </button>
                             <button
                               onClick={() => handleSuspendCompany(company._id, !company.isSuspended)}
-                              style={{
-                                background: company.isSuspended ? '#16a34a' : '#dc2626',
-                                color: 'white',
-                                border: 'none',
-                                padding: '6px 12px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                              }}
+                              className={`px-3 py-1.5 bg-white hover:bg-slate-50 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-xs font-medium ${
+                                company.isSuspended ? 'text-green-600' : 'text-red-600'
+                              }`}
                             >
                               {company.isSuspended ? 'Activate' : 'Suspend'}
                             </button>
@@ -525,182 +433,83 @@ export default function SuperAdminDashboard() {
     return (
       <div>
         {/* Welcome Message */}
-        <div style={{
-          marginBottom: '30px',
-          padding: '20px',
-          background: 'white',
-          borderRadius: '10px',
-          boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
-        }}>
-          <h1 style={{
-            fontSize: '1.25rem',
-            fontWeight: '600',
-            color: '#374151',
-            margin: '0',
-            fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-          }}>
+        <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+              <BarChart3 className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-slate-900 mb-0.5">
             Welcome to Super Admin Dashboard
           </h1>
-          <p style={{
-            color: '#6b7280',
-            margin: '8px 0 0 0',
-            fontSize: '14px',
-            fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-          }}>
+              <p className="text-sm text-slate-500">
             Manage all companies and system settings from here
           </p>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '20px',
-          marginBottom: '30px'
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
-            borderLeft: '4px solid #667eea'
-          }}>
-            <h3 style={{
-              color: '#667eea',
-              fontSize: '14px',
-              fontWeight: '600',
-              margin: '0 0 8px 0',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              Total Companies
-            </h3>
-            <p style={{
-              fontSize: '1.25rem',
-              fontWeight: '600',
-              color: '#2d3748',
-              margin: 0,
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              {loading ? '...' : stats.totalCompanies}
-            </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-lg p-5 border border-slate-200">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-blue-600" />
+                </div>
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Companies</span>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mb-1">{loading ? '...' : stats.totalCompanies}</p>
           </div>
 
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
-            borderLeft: '4px solid #48bb78'
-          }}>
-            <h3 style={{
-              color: '#48bb78',
-              fontSize: '14px',
-              fontWeight: '600',
-              margin: '0 0 8px 0',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              Active Companies
-            </h3>
-            <p style={{
-              fontSize: '1.25rem',
-              fontWeight: '600',
-              color: '#2d3748',
-              margin: 0,
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              {loading ? '...' : stats.activeCompanies}
-            </p>
+          <div className="bg-white rounded-lg p-5 border border-slate-200">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                  <Building2 className="w-4 h-4 text-green-600" />
+                </div>
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Active Companies</span>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mb-1">{loading ? '...' : stats.activeCompanies}</p>
           </div>
 
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
-            borderLeft: '4px solid #764ba2'
-          }}>
-            <h3 style={{
-              color: '#764ba2',
-              fontSize: '14px',
-              fontWeight: '600',
-              margin: '0 0 8px 0',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              Total Users
-            </h3>
-            <p style={{
-              fontSize: '1.25rem',
-              fontWeight: '600',
-              color: '#2d3748',
-              margin: 0,
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              {loading ? '...' : stats.totalUsers}
-            </p>
+          <div className="bg-white rounded-lg p-5 border border-slate-200">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                  <Home className="w-4 h-4 text-purple-600" />
+                </div>
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Users</span>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mb-1">{loading ? '...' : stats.totalUsers}</p>
           </div>
 
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)',
-            borderLeft: '4px solid #f6ad55'
-          }}>
-            <h3 style={{
-              color: '#f6ad55',
-              fontSize: '14px',
-              fontWeight: '600',
-              margin: '0 0 8px 0',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              Storage Used
-            </h3>
-            <p style={{
-              fontSize: '1.25rem',
-              fontWeight: '600',
-              color: '#2d3748',
-              margin: 0,
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
-              {loading ? '...' : `${(stats.totalStorage / 1024).toFixed(1)} GB`}
-            </p>
+          <div className="bg-white rounded-lg p-5 border border-slate-200">
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-orange-600" />
+                </div>
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Storage Used</span>
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-slate-900 mb-1">{loading ? '...' : `${(stats.totalStorage / 1024).toFixed(1)} GB`}</p>
           </div>
         </div>
 
         {/* New Section: Company Activity and Analytics */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '20px',
-          marginBottom: '30px'
-        }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Company Last Active Dates */}
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
-          }}>
-            <h3 style={{
-              fontSize: '1.1rem',
-              fontWeight: '600',
-              color: '#374151',
-              margin: '0 0 15px 0',
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
+          <div className="bg-white rounded-lg p-6 border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               Recent Company Activity
             </h3>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            <div className="max-h-[300px] overflow-y-auto">
               {loading ? (
-                <div style={{ color: '#6b7280', fontSize: '14px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>
+                <div className="text-slate-500 text-sm">
                   Loading activity...
                 </div>
               ) : companies.length > 0 ? (
@@ -725,67 +534,27 @@ export default function SuperAdminDashboard() {
                   }
 
                   return (
-                    <div key={company._id} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '10px 0',
-                      borderBottom: '1px solid #f3f4f6'
-                    }}>
+                    <div key={company._id} className="flex justify-between items-center py-2.5 border-b border-slate-100 last:border-b-0">
                       <div>
-                        <div style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: isInactive ? '#dc2626' : '#16a34a', // RED for inactive, GREEN for active
-                          fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                        }}>
+                        <div className="text-sm font-semibold text-slate-900">
                           {company.name}
                           {isInactive ? (
-                            <span style={{
-                              marginLeft: '8px',
-                              fontSize: '10px',
-                              background: '#fee2e2',
-                              color: '#dc2626',
-                              padding: '2px 6px',
-                              borderRadius: '3px',
-                              fontWeight: '500'
-                            }}>
+                            <span className="ml-2 text-[10px] bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-medium">
                               INACTIVE
                             </span>
                           ) : (
-                            <span style={{
-                              marginLeft: '8px',
-                              fontSize: '10px',
-                              background: '#dcfce7',
-                              color: '#16a34a',
-                              padding: '2px 6px',
-                              borderRadius: '3px',
-                              fontWeight: '500'
-                            }}>
+                            <span className="ml-2 text-[10px] bg-green-50 text-green-600 px-1.5 py-0.5 rounded font-medium">
                               ACTIVE
                             </span>
                           )}
                         </div>
-                        <div style={{
-                          fontSize: '12px',
-                          color: isInactive ? '#dc2626' : '#16a34a', // RED for inactive, GREEN for active
-                          fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                        }}>
+                        <div className="text-xs text-slate-500 mt-0.5">
                           {company.email}
                         </div>
                       </div>
-                      <div style={{
-                        fontSize: '12px',
-                        color: isInactive ? '#dc2626' : '#16a34a', // RED for inactive, GREEN for active
-                        fontFamily: 'Poppins, system-ui, -apple-system, sans-serif',
-                        fontWeight: '600'
-                      }}>
+                      <div className="text-xs text-slate-600 font-semibold text-right">
                         {new Date(company.createdAt).toLocaleDateString()}
-                        <div style={{
-                          fontSize: '10px',
-                          marginTop: '2px',
-                          color: isInactive ? '#dc2626' : '#16a34a'
-                        }}>
+                        <div className="text-[10px] mt-0.5 text-slate-500 font-normal">
                           Created {new Date(company.createdAt).toLocaleDateString()}
                         </div>
                       </div>
@@ -793,12 +562,7 @@ export default function SuperAdminDashboard() {
                   );
                 })
               ) : (
-                <div style={{
-                  color: '#6b7280',
-                  fontSize: '14px',
-                  textAlign: 'center',
-                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                }}>
+                <div className="text-slate-500 text-sm text-center">
                   No companies found
                 </div>
               )}
@@ -806,84 +570,40 @@ export default function SuperAdminDashboard() {
           </div>
 
           {/* Simple Analytics Chart */}
-          <div style={{
-            background: 'white',
-            padding: '20px',
-            borderRadius: '10px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
-          }}>
-            <h3 style={{
-              fontSize: '1.1rem',
-              fontWeight: '600',
-              color: '#374151',
-              margin: '0 0 15px 0',
-              fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-            }}>
+          <div className="bg-white rounded-lg p-6 border border-slate-200">
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
               Company Status Overview
             </h3>
-            <div style={{ height: '250px', display: 'flex', alignItems: 'end', gap: '15px', padding: '20px 0' }}>
+            <div className="h-[250px] flex items-end gap-4 py-5">
               {/* Active Companies Bar */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{
-                  width: '100%',
-                  height: `${(stats.activeCompanies / Math.max(stats.totalCompanies, 1)) * 150}px`,
-                  backgroundColor: '#48bb78',
-                  borderRadius: '4px 4px 0 0',
-                  minHeight: '20px',
-                  transition: 'height 0.3s ease'
-                }}></div>
-                <div style={{
-                  marginTop: '10px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  textAlign: 'center',
-                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                }}>
+              <div className="flex-1 flex flex-col items-center">
+                <div
+                  className="w-full bg-green-500 rounded-t transition-all duration-300 min-h-[20px]"
+                  style={{ height: `${(stats.activeCompanies / Math.max(stats.totalCompanies, 1)) * 150}px` }}
+                ></div>
+                <div className="mt-2.5 text-xs font-semibold text-slate-900 text-center">
                   Active<br/>({stats.activeCompanies})
                 </div>
               </div>
 
               {/* Inactive Companies Bar */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{
-                  width: '100%',
-                  height: `${((stats.totalCompanies - stats.activeCompanies) / Math.max(stats.totalCompanies, 1)) * 150}px`,
-                  backgroundColor: '#f6ad55',
-                  borderRadius: '4px 4px 0 0',
-                  minHeight: '20px',
-                  transition: 'height 0.3s ease'
-                }}></div>
-                <div style={{
-                  marginTop: '10px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  textAlign: 'center',
-                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                }}>
+              <div className="flex-1 flex flex-col items-center">
+                <div
+                  className="w-full bg-orange-500 rounded-t transition-all duration-300 min-h-[20px]"
+                  style={{ height: `${((stats.totalCompanies - stats.activeCompanies) / Math.max(stats.totalCompanies, 1)) * 150}px` }}
+                ></div>
+                <div className="mt-2.5 text-xs font-semibold text-slate-900 text-center">
                   Inactive<br/>({stats.totalCompanies - stats.activeCompanies})
                 </div>
               </div>
 
               {/* Total Users Bar */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div style={{
-                  width: '100%',
-                  height: `${Math.min((stats.totalUsers / 100) * 150, 150)}px`,
-                  backgroundColor: '#667eea',
-                  borderRadius: '4px 4px 0 0',
-                  minHeight: '20px',
-                  transition: 'height 0.3s ease'
-                }}></div>
-                <div style={{
-                  marginTop: '10px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  textAlign: 'center',
-                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                }}>
+              <div className="flex-1 flex flex-col items-center">
+                <div
+                  className="w-full bg-blue-500 rounded-t transition-all duration-300 min-h-[20px]"
+                  style={{ height: `${Math.min((stats.totalUsers / 100) * 150, 150)}px` }}
+                ></div>
+                <div className="mt-2.5 text-xs font-semibold text-slate-900 text-center">
                   Users<br/>({stats.totalUsers})
                 </div>
               </div>
@@ -895,47 +615,20 @@ export default function SuperAdminDashboard() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-      fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-    }}>
+    <div className="min-h-screen bg-gray-100">
       {/* Header */}
-      <div style={{
-        background: 'white',
-        padding: '15px 20px',
-        color: '#374151',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-        borderBottom: '1px solid #e5e7eb'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+      <div className="bg-white px-5 py-4 sticky top-0 z-50 border-b border-slate-200">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-4">
             {!sidebarOpen && (
               <button
                 onClick={() => setSidebarOpen(true)}
-                style={{
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  padding: '8px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
+                className="bg-white border border-slate-200 p-2 rounded-lg cursor-pointer flex items-center justify-center hover:bg-slate-50 transition-colors duration-200"
               >
-                <Menu size={20} />
+                <Menu size={20} className="text-slate-700" />
               </button>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div className="flex items-center gap-3">
               <Image
                 src="/logo.webp"
                 alt="Track Nexus Logo"
@@ -945,56 +638,29 @@ export default function SuperAdminDashboard() {
               />
             </div>
           </div>
-          <button onClick={handleLogout} style={{
-            background: '#f3f4f6',
-            color: '#374151',
-            border: '1px solid #d1d5db',
-            padding: '10px 20px',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-          }}>
+          <button
+            onClick={handleLogout}
+            className="px-5 py-2.5 bg-white hover:bg-white text-slate-900 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-sm font-medium"
+          >
             Logout
           </button>
         </div>
       </div>
 
-      <div style={{ display: 'flex', height: 'calc(100vh - 70px)' }}>
+      <div className="flex h-[calc(100vh-70px)]">
         {/* Sidebar */}
-        <div style={{
-          width: sidebarOpen ? '250px' : '0',
-          background: 'white',
-          boxShadow: sidebarOpen ? '2px 0 10px rgba(0, 0, 0, 0.1)' : 'none',
-          transition: 'width 0.3s ease',
-          overflow: 'hidden',
-          borderRight: sidebarOpen ? '1px solid #e5e7eb' : 'none'
-        }}>
-          <div style={{ padding: '20px 0', minWidth: '250px' }}>
+        <div
+          className={`bg-white border-r border-slate-200 transition-all duration-300 overflow-hidden ${sidebarOpen ? 'w-64' : 'w-0'}`}
+        >
+          <div className="p-5 min-w-[256px]">
             {/* Close button in sidebar */}
-            <div style={{
-              padding: '0 20px 20px 20px',
-              borderBottom: '1px solid #e5e7eb',
-              marginBottom: '20px'
-            }}>
+            <div className="pb-5 mb-5 border-b border-slate-200">
               <button
                 onClick={() => setSidebarOpen(false)}
-                style={{
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  padding: '8px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%'
-                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors duration-200 text-sm font-medium text-slate-700"
               >
                 <X size={20} />
-                <span style={{ marginLeft: '8px', fontFamily: 'Poppins, system-ui, -apple-system, sans-serif' }}>Close Sidebar</span>
+                <span>Close Sidebar</span>
               </button>
             </div>
             <nav>
@@ -1008,22 +674,13 @@ export default function SuperAdminDashboard() {
                       setActiveMenu(item.id);
                       setSidebarOpen(false); // Auto-close on mobile
                     }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '12px 20px',
-                      background: isActive ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-                      color: isActive ? 'white' : '#374151',
-                      border: 'none',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      borderLeft: isActive ? '4px solid #667eea' : '4px solid transparent',
-                      fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                    }}
+                    className={`
+                      w-full flex items-center gap-3 px-5 py-3 rounded-lg cursor-pointer transition-colors duration-200 text-sm font-medium
+                      ${isActive
+                        ? 'bg-slate-100 text-slate-900 font-semibold border border-slate-200'
+                        : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      }
+                    `}
                   >
                     <Icon size={18} />
                     {item.label}
@@ -1035,11 +692,7 @@ export default function SuperAdminDashboard() {
         </div>
 
         {/* Main Content */}
-        <div style={{
-          flex: 1,
-          padding: '20px',
-          overflowY: 'auto'
-        }}>
+        <div className="flex-1 p-8 overflow-y-auto">
           {renderContent()}
         </div>
       </div>

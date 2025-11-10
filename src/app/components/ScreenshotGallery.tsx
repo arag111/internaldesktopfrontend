@@ -172,22 +172,22 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
   return (
     <>
       {/* Filter UI */}
-      <div className="flex flex-col sm:flex-row gap-4 items-center justify-start mb-8 bg-white p-4 rounded-xl shadow border w-full max-w-4xl mx-auto">
-        <label className="text-sm text-gray-700 mb-1 mr-6 font-medium">Search In Range</label>
-        <div className="flex flex-col">
-          <label className="text-sm text-gray-700 mb-1 font-medium">Start Date</label>
+      <div className="flex items-center gap-3 flex-wrap mb-8">
+        <label className="text-sm text-slate-700 font-medium whitespace-nowrap">Search In Range</label>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <label className="text-xs font-medium text-slate-600 whitespace-nowrap">Start Date:</label>
           <input
             type="date"
-            className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="flex-1 min-w-0 px-2.5 py-1.5 h-[38px] border border-slate-300 rounded-md bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all duration-200 text-sm text-slate-900"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
           />
         </div>
-        <div className="flex flex-col">
-          <label className="text-sm text-gray-700 mb-1 font-medium">End Date</label>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <label className="text-xs font-medium text-slate-600 whitespace-nowrap">End Date:</label>
           <input
             type="date"
-            className="border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+            className="flex-1 min-w-0 px-2.5 py-1.5 h-[38px] border border-slate-300 rounded-md bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all duration-200 text-sm text-slate-900"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
