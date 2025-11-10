@@ -53,8 +53,7 @@ export default function Navbar() {
       
       {/* Logo */}
       <div
-        className="relative cursor-pointer flex items-center h-full group transition-transform duration-300 hover:scale-105"
-        onClick={() => router.push('/dashboard')}
+        
       >
         <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/10 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         <Image
@@ -79,12 +78,11 @@ export default function Navbar() {
           href="https://drive.google.com/drive/folders/1X1n-CLC2yR6I6sXrs48MCpMvcFP9Prz0?usp=sharing"
           target="_blank"
           rel="noopener noreferrer"
-          className="group relative flex items-center gap-2.5 px-5 py-2.5 text-sm font-semibold rounded-xl bg-gradient-to-r from-[#075a96] to-[#0a6fb8] text-white border border-[#075a96]/20 shadow-lg shadow-[#075a96]/20 hover:shadow-xl hover:shadow-[#075a96]/30 transition-all duration-300 hover:scale-105 hover:from-[#0a6fb8] hover:to-[#075a96]"
+          className="group relative flex items-center gap-2.5 px-5 py-2.5 text-sm font-semibold rounded-xl bg-white text-gray-900 border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300"
           title="Download Desktop App"
         >
-          <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-          <CloudDownload size={18} className="relative z-10" />
-          <span className="relative z-10">Download App</span>
+          <CloudDownload size={18} className="text-gray-900" />
+          <span>Download App</span>
         </a>
       </div>
 

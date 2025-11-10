@@ -495,14 +495,14 @@ export default function AIReportsPage() {
           {view === 'detail' && selectedReport && !loading && (
             <div className="space-y-6">
               {/* User Header */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedReport.user.name}</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedReport.user.name}</h2>
                     <p className="text-gray-600">{selectedReport.user.jobRole}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-4xl font-bold text-blue-600">
+                    <div className="text-2xl font-bold text-blue-600">
                       {selectedReport.summary.productivityPercentage}%
                     </div>
                     <p className="text-sm text-gray-600">Productivity Score</p>
@@ -713,9 +713,9 @@ export default function AIReportsPage() {
                             handleSendEmail(email.trim());
                           }
                         }}
-                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-md flex items-center justify-center gap-2 transition-colors"
+                        className="w-full mt-6 bg-gray-100 hover:bg-gray-200 text-black text-sm font-medium py-2.5 px-4 rounded flex items-center justify-center gap-2 transition-colors"
                       >
-                        <Mail className="w-5 h-5" />
+                        <Mail className="w-4 h-4" />
                         Send Report to Email
                       </button>
                     </div>

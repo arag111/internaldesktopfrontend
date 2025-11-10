@@ -533,16 +533,22 @@ export default function DashboardPage() {
                         <IconButton
                           onClick={handleRefresh}
                           sx={{
-                            bgcolor: 'white',
-                            border: 'none',
+                            bgcolor: 'white !important',
+                            border: '1px solid #e5e7eb',
                             borderRadius: '8px',
                             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                            color: '#111827 !important',
                             '&:hover': {
-                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)'
+                              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)',
+                              bgcolor: 'white !important',
+                              color: '#111827 !important'
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: '#111827 !important'
                             }
                           }}
                         >
-                          <Refresh className={refreshing ? 'animate-spin' : ''} />
+                          <Refresh className={refreshing ? 'animate-spin' : ''} sx={{ color: '#111827 !important' }} />
                         </IconButton>
                       </Tooltip>
                     </Stack>
@@ -791,10 +797,16 @@ export default function DashboardPage() {
                               startIcon={<Visibility />}
                               sx={{ 
                                 textTransform: 'none',
-                                color: '#6b7280',
+                                color: '#111827 !important',
                                 fontWeight: 500,
+                                bgcolor: 'white !important',
+                                border: '1px solid #e5e7eb',
                                 '&:hover': {
-                                  bgcolor: '#f9fafb'
+                                  bgcolor: 'white !important',
+                                  color: '#111827 !important'
+                                },
+                                '& .MuiSvgIcon-root': {
+                                  color: '#111827 !important'
                                 }
                               }}
                             >
@@ -841,20 +853,29 @@ export default function DashboardPage() {
                                   <ListItemText
                                     primary={userStat.user.name || userStat.user.email}
                                     secondary={
-                                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                        <Chip
-                                          label={isOnline ? 'Online' : 'Offline'}
-                                          size="small"
-                                          color={isOnline ? 'success' : 'default'}
-                                          sx={{ height: 20 }}
-                                        />
-                                        <Typography variant="caption" color="textSecondary">
+                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                        <span
+                                          style={{
+                                            display: 'inline-block',
+                                            padding: '2px 8px',
+                                            borderRadius: '12px',
+                                            fontSize: '0.75rem',
+                                            fontWeight: 500,
+                                            backgroundColor: isOnline ? '#4caf50' : '#9e9e9e',
+                                            color: 'white',
+                                            height: '20px',
+                                            lineHeight: '16px'
+                                          }}
+                                        >
+                                          {isOnline ? 'Online' : 'Offline'}
+                                        </span>
+                                        <Typography variant="caption" color="textSecondary" component="span">
                                           {userStat.stats[0]?.workingTimeInSeconds
                                             ? `${Math.round(userStat.stats[0].workingTimeInSeconds / 3600)}h today`
                                             : 'No activity today'
                                           }
                                         </Typography>
-                                      </Box>
+                                      </span>
                                     }
                                   />
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
