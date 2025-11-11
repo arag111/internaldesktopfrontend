@@ -71,6 +71,7 @@ export default function AIReportsPage() {
   const [selectedReport, setSelectedReport] = useState<AIReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     // Load overview on mount
@@ -210,9 +211,12 @@ export default function AIReportsPage() {
       }
 
       const data = await response.json();
-      alert(`✅ Report sent successfully to ${recipientEmail}!\n\nCheck your email inbox.`);
+      setToastMessage({ message: `Report sent successfully to ${recipientEmail}! Check your email inbox.`, type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
     } catch (err: any) {
-      alert(`❌ Failed to send email: ${err.message}`);
+      const errorMessage = err.message || 'Failed to send email';
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -495,14 +499,14 @@ export default function AIReportsPage() {
           {view === 'detail' && selectedReport && !loading && (
             <div className="space-y-6">
               {/* User Header */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">{selectedReport.user.name}</h2>
+                    <h2 className="text-xl font-bold text-gray-900">{selectedReport.user.name}</h2>
                     <p className="text-gray-600">{selectedReport.user.jobRole}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-4xl font-bold text-blue-600">
+                    <div className="text-2xl font-bold text-blue-600">
                       {selectedReport.summary.productivityPercentage}%
                     </div>
                     <p className="text-sm text-gray-600">Productivity Score</p>
@@ -511,16 +515,16 @@ export default function AIReportsPage() {
               </div>
 
               {/* Verdict Summary */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl shadow-sm border border-blue-200 p-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <div className="flex items-start gap-3">
-                  <Brain className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
+                  <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">AI Verdict Summary</h3>
+                    <h3 className="text-base font-semibold text-gray-900 mb-4">AI Verdict Summary</h3>
 
                     <div className="space-y-4 text-gray-700">
                       {/* Punch-in Time & Punctuality */}
                       {selectedReport.activity?.punchInTime && (
-                        <div className="bg-white rounded-lg p-4 border-l-4 border-blue-500">
+                        <div className="bg-white rounded-md p-4 border-l-2 border-blue-500">
                           {(() => {
                             const punchInTime = new Date(selectedReport.activity.punchInTime);
                             const punchInHour = punchInTime.getHours();
@@ -548,31 +552,31 @@ export default function AIReportsPage() {
                             if (minutesFromStart < -30) {
                               punctualityIcon = '✅';
                               punctualityText = `Early Login - Early by ${minutesToReadable(minutesFromStart)}`;
-                              punctualityColor = 'text-green-700 bg-green-50';
+                              punctualityColor = 'text-green-700 bg-white border border-green-200';
                             } else if (minutesFromStart <= 0) {
                               punctualityIcon = '✅';
                               punctualityText = 'On Time - Arrived on time';
-                              punctualityColor = 'text-green-700 bg-green-50';
+                              punctualityColor = 'text-green-700 bg-white border border-green-200';
                             } else if (minutesFromStart <= 15) {
                               punctualityIcon = '⚠️';
                               punctualityText = `Slightly Late - Late by ${minutesToReadable(minutesFromStart)}`;
-                              punctualityColor = 'text-yellow-700 bg-yellow-50';
+                              punctualityColor = 'text-yellow-700 bg-white border border-yellow-200';
                             } else {
                               punctualityIcon = '❌';
                               punctualityText = `Late Login - Late by ${minutesToReadable(minutesFromStart)}`;
-                              punctualityColor = 'text-red-700 bg-red-50';
+                              punctualityColor = 'text-red-700 bg-white border border-red-200';
                             }
 
                             return (
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
-                                  <Clock className="w-5 h-5 text-blue-600" />
-                                  <span className="font-bold text-gray-900 text-lg">
+                                  <Clock className="w-4 h-4 text-gray-600" />
+                                  <span className="font-semibold text-gray-900 text-base">
                                     {format(punchInTime, 'hh:mm a')}
                                   </span>
-                                  <span className="text-sm text-gray-500">(Office: 10:00 AM - 7:00 PM)</span>
+                                  <span className="text-xs text-gray-500">(Office: 10:00 AM - 7:00 PM)</span>
                                 </div>
-                                <div className={`${punctualityColor} rounded-lg px-3 py-2 font-semibold text-sm`}>
+                                <div className={`${punctualityColor} rounded px-3 py-1.5 font-medium text-sm`}>
                                   {punctualityIcon} {punctualityText}
                                 </div>
                               </div>
@@ -582,9 +586,9 @@ export default function AIReportsPage() {
                       )}
 
                       {/* Productive Activities Summary */}
-                      <div className="bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
-                        <h4 className="font-bold text-green-900 mb-3 flex items-center gap-2">
-                          <span className="text-xl">✅</span> Productive Work ({selectedReport.summary.productivityPercentage}%)
+                      <div className="bg-white rounded-md p-4 border-l-2 border-green-500">
+                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <span className="text-base">✅</span> Productive Work ({selectedReport.summary.productivityPercentage}%)
                         </h4>
                         <div className="space-y-2 text-sm">
                           {(() => {
@@ -628,9 +632,9 @@ export default function AIReportsPage() {
 
                       {/* Unproductive Activities Summary */}
                       {selectedReport.summary.unproductiveCount > 0 && (
-                        <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-500">
-                          <h4 className="font-bold text-red-900 mb-3 flex items-center gap-2">
-                            <span className="text-xl">❌</span> Unproductive Time ({Math.round((selectedReport.summary.unproductiveCount / selectedReport.summary.totalScreenshots) * 100)}%)
+                        <div className="bg-white rounded-md p-4 border-l-2 border-red-500">
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <span className="text-base">❌</span> Unproductive Time ({Math.round((selectedReport.summary.unproductiveCount / selectedReport.summary.totalScreenshots) * 100)}%)
                           </h4>
                           <div className="space-y-2 text-sm">
                             {(() => {
@@ -672,7 +676,7 @@ export default function AIReportsPage() {
                       )}
 
                       {/* Quick Summary Stats */}
-                      <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-blue-200">
+                      <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
                         <div>
                           <p className="text-sm text-gray-600">Work Quality</p>
                           <div className="flex items-center gap-2 mt-1">
@@ -713,12 +717,10 @@ export default function AIReportsPage() {
                             handleSendEmail(email.trim());
                           }
                         }}
-                        className="w-full mt-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
+                        className="w-full mt-6 bg-gray-100 hover:bg-gray-200 text-black text-sm font-medium py-2.5 px-4 rounded flex items-center justify-center gap-2 transition-colors"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
-                        📧 Send Report to Email
+                        <Mail className="w-4 h-4" />
+                        Send Report to Email
                       </button>
                     </div>
                   </div>
@@ -852,6 +854,37 @@ export default function AIReportsPage() {
           )}
         </div>
       </main>
+
+      {/* Toast Popup */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+          <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              toastMessage.type === 'success' 
+                ? 'text-green-900' 
+                : 'text-red-900'
+            }`}>
+              {toastMessage.message}
+            </p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className={`hover:opacity-70 transition-colors flex-shrink-0 ${
+                toastMessage.type === 'success' 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

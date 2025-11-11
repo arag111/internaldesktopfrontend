@@ -63,6 +63,7 @@ export default function SuperAdminDashboard() {
     totalUsers: 0,
     totalStorage: 0
   });
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -175,7 +176,8 @@ export default function SuperAdminDashboard() {
 
   const handleSaveNewCompany = async () => {
     if (!newCompany.name || !newCompany.email || !newCompany.slug || !newCompany.adminUser?.username || !newCompany.adminUser?.password || !newCompany.adminUser?.adminEmail || !newCompany.adminUser?.adminName) {
-      alert('Please fill in all required fields');
+      setToastMessage({ message: 'Please fill in all required fields', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
       return;
     }
 
@@ -208,15 +210,19 @@ export default function SuperAdminDashboard() {
           },
           isActive: true
         });
+        setToastMessage({ message: 'Company created successfully', type: 'success' });
+        setTimeout(() => setToastMessage(null), 3000);
         fetchCompanies(); // Refresh the data
       } else {
         const error = await response.json();
         // Backend returns 'msg' property, not 'message'
-        alert(`Error: ${error.msg || error.message || 'Failed to create company'}`);
+        setToastMessage({ message: error.msg || error.message || 'Failed to create company', type: 'error' });
+        setTimeout(() => setToastMessage(null), 3000);
       }
-    } catch (error) {
-      console.error('Add company error:', error);
-      alert('Error creating company');
+    } catch (error: any) {
+      const errorMessage = error.message || 'Error creating company';
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -277,11 +283,13 @@ export default function SuperAdminDashboard() {
       } else {
         const error = await response.json();
         // Backend returns 'msg' property, not 'message'
-        alert(`Failed to login as company admin: ${error.msg || error.message || 'Unknown error'}`);
+        setToastMessage({ message: `Failed to login as company admin: ${error.msg || error.message || 'Unknown error'}`, type: 'error' });
+        setTimeout(() => setToastMessage(null), 3000);
       }
-    } catch (error) {
-      console.error('Login as company admin error:', error);
-      alert('Error logging in as company admin');
+    } catch (error: any) {
+      const errorMessage = error.message || 'Error logging in as company admin';
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -1453,6 +1461,37 @@ export default function SuperAdminDashboard() {
                 Create Company
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Popup */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+          <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              toastMessage.type === 'success' 
+                ? 'text-green-900' 
+                : 'text-red-900'
+            }`}>
+              {toastMessage.message}
+            </p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className={`hover:opacity-70 transition-colors flex-shrink-0 ${
+                toastMessage.type === 'success' 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}

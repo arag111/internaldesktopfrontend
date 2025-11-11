@@ -224,3 +224,21 @@ button:not([class*="bg-"]):not([class*="text-"]):active {
 .rdrNextButton button:hover {
     background-color: #f9fafb !important;
 }
+
+
+/* Toast popup animation */
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.toast-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
