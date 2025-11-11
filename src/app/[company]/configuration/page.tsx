@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { baseUrl } from '@/app/utils/config';
 import Navbar from '@/app/components/Navbar';
 import CompanySidebar from '@/app/components/CompanySidebar';
-import { Settings } from 'lucide-react';
+import { Settings, Eye, EyeOff } from 'lucide-react';
 
 export default function ConfigurationPage() {
   const router = useRouter();
@@ -18,6 +18,8 @@ export default function ConfigurationPage() {
   const [applicationPunchInTime, setApplicationPunchInTime] = useState('');
   const [applicationPunchOutTime, setApplicationPunchOutTime] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -125,22 +127,52 @@ export default function ConfigurationPage() {
 
               <div>
                 <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">Admin Password</label>
-                <input
-                  type="password"
-                  value={applicationAdminPassword}
-                  onChange={(e) => setApplicationAdminPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
-                />
+                <div className="relative">
+                  <input
+                    type={showAdminPassword ? "text" : "password"}
+                    value={applicationAdminPassword}
+                    onChange={(e) => setApplicationAdminPassword(e.target.value)}
+                    className="w-full px-3 pr-10 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    className="absolute right-2 top-[70%] -translate-y-1/2 flex items-center justify-center hover:text-blue-600 transition-colors duration-200 cursor-pointer z-10"
+                    style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, outline: 'none', color: '#64748b' }}
+                    title={showAdminPassword ? "Hide password" : "Show password"}
+                  >
+                    {showAdminPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">Confirm Password</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full px-3 pr-10 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2 top-[70%] -translate-y-1/2 flex items-center justify-center hover:text-blue-600 transition-colors duration-200 cursor-pointer z-10"
+                    style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, outline: 'none', color: '#64748b' }}
+                    title={showConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
                 {passwordError && (
                   <p className="text-red-500 text-xs mt-1.5">{passwordError}</p>
                 )}
@@ -167,7 +199,7 @@ export default function ConfigurationPage() {
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 flex justify-end">
               <button
                 onClick={handleSubmit}
                 className="px-6 py-2.5 bg-white hover:bg-white text-black rounded-lg text-sm font-medium border border-slate-200 hover:border-slate-300 transition-colors duration-200"
