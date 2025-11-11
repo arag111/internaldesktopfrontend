@@ -20,6 +20,7 @@ export default function ConfigurationPage() {
   const [passwordError, setPasswordError] = useState('');
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -69,10 +70,12 @@ export default function ConfigurationPage() {
           },
         }
       );
-      alert('Configuration updated successfully');
-      router.push('/dashboard');
+      setToastMessage({ message: 'Configuration updated successfully', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
+      //router.push('/dashboard');
     } catch (err) {
-      alert('Failed to update configuration');
+      setToastMessage({ message: 'Failed to update configuration', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
       console.error(err);
     }
   }, [applicationAdminPassword, confirmPassword, inactivityDurationMins, screenshotIntervalMins, applicationPunchInTime, applicationPunchOutTime, router]);
@@ -210,6 +213,37 @@ export default function ConfigurationPage() {
           </div>
         </main>
       </div>
+
+      {/* Toast Popup */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+          <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              toastMessage.type === 'success' 
+                ? 'text-green-900' 
+                : 'text-red-900'
+            }`}>
+              {toastMessage.message}
+            </p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className={`hover:opacity-70 transition-colors flex-shrink-0 ${
+                toastMessage.type === 'success' 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

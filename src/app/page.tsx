@@ -58,6 +58,7 @@ export default function SignInPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,8 +79,20 @@ export default function SignInPage() {
       const redirectUrl = data.redirectUrl || '/dashboard';
       console.log('Redirecting to:', redirectUrl); // Debug log
       router.push(redirectUrl);
-    } catch {
-      alert('Invalid credentials');
+    } catch (err: any) {
+      // Extract error message from response
+      let errorMessage = 'Invalid credentials';
+      
+      if (err.response?.data?.msg) {
+        errorMessage = err.response.data.msg;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     } finally {
       setLoading(false);
     }
@@ -186,6 +199,37 @@ export default function SignInPage() {
           </Fade>
         </Box>
       </Box>
+
+      {/* Toast Popup */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+          <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              toastMessage.type === 'success' 
+                ? 'text-green-900' 
+                : 'text-red-900'
+            }`}>
+              {toastMessage.message}
+            </p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className={`hover:opacity-70 transition-colors flex-shrink-0 ${
+                toastMessage.type === 'success' 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </ThemeProvider>
   );
 }

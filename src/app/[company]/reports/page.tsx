@@ -49,6 +49,7 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<UserReport | null>(null);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -487,13 +488,15 @@ export default function ReportsPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      alert('Report sent successfully to ' + recipientEmail);
+      setToastMessage({ message: `Report sent successfully to ${recipientEmail}`, type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
       setShowEmailModal(false);
       setSelectedReport(null);
       setRecipientEmail('');
-    } catch (error) {
-      console.error('Failed to send email:', error);
-      alert('Failed to send email. Please try again.');
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.msg || error.message || 'Failed to send email. Please try again.';
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     } finally {
       setSendingEmail(false);
     }
@@ -810,20 +813,15 @@ export default function ReportsPage() {
 
       {/* Email Confirmation Modal */}
       {showEmailModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-slate-200/60">
-            <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-slate-50 rounded-t-2xl">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-lg font-bold text-slate-900">Send Report via Email</h3>
-              </div>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 border border-slate-200">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h3 className="text-base font-semibold text-slate-900">Send Report via Email</h3>
               <button
                 onClick={() => setShowEmailModal(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-white rounded-lg"
+                className="text-slate-400 hover:text-slate-600 transition-colors p-1"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -833,37 +831,37 @@ export default function ReportsPage() {
               </p>
 
               <div className="mb-6">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Recipient Email
                 </label>
                 <input
                   type="email"
                   value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)}
-                  className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 bg-slate-50 hover:bg-white"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 transition-colors duration-200 bg-white"
                   placeholder="Enter email address"
                 />
               </div>
 
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100/50 border-2 border-blue-200 rounded-xl p-4 mb-6">
-                <p className="text-xs text-blue-800 font-medium">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-6">
+                <p className="text-xs text-slate-600">
                   <strong>Note:</strong> The report will include daily punch in/out times, working hours, and productivity metrics.
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200 bg-gradient-to-r from-slate-50 to-white rounded-b-2xl">
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-slate-200">
               <button
                 onClick={() => setShowEmailModal(false)}
                 disabled={sendingEmail}
-                className="px-5 py-2.5 text-sm font-semibold text-slate-700 bg-white border-2 border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 disabled:opacity-50"
+                className="px-5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors duration-200 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={sendEmailWithReport}
                 disabled={sendingEmail || !recipientEmail}
-                className="px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-200 hover:scale-105 active:scale-95"
+                className="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors duration-200"
               >
                 {sendingEmail ? (
                   <>
@@ -878,6 +876,37 @@ export default function ReportsPage() {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Popup */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+          <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              toastMessage.type === 'success' 
+                ? 'text-green-900' 
+                : 'text-red-900'
+            }`}>
+              {toastMessage.message}
+            </p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className={`hover:opacity-70 transition-colors flex-shrink-0 ${
+                toastMessage.type === 'success' 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}

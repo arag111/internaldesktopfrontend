@@ -38,6 +38,7 @@ const ProcessingStatusBadge: React.FC<{
   onProcessingUpdate?: () => void;
 }> = ({ textExtracted, embeddingDone, screenshotId, onProcessingUpdate }) => {
   const [processing, setProcessing] = useState(false);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const handleProcess = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent opening modal
@@ -54,55 +55,90 @@ const ProcessingStatusBadge: React.FC<{
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      alert('Processing triggered! Check backend console for detailed logs.');
+      setToastMessage({ message: 'Processing triggered! Check backend console for detailed logs.', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
       if (onProcessingUpdate) onProcessingUpdate();
     } catch (error: any) {
-      console.error('Processing error:', error);
-      alert(`Error: ${error.response?.data?.msg || error.message}`);
+      const errorMessage = error.response?.data?.msg || error.message || 'Error processing screenshot';
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     } finally {
       setProcessing(false);
     }
   };
 
   return (
-    <div className="flex gap-1 items-center">
-      {/* OCR Status */}
-      <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-        textExtracted
-          ? 'bg-green-100 text-green-700'
-          : 'bg-gray-100 text-gray-500'
-      }`} title={textExtracted ? 'Text Extracted' : 'No Text Extraction'}>
-        {textExtracted ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-        <span>OCR</span>
+    <>
+      <div className="flex gap-1 items-center">
+        {/* OCR Status */}
+        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+          textExtracted
+            ? 'bg-green-100 text-green-700'
+            : 'bg-gray-100 text-gray-500'
+        }`} title={textExtracted ? 'Text Extracted' : 'No Text Extraction'}>
+          {textExtracted ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+          <span>OCR</span>
+        </div>
+
+        {/* Embedding Status */}
+        <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
+          embeddingDone
+            ? 'bg-blue-100 text-blue-700'
+            : 'bg-gray-100 text-gray-500'
+        }`} title={embeddingDone ? 'Embedding Generated' : 'No Embedding'}>
+          {embeddingDone ? <CheckCircle2 size={12} /> : <Clock size={12} />}
+          <span>EMB</span>
+        </div>
+
+        {/* Manual Trigger Button */}
+        {screenshotId && (
+          <button
+            onClick={handleProcess}
+            disabled={processing}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
+              processing
+                ? 'bg-gray-300 text-gray-500 cursor-wait'
+                : 'bg-purple-500 text-white hover:bg-purple-600 active:bg-purple-700'
+            }`}
+            title="Manually trigger OCR and Embedding processing"
+          >
+            <Play size={12} />
+            <span>{processing ? 'Processing...' : 'Process'}</span>
+          </button>
+        )}
       </div>
 
-      {/* Embedding Status */}
-      <div className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${
-        embeddingDone
-          ? 'bg-blue-100 text-blue-700'
-          : 'bg-gray-100 text-gray-500'
-      }`} title={embeddingDone ? 'Embedding Generated' : 'No Embedding'}>
-        {embeddingDone ? <CheckCircle2 size={12} /> : <Clock size={12} />}
-        <span>EMB</span>
-      </div>
-
-      {/* Manual Trigger Button */}
-      {screenshotId && (
-        <button
-          onClick={handleProcess}
-          disabled={processing}
-          className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-            processing
-              ? 'bg-gray-300 text-gray-500 cursor-wait'
-              : 'bg-purple-500 text-white hover:bg-purple-600 active:bg-purple-700'
-          }`}
-          title="Manually trigger OCR and Embedding processing"
-        >
-          <Play size={12} />
-          <span>{processing ? 'Processing...' : 'Process'}</span>
-        </button>
+      {/* Toast Popup */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+          <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              toastMessage.type === 'success' 
+                ? 'text-green-900' 
+                : 'text-red-900'
+            }`}>
+              {toastMessage.message}
+            </p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className={`hover:opacity-70 transition-colors flex-shrink-0 ${
+                toastMessage.type === 'success' 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 };
 

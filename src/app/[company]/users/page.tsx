@@ -56,6 +56,8 @@ export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [generatingActivities, setGeneratingActivities] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('all');
@@ -92,13 +94,13 @@ export default function UserManagementPage() {
 
   const generateActivitiesForJobRole = async (jobRole: string) => {
     if (!jobRole) {
-      setError('Please select a job role first');
+      setToastMessage({ message: 'Please select a job role first', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
       return;
     }
 
     try {
       setGeneratingActivities(true);
-      setError('');
 
       const res = await axios.post(
         `${baseUrl}/api/users/generate-activities`,
@@ -112,12 +114,13 @@ export default function UserManagementPage() {
           productiveActivities: res.data.data.productive,
           unproductiveActivities: res.data.data.unproductive,
         }));
-        setSuccess(`AI generated ${res.data.data.productive.length} productive and ${res.data.data.unproductive.length} unproductive activities!`);
-        setTimeout(() => setSuccess(''), 5000);
+        setToastMessage({ message: `AI generated ${res.data.data.productive.length} productive and ${res.data.data.unproductive.length} unproductive activities!`, type: 'success' });
+        setTimeout(() => setToastMessage(null), 3000);
       }
     } catch (err: any) {
       console.error('Error generating activities:', err);
-      setError(err.response?.data?.msg || 'Failed to generate activities');
+      setToastMessage({ message: err.response?.data?.msg || 'Failed to generate activities', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     } finally {
       setGeneratingActivities(false);
     }
@@ -126,6 +129,14 @@ export default function UserManagementPage() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev: any) => ({ ...prev, [name]: value }));
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -136,11 +147,25 @@ export default function UserManagementPage() {
   };
 
   const handleSubmit = async () => {
-    setError('');
-    setSuccess('');
+    setFieldErrors({});
 
-    if (!formData.username || !formData.email || !formData.role || (!selectedUser && !formData.password)) {
-      setError('Username, Email, Role, and Password (for new users) are mandatory.');
+    const errors: Record<string, string> = {};
+    
+    if (!formData.username) {
+      errors.username = 'Username is required';
+    }
+    if (!formData.email) {
+      errors.email = 'Email is required';
+    }
+    if (!formData.role) {
+      errors.role = 'Role is required';
+    }
+    if (!selectedUser && !formData.password) {
+      errors.password = 'Password is required';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
@@ -151,18 +176,24 @@ export default function UserManagementPage() {
         teams: formData.teams ? formData.teams.split(',').map((t: string) => t.trim()).filter((t: string) => t) : [],
       };
 
+      // Log payload for debugging (remove sensitive data)
+      console.log('Payload being sent:', {
+        ...payload,
+        password: payload.password ? '***' : undefined,
+      });
+
       if (selectedUser) {
         // Update user
         await axios.put(`${baseUrl}/api/users/${selectedUser.id}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setSuccess('User updated successfully!');
+        setToastMessage({ message: 'User updated successfully!', type: 'success' });
       } else {
         // Create user
         await axios.post(`${baseUrl}/api/users/signup`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setSuccess('User created successfully!');
+        setToastMessage({ message: 'User created successfully!', type: 'success' });
       }
       setFormData({
         name: '',
@@ -179,25 +210,97 @@ export default function UserManagementPage() {
         tracktype: '24x7'
       });
       setSelectedUser(null);
+      setFieldErrors({});
       fetchUsers();
       fetchCompanyInfo();
 
-      // Clear success message after 5 seconds
-      setTimeout(() => setSuccess(''), 5000);
+      setTimeout(() => setToastMessage(null), 3000);
     } catch (err: any) {
-      console.error('Submit error:', err);
+      // Extract error message from response - silently handle without console errors
+      let errorMessage = 'Failed to save user. Please try again.';
+      let status: number | undefined;
 
-      // Extract error message from response
-      if (err.response?.status === 403 && err.response?.data?.msg) {
-        // User limit exceeded error
-        setError(err.response.data.msg);
-      } else if (err.response?.data?.msg) {
-        // Other errors
-        setError(err.response.data.msg);
+      // Get status from either err.response.status or err.status
+      if (err.response) {
+        status = err.response.status;
+        // Server responded with error
+        const responseData = err.response.data;
+
+        // Try multiple ways to extract error message
+        if (responseData) {
+          // Check if responseData is an object with properties
+          if (typeof responseData === 'object' && responseData !== null) {
+            // Check for common error message properties
+            if (responseData.msg) {
+              errorMessage = responseData.msg;
+            } else if (responseData.message) {
+              errorMessage = responseData.message;
+            } else if (responseData.error) {
+              errorMessage = typeof responseData.error === 'string' ? responseData.error : JSON.stringify(responseData.error);
+            } else if (responseData.errors && Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+              errorMessage = responseData.errors[0].message || responseData.errors[0];
+            } else if (Object.keys(responseData).length > 0) {
+              // If object has keys but no standard error fields, try to extract meaningful info
+              const firstKey = Object.keys(responseData)[0];
+              errorMessage = responseData[firstKey] || JSON.stringify(responseData);
+            }
+          } else if (typeof responseData === 'string') {
+            errorMessage = responseData;
+          }
+        }
+      } else if (err.status) {
+        // Error object has status directly (like in the user's error)
+        status = err.status;
+      } else if (err.request) {
+        // Request was made but no response received
+        errorMessage = 'Network error. Please check your connection and try again.';
+        setToastMessage({ message: errorMessage, type: 'error' });
+        setTimeout(() => setToastMessage(null), 3000);
+        return;
       } else {
-        // Generic error
-        setError('Failed to save user. Please try again.');
+        // Error setting up the request
+        errorMessage = err.message || 'Unknown error occurred. Please try again.';
+        setToastMessage({ message: errorMessage, type: 'error' });
+        setTimeout(() => setToastMessage(null), 3000);
+        return;
       }
+
+      // Add status code context if we still have generic message
+      if ((errorMessage === 'Failed to save user. Please try again.' || !errorMessage) && status) {
+        if (status === 400) {
+          errorMessage = 'Bad request. Please check all required fields are filled correctly.';
+        } else if (status === 403) {
+          errorMessage = 'Access forbidden. You may have reached your user limit.';
+        } else if (status === 401) {
+          errorMessage = 'Unauthorized. Please log in again.';
+        } else if (status === 404) {
+          errorMessage = 'Resource not found.';
+        } else if (status === 500) {
+          errorMessage = 'Server error. Please try again later.';
+        } else {
+          errorMessage = `Request failed with status ${status}. Please try again.`;
+        }
+      }
+
+      // Handle specific 400 errors with better messages
+      if (status === 400) {
+        // For 400 errors, check if it's likely a duplicate user error
+        // Since the backend returns "User already exists in this company" but we might not see it in response
+        // We'll show a helpful message for 400 errors when creating users
+        if (!selectedUser) {
+          // This is a create operation, so 400 likely means validation or duplicate
+          if (errorMessage.includes('already exists') || errorMessage.includes('duplicate') || 
+              (errorMessage.toLowerCase().includes('user') && errorMessage.toLowerCase().includes('exist'))) {
+            errorMessage = 'User already exists in this company. Please use a different email or username.';
+          } else if (errorMessage === 'Bad request. Please check all required fields are filled correctly.') {
+            // Generic 400 - could be duplicate or validation
+            errorMessage = 'User already exists or validation failed. Please check email, username, and all required fields.';
+          }
+        }
+      }
+
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -211,10 +314,10 @@ export default function UserManagementPage() {
       jobRole: user.jobRole || '',
       productiveActivities: user.productiveActivities || [],
       unproductiveActivities: user.unproductiveActivities || [],
-      manager: user.manager,
-      desktop: user.desktop,
+      manager: user.manager || '',
+      desktop: user.desktop || '',
       teams: user.teams.join(', '),
-      tracktype: user.tracktype,
+      tracktype: user.tracktype || 'punchin-punchout',
     });
   };
 
@@ -223,9 +326,23 @@ export default function UserManagementPage() {
       await axios.delete(`${baseUrl}/api/users/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      setToastMessage({ message: 'User deleted successfully', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
       fetchUsers();
-    } catch (err) {
-      console.error('Delete error:', err);
+    } catch (err: any) {
+      // Extract error message from response
+      let errorMessage = 'Failed to delete user. Please try again.';
+      
+      if (err.response?.data?.msg) {
+        errorMessage = err.response.data.msg;
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -347,6 +464,7 @@ export default function UserManagementPage() {
                         teams: '', 
                         tracktype: 'punchin-punchout' 
                       });
+                      setFieldErrors({});
                     }}
                     className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg transition-colors duration-200 font-medium text-sm"
                   >
@@ -357,43 +475,6 @@ export default function UserManagementPage() {
               </div>
             </div>
 
-            {/* Error Alert */}
-            {error && (
-              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                  <XCircle className="w-4 h-4 text-red-600" />
-                </div>
-                  <div className="flex-1">
-                  <p className="font-semibold text-red-900 mb-1">Error</p>
-                  <p className="text-red-700 text-sm font-medium">{error}</p>
-                  </div>
-                  <button
-                    onClick={() => setError('')}
-                  className="w-6 h-6 rounded-md bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors flex-shrink-0"
-                  >
-                    <X className="w-4 h-4 text-red-700" />
-                  </button>
-              </div>
-            )}
-
-            {/* Success Alert */}
-            {success && (
-              <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex items-start gap-3">
-                <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                  <div className="flex-1">
-                  <p className="font-semibold text-green-900 mb-1">Success</p>
-                  <p className="text-green-700 text-sm font-medium">{success}</p>
-                  </div>
-                  <button
-                    onClick={() => setSuccess('')}
-                  className="w-6 h-6 rounded-md bg-green-100 hover:bg-green-200 flex items-center justify-center transition-colors flex-shrink-0"
-                  >
-                    <X className="w-4 h-4 text-green-700" />
-                  </button>
-              </div>
-            )}
 
             {/* Form Fields - Section Cards */}
             <div className="space-y-4">
@@ -425,9 +506,12 @@ export default function UserManagementPage() {
                     placeholder="Enter username"
                     value={formData.username}
                     onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
+                      className={`w-full px-3 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] ${fieldErrors.username ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
                     required
                   />
+                  {fieldErrors.username && (
+                    <p className="text-red-500 text-xs mt-1">{fieldErrors.username}</p>
+                  )}
                 </div>
                 <div className="relative">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">
@@ -439,9 +523,12 @@ export default function UserManagementPage() {
                     placeholder="Enter email address"
                     value={formData.email}
                     onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
+                      className={`w-full px-3 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] ${fieldErrors.email ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
                     required
                   />
+                  {fieldErrors.email && (
+                    <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+                  )}
                 </div>
                 {!selectedUser && (
                   <div className="relative">
@@ -455,7 +542,7 @@ export default function UserManagementPage() {
                         placeholder="Enter password"
                         value={formData.password}
                         onChange={handleInputChange}
-                          className="w-full px-3 pr-10 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
+                          className={`w-full px-3 pr-10 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] ${fieldErrors.password ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
                         required
                       />
                       <button
@@ -472,6 +559,9 @@ export default function UserManagementPage() {
                           )}
                       </button>
                     </div>
+                    {fieldErrors.password && (
+                      <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -495,10 +585,13 @@ export default function UserManagementPage() {
                     placeholder="Enter role (admin, manager, user)"
                     value={formData.role}
                     onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] box-border"
+                      className={`w-full px-3 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] box-border ${fieldErrors.role ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
                       style={{ paddingTop: '0.625rem', paddingBottom: '0.625rem', lineHeight: '1.5', display: 'block' }}
                     required
                   />
+                  {fieldErrors.role && (
+                    <p className="text-red-500 text-xs mt-1">{fieldErrors.role}</p>
+                  )}
                 </div>
                   <div className="relative flex flex-col">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Job Role (Optional)</label>
@@ -577,7 +670,7 @@ export default function UserManagementPage() {
             </div>
 
             {/* AI-Generated Activity Lists Section */}
-            {formData.jobRole && (
+            {(formData.productiveActivities.length > 0 || formData.unproductiveActivities.length > 0) && (
               <div className="mt-6 space-y-6">
                 {/* Section Divider: AI Productivity Criteria */}
                 <div className="flex items-center justify-between pt-4 pb-3 border-t border-slate-200">
@@ -827,6 +920,37 @@ export default function UserManagementPage() {
           </div>
         </div>
       </div>
+
+      {/* Toast Popup */}
+      {toastMessage && (
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+          <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
+            toastMessage.type === 'success' 
+              ? 'bg-green-50 border-green-200' 
+              : 'bg-red-50 border-red-200'
+          }`}>
+            <p className={`text-sm font-medium ${
+              toastMessage.type === 'success' 
+                ? 'text-green-900' 
+                : 'text-red-900'
+            }`}>
+              {toastMessage.message}
+            </p>
+            <button
+              onClick={() => setToastMessage(null)}
+              className={`hover:opacity-70 transition-colors flex-shrink-0 ${
+                toastMessage.type === 'success' 
+                  ? 'text-green-600' 
+                  : 'text-red-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
