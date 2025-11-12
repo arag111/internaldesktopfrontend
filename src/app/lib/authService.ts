@@ -7,6 +7,16 @@ export const login = async (username: string, password: string) => {
   return res.data;
 };
 
+export const sendOTP = async (email: string) => {
+  const res = await axios.post(`${baseUrl}/api/users/auth/send-otp`, { email });
+  return res.data;
+};
+
+export const verifyOTP = async (email: string, otp: string) => {
+  const res = await axios.post(`${baseUrl}/api/users/auth/verify-otp`, { email, otp });
+  return res.data;
+};
+
 export const logout = async (token: string) => {
   await axios.post(`${baseUrl}/api/users/auth/logout`, {}, {
     headers: { Authorization: `Bearer ${token}` }

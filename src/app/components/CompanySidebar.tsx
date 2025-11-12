@@ -24,10 +24,17 @@ export default function CompanySidebar() {
     { label: 'Attendance', icon: <CalendarDays size={20} />, route: `/${company}/attendance` },
     { label: 'Time Claim', icon: <ClockPlus size={20} />, route: `/${company}/timeClaim` },
     { label: 'Monitoring', icon: <BarChart2 size={20} />, route: `/${company}/monitoring` },
+    // AI Report - show for all users, but route to different pages based on role
+    { 
+      label: 'AI Report', 
+      icon: <Brain size={20} />, 
+      route: role === 'admin' || role === 'manager' 
+        ? `/${company}/ai-reports` 
+        : `/${company}/my-ai-report` 
+    },
     ...(role === 'admin' || role === 'manager'
       ? [
           { label: 'Reports', icon: <FileText size={20} />, route: `/${company}/reports` },
-          { label: 'AI Report', icon: <Brain size={20} />, route: `/${company}/ai-reports` },
         ]
       : []),
     ...(role === 'admin'

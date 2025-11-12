@@ -176,14 +176,22 @@ export default function DashboardPage() {
       setLoading(true);
       try {
         if (storedRole === 'admin' || storedRole === 'manager') {
-          const { data } = await axios.get(
-            `${baseUrl}/api/activity/all-users?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          setAllUserStats(data);
+          const [statsResponse, statusesResponse] = await Promise.all([
+            axios.get(
+              `${baseUrl}/api/activity/all-users?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            ),
+            axios.get(
+              `${baseUrl}/api/activity/user-statuses`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+          ]);
+          setAllUserStats(statsResponse.data);
+          // Set initial user statuses
+          setUserStatuses(statusesResponse.data);
           // Only set selectedUserId if it's not already set
-          if (selectedUserId === null && data.length > 0) {
-            setSelectedUserId(data[0].user.id);
+          if (selectedUserId === null && statsResponse.data.length > 0) {
+            setSelectedUserId(statsResponse.data[0].user.id);
           }
         } else {
           const userId = JSON.parse(atob(token.split('.')[1])).id;

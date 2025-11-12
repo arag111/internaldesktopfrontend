@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import Navbar from '@/app/components/Navbar';
 import { baseUrl } from '@/app/utils/config';
@@ -62,6 +62,8 @@ export default function UserManagementPage() {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<{ show: boolean; userId: number | null; userName: string }>({ show: false, userId: null, userName: '' });
+  const formSectionRef = useRef<HTMLDivElement>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -136,6 +138,11 @@ export default function UserManagementPage() {
         delete newErrors[name];
         return newErrors;
       });
+    }
+    // Auto-generate AI activities when job role is selected
+    if (name === 'jobRole' && value && !selectedUser) {
+      // Automatically trigger AI generation when a job role is selected (only for new users)
+      generateActivitiesForJobRole(value);
     }
   };
 
@@ -319,16 +326,29 @@ export default function UserManagementPage() {
       teams: user.teams.join(', '),
       tracktype: user.tracktype || 'punchin-punchout',
     });
+    // Scroll to form section
+    setTimeout(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number, userName: string) => {
+    // Show confirmation dialog instead of deleting immediately
+    setDeleteConfirmation({ show: true, userId: id, userName });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmation.userId) return;
+
     try {
-      await axios.delete(`${baseUrl}/api/users/${id}`, {
+      await axios.delete(`${baseUrl}/api/users/${deleteConfirmation.userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setToastMessage({ message: 'User deleted successfully', type: 'success' });
       setTimeout(() => setToastMessage(null), 3000);
       fetchUsers();
+      // Close confirmation dialog
+      setDeleteConfirmation({ show: false, userId: null, userName: '' });
     } catch (err: any) {
       // Extract error message from response
       let errorMessage = 'Failed to delete user. Please try again.';
@@ -343,7 +363,13 @@ export default function UserManagementPage() {
       
       setToastMessage({ message: errorMessage, type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
+      // Close confirmation dialog even on error
+      setDeleteConfirmation({ show: false, userId: null, userName: '' });
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmation({ show: false, userId: null, userName: '' });
   };
 
   // Filter users based on search and role
@@ -423,7 +449,7 @@ export default function UserManagementPage() {
           </div>
 
           {/* User Form Section */}
-          <div className="bg-white rounded-lg p-6 mb-8 border border-slate-200">
+          <div ref={formSectionRef} className="bg-white rounded-lg p-6 mb-8 border border-slate-200">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -599,16 +625,41 @@ export default function UserManagementPage() {
                       name="jobRole"
                       value={formData.jobRole}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer text-slate-900 text-sm h-[38px] leading-[1.5] box-border"
-                      style={{ paddingTop: '0.625rem', paddingBottom: '0.625rem', lineHeight: '1.5', display: 'block' }}
+                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer text-slate-900 text-sm h-[42px] leading-[1.5] box-border"
+                      style={{ paddingTop: '0.625rem', paddingBottom: '0.75rem', lineHeight: '1.5', display: 'block' }}
                     >
                       <option value="">Select Job Role</option>
-                      <option value="Software Developer">Software Developer</option>
-                      <option value="Designer">Designer</option>
-                      <option value="Manager">Manager</option>
-                      <option value="Sales">Sales</option>
-                      <option value="HR">HR</option>
-                      <option value="Marketing">Marketing</option>
+                      <optgroup label="IT Department">
+                        <option value="Software Developer">Software Developer</option>
+                        <option value="DevOps Engineer">DevOps Engineer</option>
+                        <option value="QA/Test Engineer">QA/Test Engineer</option>
+                        <option value="IT Support">IT Support</option>
+                        <option value="System Administrator">System Administrator</option>
+                        <option value="Data Engineer">Data Engineer</option>
+                        <option value="Security Analyst">Security Analyst</option>
+                      </optgroup>
+                      <optgroup label="Finance Department">
+                        <option value="Accountant">Accountant</option>
+                        <option value="Financial Analyst">Financial Analyst</option>
+                        <option value="Accounts Payable/Receivable">Accounts Payable/Receivable</option>
+                        <option value="Controller">Controller</option>
+                        <option value="Bookkeeper">Bookkeeper</option>
+                        <option value="Tax Specialist">Tax Specialist</option>
+                      </optgroup>
+                      <optgroup label="Marketing Department">
+                        <option value="Marketing">Marketing</option>
+                        <option value="Digital Marketing Specialist">Digital Marketing Specialist</option>
+                        <option value="Content Marketing Manager">Content Marketing Manager</option>
+                        <option value="Social Media Manager">Social Media Manager</option>
+                        <option value="Marketing Analyst">Marketing Analyst</option>
+                        <option value="Brand Manager">Brand Manager</option>
+                      </optgroup>
+                      <optgroup label="Other Departments">
+                        <option value="Designer">Designer</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Sales">Sales</option>
+                        <option value="HR">HR</option>
+                      </optgroup>
                     </select>
                 </div>
                 <div className="relative flex flex-col">
@@ -670,7 +721,7 @@ export default function UserManagementPage() {
             </div>
 
             {/* AI-Generated Activity Lists Section */}
-            {(formData.productiveActivities.length > 0 || formData.unproductiveActivities.length > 0) && (
+            {formData.jobRole && (
               <div className="mt-6 space-y-6">
                 {/* Section Divider: AI Productivity Criteria */}
                 <div className="flex items-center justify-between pt-4 pb-3 border-t border-slate-200">
@@ -903,7 +954,7 @@ export default function UserManagementPage() {
                               <Edit className="w-5 h-5 text-black" />
                             </button>
                             <button
-                              onClick={() => handleDelete(user.id)}
+                              onClick={() => handleDelete(user.id, user.name || user.username)}
                               className=" text-white flex items-center justify-center transition-colors duration-200"
                               title="Delete User"
                             >
@@ -920,6 +971,46 @@ export default function UserManagementPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmation.show && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-md"
+          onClick={cancelDelete}
+        >
+          <div 
+            className="bg-white bg-opacity-95 backdrop-blur-xl rounded-lg border border-white border-opacity-30 shadow-2xl p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+            style={{ boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.1)' }}
+          >
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete User</h3>
+                <p className="text-sm text-slate-600">
+                  Are you sure you want to delete <span className="font-semibold text-slate-900">{deleteConfirmation.userName}</span>? This action cannot be undone.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 transition-colors"
+              >
+                No
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Popup */}
       {toastMessage && (

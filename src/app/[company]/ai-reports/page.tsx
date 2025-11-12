@@ -72,6 +72,8 @@ export default function AIReportsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
 
   useEffect(() => {
     // Load overview on mount
@@ -712,10 +714,8 @@ export default function AIReportsPage() {
                       {/* Email Report Button */}
                       <button
                         onClick={() => {
-                          const email = prompt('Enter email address to send this report:');
-                          if (email && email.trim()) {
-                            handleSendEmail(email.trim());
-                          }
+                          setEmailInput('');
+                          setShowEmailModal(true);
                         }}
                         className="w-full mt-6 bg-gray-100 hover:bg-gray-200 text-black text-sm font-medium py-2.5 px-4 rounded flex items-center justify-center gap-2 transition-colors"
                       >
@@ -854,6 +854,65 @@ export default function AIReportsPage() {
           )}
         </div>
       </main>
+
+      {/* Email Input Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={() => {
+          setShowEmailModal(false);
+          setEmailInput('');
+        }}>
+          <div 
+            className="bg-white rounded-lg border border-slate-200 shadow-xl w-full max-w-sm mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4">
+              <h3 className="text-base font-semibold text-slate-900 mb-3">Send Report to Email</h3>
+              <input
+                type="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && emailInput.trim()) {
+                    handleSendEmail(emailInput.trim());
+                    setShowEmailModal(false);
+                    setEmailInput('');
+                  } else if (e.key === 'Escape') {
+                    setShowEmailModal(false);
+                    setEmailInput('');
+                  }
+                }}
+                placeholder="Enter email address"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500 text-sm mb-4"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowEmailModal(false);
+                    setEmailInput('');
+                  }}
+                  className="px-4 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (emailInput.trim()) {
+                      handleSendEmail(emailInput.trim());
+                      setShowEmailModal(false);
+                      setEmailInput('');
+                    }
+                  }}
+                  disabled={!emailInput.trim()}
+                  className="px-4 py-1.5 text-sm font-medium text-white bg-slate-900 rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Popup */}
       {toastMessage && (

@@ -1,13 +1,13 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { login } from '@/app/lib/authService';
+import { sendOTP, verifyOTP } from '@/app/lib/authService';
 import {
-  Box, Button, TextField, Typography, Grid, Paper, Divider, Link, InputAdornment,
+  Box, Button, TextField, Typography, Paper, Divider, Link, InputAdornment,
   ThemeProvider, createTheme, CssBaseline, Fade
 } from '@mui/material';
-import { LockOutlined, PersonOutline, AccessTime, Analytics, Cloud } from '@mui/icons-material';
+import { EmailOutlined, LockOutlined, AccessTime, Analytics, Cloud } from '@mui/icons-material';
 
 const theme = createTheme({
   palette: {
@@ -55,17 +55,92 @@ const theme = createTheme({
 });
 
 export default function SignInPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [sendingOTP, setSendingOTP] = useState(false);
+  const [otpTimer, setOtpTimer] = useState(0);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // OTP Timer countdown
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (otpTimer > 0) {
+      interval = setInterval(() => {
+        setOtpTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [otpTimer]);
+
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email) {
+      setToastMessage({ message: 'Please enter your email address', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+
+    setSendingOTP(true);
+    try {
+      const data = await sendOTP(email);
+      setOtpSent(true);
+      setOtpTimer(600); // 10 minutes in seconds
+      setToastMessage({ message: data.msg || 'OTP sent successfully to your email', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      let errorMessage = 'Failed to send OTP. Please try again.';
+      
+      // Check for specific HTTP status codes
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        if (status === 404) {
+          errorMessage = data?.msg || 'OTP endpoint not found. Please check server configuration.';
+        } else if (status === 400) {
+          errorMessage = data?.msg || data?.message || 'Invalid email address. Please check and try again.';
+        } else if (status === 429) {
+          errorMessage = data?.msg || 'Too many requests. Please wait a few minutes before trying again.';
+        } else if (status === 500) {
+          errorMessage = data?.msg || data?.message || 'Server error. Please try again later.';
+        } else if (data?.msg) {
+          errorMessage = data.msg;
+        } else if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.error) {
+          errorMessage = typeof data.error === 'string' ? data.error : 'An error occurred';
+        } else {
+          errorMessage = `Request failed with status ${status}. Please try again.`;
+        }
+      } else if (err.request) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setToastMessage({ message: errorMessage, type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setSendingOTP(false);
+    }
+  };
+
+  const handleVerifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otp || otp.length !== 6) {
+      setToastMessage({ message: 'Please enter a valid 6-digit OTP', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+
     setLoading(true);
     try {
-      const data = await login(username, password);
+      const data = await verifyOTP(email, otp);
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.user.role);
       localStorage.setItem('userName', data.user.name);
@@ -77,16 +152,34 @@ export default function SignInPage() {
 
       // Use the redirectUrl from backend
       const redirectUrl = data.redirectUrl || '/dashboard';
-      console.log('Redirecting to:', redirectUrl); // Debug log
       router.push(redirectUrl);
     } catch (err: any) {
-      // Extract error message from response
-      let errorMessage = 'Invalid credentials';
+      let errorMessage = 'Invalid OTP. Please try again.';
       
-      if (err.response?.data?.msg) {
-        errorMessage = err.response.data.msg;
-      } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
+      // Check for specific HTTP status codes
+      if (err.response) {
+        const status = err.response.status;
+        const data = err.response.data;
+        
+        if (status === 404) {
+          errorMessage = 'OTP verification endpoint not found. Please check server configuration.';
+        } else if (status === 400) {
+          errorMessage = data?.msg || data?.message || 'Invalid OTP or email. Please check and try again.';
+        } else if (status === 401) {
+          errorMessage = data?.msg || 'OTP expired or invalid. Please request a new OTP.';
+        } else if (status === 500) {
+          errorMessage = data?.msg || data?.message || 'Server error. Please try again later.';
+        } else if (data?.msg) {
+          errorMessage = data.msg;
+        } else if (data?.message) {
+          errorMessage = data.message;
+        } else if (data?.error) {
+          errorMessage = typeof data.error === 'string' ? data.error : 'An error occurred';
+        } else {
+          errorMessage = `Request failed with status ${status}. Please try again.`;
+        }
+      } else if (err.request) {
+        errorMessage = 'Network error. Please check your connection and try again.';
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -96,6 +189,10 @@ export default function SignInPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleResendOTP = async () => {
+    await handleSendOTP(new Event('submit') as any);
   };
 
   return (
@@ -124,7 +221,7 @@ export default function SignInPage() {
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                   Track Nexus helps teams measure what matters with automatic time tracking and intelligent analytics.
                 </Typography>
-                <Grid container spacing={2}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {[{
                     icon: <AccessTime sx={{ color: 'primary.main' }} />, title: 'Automatic Tracking', text: 'Seamless time capture'
                   }, {
@@ -132,68 +229,118 @@ export default function SignInPage() {
                   }, {
                     icon: <Cloud sx={{ color: 'primary.main' }} />, title: 'Cloud Sync', text: 'Access data anywhere'
                   }].map((item, index) => (
-                    <Grid item xs={12} key={index}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, bgcolor: 'rgba(255,255,255,0.7)', borderRadius: 2 }}>
-                        {item.icon}
-                        <Box>
-                          <Typography variant="body1" fontWeight={600}>{item.title}</Typography>
-                          <Typography variant="body2" color="text.secondary">{item.text}</Typography>
-                        </Box>
+                    <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, bgcolor: 'rgba(255,255,255,0.7)', borderRadius: 2 }}>
+                      {item.icon}
+                      <Box>
+                        <Typography variant="body1" fontWeight={600}>{item.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">{item.text}</Typography>
                       </Box>
-                    </Grid>
+                    </Box>
                   ))}
-                </Grid>
+                </Box>
               </Box>
 
               <Divider orientation="vertical" flexItem />
 
-              <Box component="form" onSubmit={handleSubmit} sx={{ flex: 1, p: 5, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <Box component="form" onSubmit={otpSent ? handleVerifyOTP : handleSendOTP} sx={{ flex: 1, p: 5, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Typography variant="h5" color="text.primary" gutterBottom>Welcome Back</Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>Sign in to access your dashboard</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>Sign in with your email and OTP</Typography>
+                
                 <TextField
                   fullWidth
-                  name="username"
-                  label="Username"
-                  placeholder="Enter username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  name="email"
+                  label="Email Address"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={otpSent}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
-                        <PersonOutline />
+                        <EmailOutlined />
                       </InputAdornment>
                     ),
                   }}
                   sx={{ mb: 2 }}
                   required
                 />
-                <TextField
-                  fullWidth
-                  name="password"
-                  label="Password"
-                  type="password"
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LockOutlined />
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ mb: 4 }}
-                  required
-                />
+
+                {otpSent && (
+                  <>
+                    <TextField
+                      fullWidth
+                      name="otp"
+                      label="Enter OTP"
+                      placeholder="Enter 6-digit OTP"
+                      value={otp}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setOtp(value);
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <LockOutlined />
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{ mb: 2 }}
+                      required
+                      autoFocus
+                    />
+                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {otpTimer > 0 ? (
+                          <>OTP expires in: {Math.floor(otpTimer / 60)}:{(otpTimer % 60).toString().padStart(2, '0')}</>
+                        ) : (
+                          <span style={{ color: '#d32f2f' }}>OTP expired</span>
+                        )}
+                      </Typography>
+                      <Link
+                        component="button"
+                        type="button"
+                        onClick={handleResendOTP}
+                        disabled={sendingOTP || otpTimer > 0}
+                        sx={{ 
+                          fontSize: '0.875rem',
+                          textDecoration: 'none',
+                          cursor: (sendingOTP || otpTimer > 0) ? 'not-allowed' : 'pointer',
+                          opacity: (sendingOTP || otpTimer > 0) ? 0.5 : 1
+                        }}
+                      >
+                        Resend OTP
+                      </Link>
+                    </Box>
+                  </>
+                )}
+
                 <Button
                   type="submit"
                   fullWidth
                   variant="contained"
                   color="primary"
-                  disabled={loading}
+                  disabled={loading || sendingOTP || (otpSent && (!otp || otp.length !== 6))}
+                  sx={{ mb: 2 }}
                 >
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? 'Verifying...' : sendingOTP ? 'Sending OTP...' : otpSent ? 'Verify OTP' : 'Send OTP'}
                 </Button>
+
+                {otpSent && (
+                  <Button
+                    type="button"
+                    fullWidth
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => {
+                      setOtpSent(false);
+                      setOtp('');
+                      setOtpTimer(0);
+                    }}
+                  >
+                    Change Email
+                  </Button>
+                )}
               </Box>
             </Paper>
           </Fade>
