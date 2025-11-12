@@ -137,6 +137,11 @@ export default function UserManagementPage() {
         return newErrors;
       });
     }
+    // Auto-generate AI activities when job role is selected
+    if (name === 'jobRole' && value && !selectedUser) {
+      // Automatically trigger AI generation when a job role is selected (only for new users)
+      generateActivitiesForJobRole(value);
+    }
   };
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
