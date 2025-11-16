@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Play } from 'lucide-react';
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
+import { formatInUserTimezone, toUserTimezone } from '@/app/utils/timezone';
 
 interface Screenshot {
   _id: string;
@@ -16,19 +17,17 @@ interface ScreenshotGalleryProps {
   screenshots: Screenshot[];
 }
 
+// ✅ FIX: Helper to get unique identifier from screenshot (handles both _id and id)
+const getScreenshotId = (screenshot: Screenshot): string => {
+  return screenshot._id || screenshot.id?.toString() || '';
+};
+
 const formatDate = (date: Date, includeTime = true) => {
-  const day = String(date.getUTCDate()).padStart(2, '0');
-  const month = date.toLocaleString('en-GB', { month: 'short', timeZone: 'UTC' });
-  const year = date.getUTCFullYear();
-
-  let time = '';
+  // ✅ FIX: Use timezone utility to display in user's local timezone
   if (includeTime) {
-    const hours = String(date.getUTCHours()).padStart(2, '0');
-    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-    time = ` ${hours}:${minutes}`;
+    return formatInUserTimezone(date, 'dd MMM yyyy HH:mm');
   }
-
-  return `${day} ${month} ${year}${time}`;
+  return formatInUserTimezone(date, 'dd MMM yyyy');
 };
 
 const ProcessingStatusBadge: React.FC<{
@@ -147,8 +146,13 @@ const groupByDateHour = (screenshots: Screenshot[]) => {
 
   screenshots.forEach(s => {
     const dateObj = new Date(s.timestamp);
-    const dateKey = dateObj.toISOString().slice(0, 10); // YYYY-MM-DD
-    const hourKey = dateObj.toISOString().slice(11, 13); // HH
+    // ✅ FIX: Convert to user's local timezone for grouping
+    const localDate = toUserTimezone(dateObj);
+
+    // Format date in user's timezone (YYYY-MM-DD)
+    const dateKey = formatInUserTimezone(dateObj, 'yyyy-MM-dd');
+    // Get hour in user's timezone
+    const hourKey = String(localDate.getHours()).padStart(2, '0');
 
     if (!map[dateKey]) map[dateKey] = {};
     if (!map[dateKey][hourKey]) map[dateKey][hourKey] = [];
@@ -159,7 +163,7 @@ const groupByDateHour = (screenshots: Screenshot[]) => {
   return Object.entries(map)
     .sort(([a], [b]) => b.localeCompare(a)) // Desc by date
     .map(([dateKey, hours]) => ({
-      date: new Date(dateKey),
+      date: new Date(dateKey + 'T00:00:00'), // Parse as local date
       hours: Object.entries(hours)
         .sort(([a], [b]) => b.localeCompare(a)) // Desc by hour
         .map(([hourKey, shots]) => ({
@@ -186,14 +190,36 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
     });
   }, [screenshots, startDate, endDate]);
 
-  const grouped = useMemo(() => {
+  const { grouped, flat, indexMap } = useMemo(() => {
     const sorted = [...filteredScreenshots].sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-    const flat = [...sorted];
-    setFlatScreenshots(flat);
-    return groupByDateHour(sorted);
+    const groupedData = groupByDateHour(sorted);
+
+    // ✅ FIX: Rebuild flat array from grouped data to match display order
+    // AND build indexMap for O(1) lookup
+    const flatArray: Screenshot[] = [];
+    const indexLookup = new Map<string, number>();
+
+    let currentIndex = 0;
+    groupedData.forEach(({ hours }) => {
+      hours.forEach(({ screenshots }) => {
+        screenshots.forEach(s => {
+          const id = getScreenshotId(s);
+          indexLookup.set(id, currentIndex);
+          flatArray.push(s);
+          currentIndex++;
+        });
+      });
+    });
+
+    return { grouped: groupedData, flat: flatArray, indexMap: indexLookup };
   }, [filteredScreenshots]);
+
+  // Update state when flat array changes
+  React.useEffect(() => {
+    setFlatScreenshots(flat);
+  }, [flat]);
 
   const openModal = (index: number) => setSelectedImageIndex(index);
 
@@ -239,16 +265,17 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
             <div key={date.toDateString()} className="space-y-6">
               <h2 className="text-2xl font-bold text-gray-900">{formatDate(date, false)}</h2>
               {hours.map(({ hour, screenshots }) => (
-                <div key={hour} className="space-y-3">
+                <div key={`${date.toDateString()}-${hour}`} className="space-y-3">
                   <h3 className="text-lg font-semibold text-gray-700">
                     {String(hour).padStart(2, '0')}:00 - {String(hour + 1).padStart(2, '0')}:00
                   </h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
                     {screenshots.map((s, i) => {
-                      const globalIndex = flatScreenshots.findIndex((fs) => fs._id === s._id);
+                      // ✅ FIX: Use indexMap for O(1) lookup and proper ID handling
+                      const globalIndex = indexMap.get(getScreenshotId(s)) ?? -1;
                       return (
                         <div
-                          key={s._id}
+                          key={`${date.toDateString()}-${hour}-${s._id || s.id || i}`}
                           className="bg-white rounded-xl overflow-hidden shadow hover:shadow-lg border cursor-pointer transition-all"
                           onClick={() => openModal(globalIndex)}
                         >
@@ -287,12 +314,12 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
       )}
 
       {/* Modal */}
-      {selectedImageIndex !== null && flatScreenshots[selectedImageIndex] && (
+      {selectedImageIndex !== null && flat[selectedImageIndex] && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur">
           <div className="relative max-w-5xl w-full mx-6 flex flex-col items-center justify-center">
             {/* Close Button */}
             <button
-              className="absolute top-4 right-4 text-white text-3xl font-bold hover:text-red-400 transition"
+              className="absolute top-4 right-4 text-red-500 text-3xl font-bold hover:text-red-600 transition"
               onClick={() => setSelectedImageIndex(null)}
               style={{ zIndex: 10 }}
             >
@@ -311,7 +338,7 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
 
             {/* Image */}
             <img
-              src={flatScreenshots[selectedImageIndex].url}
+              src={flat[selectedImageIndex].url}
               alt="Full Screenshot"
               className="w-full h-auto max-h-[80vh] rounded-lg shadow-lg"
             />
@@ -319,17 +346,17 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
             {/* Screenshot Info */}
             <div className="mt-4 bg-white/90 backdrop-blur rounded-lg p-4 flex items-center gap-4">
               <div className="text-sm text-gray-800 font-medium">
-                {formatDate(new Date(flatScreenshots[selectedImageIndex].timestamp))}
+                {formatDate(new Date(flat[selectedImageIndex].timestamp))}
               </div>
               <ProcessingStatusBadge
-                textExtracted={flatScreenshots[selectedImageIndex].textExtracted}
-                embeddingDone={flatScreenshots[selectedImageIndex].embeddingDone}
-                screenshotId={flatScreenshots[selectedImageIndex].id || flatScreenshots[selectedImageIndex]._id}
+                textExtracted={flat[selectedImageIndex].textExtracted}
+                embeddingDone={flat[selectedImageIndex].embeddingDone}
+                screenshotId={flat[selectedImageIndex].id || flat[selectedImageIndex]._id}
               />
             </div>
 
             {/* Right Arrow */}
-            {selectedImageIndex < flatScreenshots.length - 1 && (
+            {selectedImageIndex < flat.length - 1 && (
               <button
                 className="absolute right-4 text-white bg-black/60 p-3 rounded-full hover:bg-black"
                 onClick={() => navigate('right')}

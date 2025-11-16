@@ -20,17 +20,17 @@ export default function CompanySidebar() {
   const company = params.company as string;
 
   const navItems = useMemo(() => [
-    { label: 'Dashboard', icon: <Home size={20} />, route: `/${company}` },
+    { label: 'Dashboard', icon: <Home size={20} />, route: `/${company}/dashboard`, external: false },
     { label: 'Attendance', icon: <CalendarDays size={20} />, route: `/${company}/attendance` },
     { label: 'Time Claim', icon: <ClockPlus size={20} />, route: `/${company}/timeClaim` },
     { label: 'Monitoring', icon: <BarChart2 size={20} />, route: `/${company}/monitoring` },
     // AI Report - show for all users, but route to different pages based on role
-    { 
-      label: 'AI Report', 
-      icon: <Brain size={20} />, 
-      route: role === 'admin' || role === 'manager' 
-        ? `/${company}/ai-reports` 
-        : `/${company}/my-ai-report` 
+    {
+      label: 'AI Report',
+      icon: <Brain size={20} />,
+      route: role === 'admin' || role === 'manager'
+        ? `/${company}/ai-reports`
+        : `/${company}/my-ai-report`
     },
     ...(role === 'admin' || role === 'manager'
       ? [
@@ -58,12 +58,18 @@ export default function CompanySidebar() {
       <div className="flex flex-col h-full">
         {/* Navigation */}
         <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
-          {navItems.map(({ label, icon, route }) => {
-            const active = isActive(route);
+          {navItems.map(({ label, icon, route, external }) => {
+            const active = !external && isActive(route);
             return (
               <div
                 key={label}
-                onClick={() => router.push(route)}
+                onClick={() => {
+                  if (external) {
+                    window.location.href = route;
+                  } else {
+                    router.push(route);
+                  }
+                }}
                 className={`
                   group relative flex items-center gap-3 px-4 py-3 rounded-lg cursor-pointer transition-colors duration-200
                   ${active
@@ -75,8 +81,8 @@ export default function CompanySidebar() {
                 {/* Icon */}
                 <div className={`
                   transition-colors duration-200
-                  ${active 
-                    ? 'text-slate-900' 
+                  ${active
+                    ? 'text-slate-900'
                     : 'text-slate-500 group-hover:text-slate-700'
                   }
                 `}>

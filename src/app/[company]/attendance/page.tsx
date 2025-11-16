@@ -3,8 +3,6 @@
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import Navbar from '@/app/components/Navbar';
-import CompanySidebar from '@/app/components/CompanySidebar';
 import { baseUrl } from '@/app/utils/config';
 import Attendance from '@/app/components/Attendance';
 import moment from 'moment';
@@ -43,12 +41,27 @@ export default function AttendancePage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const isInitialMount = useRef(true);
   const prevRangeRef = useRef<string>('');
+  const hasRestoredFromStorage = useRef(false);
 
-  // Initialize role on mount
+  // Initialize role and selectedUserId from localStorage on mount
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
     setRole(storedRole);
+
+    // Restore selected user from localStorage
+    const storedUserId = localStorage.getItem('selectedUserId');
+    if (storedUserId) {
+      setSelectedUserId(parseInt(storedUserId));
+    }
+    hasRestoredFromStorage.current = true;
   }, []);
+
+  // Save selectedUserId to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedUserId !== null) {
+      localStorage.setItem('selectedUserId', selectedUserId.toString());
+    }
+  }, [selectedUserId]);
 
   // Fetch data when range changes (not when selectedUserId changes)
   useEffect(() => {
@@ -85,10 +98,6 @@ export default function AttendancePage() {
             { headers: { Authorization: `Bearer ${token}` } }
           );
           setAllUserStats(data);
-          // Only set selectedUserId if it's not already set
-          if (selectedUserId === null && data.length > 0) {
-            setSelectedUserId(data[0].user.id);
-          }
         } else {
           const userId = JSON.parse(atob(token.split('.')[1])).id;
           const { data } = await axios.get(
@@ -105,9 +114,9 @@ export default function AttendancePage() {
     fetchData();
   }, [router, selectedRange]);
 
-  // Initialize selectedUserId from allUserStats if needed
+  // Initialize selectedUserId from allUserStats if needed (only if not restored from localStorage)
   useEffect(() => {
-    if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0) {
+    if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0 && hasRestoredFromStorage.current) {
       setSelectedUserId(allUserStats[0].user.id);
     }
   }, [allUserStats, role, selectedUserId]);
@@ -162,26 +171,19 @@ export default function AttendancePage() {
   }, []);
 
   return (
-    <div className="w-full h-screen flex flex-col bg-gray-100 text-[#075a96]">
-      <Navbar />
-
-      <div className="flex flex-1 overflow-hidden">
-        <CompanySidebar />
-        <Attendance
-          role={role}
-          allUserStats={allUserStats}
-          selectedUserId={selectedUserId}
-          setSelectedUserId={handleSetSelectedUserId}
-          setSelectedRange={handleSetSelectedRange}
-          selectedRange={selectedRange}
-          currentStats={currentStats}
-          rangePresets={rangePresets}
-          userStatuses={userStatuses}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          mlValue="16rem"
-        />
-      </div>
-    </div>
+    <Attendance
+      role={role}
+      allUserStats={allUserStats}
+      selectedUserId={selectedUserId}
+      setSelectedUserId={handleSetSelectedUserId}
+      setSelectedRange={handleSetSelectedRange}
+      selectedRange={selectedRange}
+      currentStats={currentStats}
+      rangePresets={rangePresets}
+      userStatuses={userStatuses}
+      searchTerm={searchTerm}
+      setSearchTerm={setSearchTerm}
+      mlValue="16rem"
+    />
   );
 }

@@ -83,6 +83,7 @@ export default function ClaimsPage() {
                 ) : null}
                 <ClaimsTable
                     claims={claims}
+                    setClaims={setClaims}
                     role={role}
                     selectedUserId={selectedUserId}
                     setSelectedRange={setSelectedRange}

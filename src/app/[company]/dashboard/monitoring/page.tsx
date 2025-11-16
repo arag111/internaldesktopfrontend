@@ -5,8 +5,6 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import ScreenshotGallery from '@/app/components/ScreenshotGallery';
 import { baseUrl } from '@/app/utils/config';
-import Navbar from '@/app/components/Navbar';
-import CompanySidebar from "@/app/components/CompanySidebar";
 import {
   Box,
   Card,
@@ -215,21 +213,15 @@ export default function MonitoringPage() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', bgcolor: 'background.default' }}>
-        <Navbar />
-
-        <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <CompanySidebar />
-
-          <Box sx={{
-            flex: 1,
-            ml: '240px',
-            mt: '64px',
-            p: 4,
-            overflow: 'auto',
-            background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
-            minHeight: '100vh'
-          }}>
+      <Box sx={{
+        flex: 1,
+        overflow: 'auto',
+        ml: '16rem',
+        mt: '4rem',
+        p: 4,
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        minHeight: '100vh'
+      }}>
             <Card sx={{ mb: 4, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
               <CardContent sx={{ p: 4 }}>
                 <Grid container spacing={3} alignItems="center">
@@ -428,8 +420,6 @@ export default function MonitoringPage() {
               </Card>
             )}
           </Box>
-        </Box>
-      </Box>
     </ThemeProvider>
   );
 }

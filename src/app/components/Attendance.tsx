@@ -87,7 +87,9 @@ const Attendance: React.FC<AttendanceProps> = ({
                 if (!s.lastSeen) return '-';
                 const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
                 const currentTime = moment().utcOffset('+05:30');
-                if (lastSeenTime.format('HH:mm') === currentTime.format('HH:mm')) {
+                // FIXED: Check if within last 5 minutes, not just same time
+                const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
+                if (minutesDiff >= 0 && minutesDiff <= 5) {
                     return 'Active Now';
                 }
                 return lastSeenTime.format('hh:mm A');
@@ -219,7 +221,12 @@ const Attendance: React.FC<AttendanceProps> = ({
                                         onClick={() => setShowUserDropdown(!showUserDropdown)}
                                         className="group relative flex items-center justify-between px-3 py-1.5 h-[38px] w-80 bg-white text-black rounded-md text-sm font-medium hover:bg-white border border-slate-200 hover:border-slate-300 transition-colors duration-200"
                                     >
-                                        <span className="truncate">Select User</span>
+                                        <span className="truncate">
+                                            {selectedUserId 
+                                                ? allUserStats.find(({ user }) => user.id === selectedUserId)?.user.name || 'Select User'
+                                                : 'Select User'
+                                            }
+                                        </span>
                                         <ChevronDown className={`w-4 h-4 text-black transition-transform duration-200 flex-shrink-0 ${showUserDropdown ? 'transform rotate-180' : ''}`} />
                                     </button>
 

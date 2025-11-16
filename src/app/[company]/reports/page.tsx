@@ -10,8 +10,6 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { baseUrl } from '@/app/utils/config';
-import Navbar from '@/app/components/Navbar';
-import CompanySidebar from '@/app/components/CompanySidebar';
 
 interface UserReport {
   userId: number;
@@ -25,6 +23,7 @@ interface UserReport {
   totalWorkingHours: number;
   expectedWorkingHours: number;
   avgProductivity: number;
+  elapsedWeekdays: number; // ✅ FIX: Track elapsed weekdays for accurate attendance %
   dailyRecords: {
     date: string;
     present: boolean;
@@ -76,17 +75,36 @@ export default function ReportsPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Process data to calculate reports
+      /**
+       * Process raw activity data to calculate attendance reports
+       *
+       * ✅ FIXED Key Calculations:
+       * - Working Days: Days with >= 7.5 hours of work (more realistic threshold)
+       * - Half Days: Days with >= 4 hours but < 7.5 hours of work
+       * - LOP Days: WEEKDAYS ONLY with < 4 hours (excludes weekends & future dates)
+       * - Present Days: Working Days + Half Days
+       * - Productivity: Uses backend's pre-calculated value (workingTime / totalTimeAtDesk)
+       * - Expected Hours: Weekdays only (Mon-Fri) × 8 hours/day
+       * - Only count dates up to today (no future LOP)
+       */
       const reports: UserReport[] = data.map((userStat: any) => {
         const allDaysInMonth = eachDayOfInterval({ start, end });
+        const today = new Date();
+        today.setHours(23, 59, 59, 999); // End of today
+
+        // ✅ FIX: Only process dates up to today
+        const daysUpToToday = allDaysInMonth.filter(day => day <= today);
+
         // Count only weekdays (Monday-Friday) for expected working hours
         const weekdaysInMonth = allDaysInMonth.filter(day => !isWeekend(day)).length;
+        const elapsedWeekdays = daysUpToToday.filter(day => !isWeekend(day)).length;
         const expectedWorkingHours = weekdaysInMonth * 8; // 8 hours per weekday expected
 
-        let workingDays = 0;
-        let presentDays = 0;
-        let halfDays = 0;
-        let lopDays = 0;
+        // Initialize counters for attendance tracking
+        let workingDays = 0;      // Days with >= 7.5 hours
+        let presentDays = 0;      // Working days + half days
+        let halfDays = 0;         // Days with >= 4 hours but < 7.5 hours
+        let lopDays = 0;          // WEEKDAYS ONLY with < 4 hours (Loss of Pay)
         let totalWorkingSeconds = 0;
         let totalProductivity = 0;
         let productivityCount = 0;
@@ -100,27 +118,42 @@ export default function ReportsPage() {
           const idleSeconds = dayData?.idleTimeInSeconds || 0;
           const workingHours = workingSeconds / 3600;
 
-          const isPresent = workingSeconds > 0;
-          const isHalfDay = workingHours > 0 && workingHours < 8;
+          const isPresent = workingHours >= 4; // ✅ FIX: Minimum 4 hours to count as present
+          const isWeekendDay = isWeekend(day);
+          const isFutureDate = day > today;
 
-          // Count attendance
-          if (workingSeconds === 0) {
-            lopDays++; // No working hours = LOP
-          } else if (isHalfDay) {
-            halfDays++; // Less than 8 hours = Half Day
-            presentDays++; // Still counts as present
-          } else {
-            workingDays++; // >= 8 hours = Working Day
-            presentDays++; // Also counts as present
+          // ✅ FIX: Improved half day and working day thresholds
+          const isHalfDay = workingHours >= 4 && workingHours < 7.5;
+          const isWorkingDay = workingHours >= 7.5;
+
+          // ✅ FIX: Count attendance ONLY for past dates, exclude weekends from LOP
+          if (!isFutureDate && !isWeekendDay) {
+            if (workingHours < 4) {
+              lopDays++; // Less than 4 hours on a weekday = LOP
+            } else if (isHalfDay) {
+              halfDays++; // 4-7.5 hours = Half Day
+              presentDays++; // Still counts as present
+            } else {
+              workingDays++; // >= 7.5 hours = Working Day
+              presentDays++; // Also counts as present
+            }
+          } else if (!isFutureDate && isWeekendDay && workingHours >= 4) {
+            // Weekend work counts toward present days but not regular working days
+            if (isWorkingDay) {
+              workingDays++;
+              presentDays++;
+            } else if (isHalfDay) {
+              halfDays++;
+              presentDays++;
+            }
           }
 
           totalWorkingSeconds += workingSeconds;
 
-          // Calculate productivity
-          if (dayData && workingSeconds > 0) {
-            const productive = workingSeconds - breakSeconds - idleSeconds;
-            const productivity = (productive / workingSeconds) * 100;
-            totalProductivity += productivity;
+          // ✅ FIX: Use backend's pre-calculated productivity (already validated and clamped 0-100)
+          // Backend calculates: (workingSeconds / totalTimeAtDesk) * 100
+          if (dayData && dayData.productivity !== undefined) {
+            totalProductivity += dayData.productivity;
             productivityCount++;
           }
 
@@ -142,6 +175,17 @@ export default function ReportsPage() {
         const absentDays = lopDays; // LOP days are absent days
         const avgProductivity = productivityCount > 0 ? totalProductivity / productivityCount : 0;
 
+        // ✅ FIX: Data validation - clamp productivity to valid range (0-100)
+        const safeProductivity = Math.max(0, Math.min(100, Math.round(avgProductivity)));
+
+        // Log warning if data quality issues detected
+        if (avgProductivity > 100 || avgProductivity < 0) {
+          console.warn(
+            `⚠️ Data Quality Issue - Invalid productivity for ${userStat.user.name}: ` +
+            `${avgProductivity.toFixed(1)}% (clamped to ${safeProductivity}%)`
+          );
+        }
+
         return {
           userId: userStat.user.id,
           userName: userStat.user.name,
@@ -153,8 +197,9 @@ export default function ReportsPage() {
           lopDays,
           totalWorkingHours: totalWorkingSeconds / 3600,
           expectedWorkingHours,
-          avgProductivity: Math.round(avgProductivity),
-          dailyRecords
+          avgProductivity: safeProductivity, // Use validated value
+          dailyRecords,
+          elapsedWeekdays // ✅ FIX: Add elapsed weekdays for accurate attendance %
         };
       });
 
@@ -307,8 +352,10 @@ export default function ReportsPage() {
 
     // Add data
     userReports.forEach(report => {
-      const totalDays = report.dailyRecords.length;
-      const attendancePercent = totalDays > 0 ? ((report.presentDays / totalDays) * 100).toFixed(1) : '0';
+      // ✅ FIX: Use elapsed weekdays for accurate attendance %
+      const attendancePercent = report.elapsedWeekdays > 0
+        ? ((report.presentDays / report.elapsedWeekdays) * 100).toFixed(1)
+        : '0';
 
       worksheet.addRow([
         report.userName,
@@ -357,8 +404,10 @@ export default function ReportsPage() {
     ];
 
     const tableRows = userReports.map(report => {
-      const totalDays = report.dailyRecords.length;
-      const attendancePercent = totalDays > 0 ? ((report.presentDays / totalDays) * 100).toFixed(1) : '0';
+      // ✅ FIX: Use elapsed weekdays for accurate attendance %
+      const attendancePercent = report.elapsedWeekdays > 0
+        ? ((report.presentDays / report.elapsedWeekdays) * 100).toFixed(1)
+        : '0';
 
       return [
         report.userName,
@@ -505,8 +554,10 @@ export default function ReportsPage() {
   const exportToCSV = () => {
     const headers = 'Employee Name,Email,Working Days,Half Days,LOP Days,Present Days,Total Hours,Expected Hours,Avg Productivity %,Attendance %';
     const rows = userReports.map(report => {
-      const totalDays = report.dailyRecords.length;
-      const attendancePercent = totalDays > 0 ? ((report.presentDays / totalDays) * 100).toFixed(1) : '0';
+      // ✅ FIX: Use elapsed weekdays for accurate attendance %
+      const attendancePercent = report.elapsedWeekdays > 0
+        ? ((report.presentDays / report.elapsedWeekdays) * 100).toFixed(1)
+        : '0';
 
       return [
         report.userName,
@@ -529,11 +580,8 @@ export default function ReportsPage() {
   };
 
   return (
-    <>
-      <Navbar />
-      <CompanySidebar />
-
-      <main className="ml-64 mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-screen">
+    <div className="flex-1 overflow-y-auto">
+      <main className="mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-screen" style={{ marginLeft: '16rem' }}>
         <div className="max-w-7xl mx-auto">
           {/* Hero Banner Section */}
           <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
@@ -645,8 +693,8 @@ export default function ReportsPage() {
                 {userReports.length > 0
                   ? Math.round(
                       userReports.reduce((sum, r) => {
-                        const total = r.presentDays + r.absentDays;
-                        return sum + (total > 0 ? (r.presentDays / total) * 100 : 0);
+                        // ✅ FIX: Use elapsed weekdays (not total days or future dates)
+                        return sum + (r.elapsedWeekdays > 0 ? (r.presentDays / r.elapsedWeekdays) * 100 : 0);
                       }, 0) / userReports.length
                     )
                   : 0}%
@@ -695,14 +743,54 @@ export default function ReportsPage() {
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Employee</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Email</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Working Days</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Half Days</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">LOP</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Present</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Worked Hours</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Expected Hours</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Productivity</th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Attendance %</th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Days with ≥7.5 hours of work"
+                    >
+                      Working Days
+                    </th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Days with 4-7.5 hours of work"
+                    >
+                      Half Days
+                    </th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Loss of Pay: Weekdays with <4 hours (excludes weekends & future dates)"
+                    >
+                      LOP
+                    </th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Total days present (Working Days + Half Days)"
+                    >
+                      Present
+                    </th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Total hours worked in the month"
+                    >
+                      Worked Hours
+                    </th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Expected hours = Weekdays in month × 8 hours"
+                    >
+                      Expected Hours
+                    </th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Average productivity percentage from AI analysis"
+                    >
+                      Productivity
+                    </th>
+                    <th
+                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      title="Present days ÷ Elapsed weekdays × 100%"
+                    >
+                      Attendance %
+                    </th>
                     <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
@@ -727,8 +815,10 @@ export default function ReportsPage() {
                     </tr>
                   ) : (
                     userReports.map((report) => {
-                      const totalDays = report.dailyRecords.length;
-                      const attendancePercent = totalDays > 0 ? ((report.presentDays / totalDays) * 100).toFixed(1) : '0';
+                      // ✅ FIX: Use elapsed weekdays instead of total days for accurate attendance %
+                      const attendancePercent = report.elapsedWeekdays > 0
+                        ? ((report.presentDays / report.elapsedWeekdays) * 100).toFixed(1)
+                        : '0';
 
                       return (
                         <tr key={report.userId} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-slate-50 transition-all duration-200 border-b border-slate-100">
@@ -763,13 +853,24 @@ export default function ReportsPage() {
                             {report.expectedWorkingHours}h
                           </td>
                           <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${
-                              report.avgProductivity >= 70 ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200' :
-                              report.avgProductivity >= 50 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border-yellow-200' :
-                              'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-200'
-                            }`}>
-                              {report.avgProductivity}%
-                            </span>
+                            <div className="flex items-center justify-center gap-2">
+                              <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${
+                                report.avgProductivity >= 70 ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200' :
+                                report.avgProductivity >= 50 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border-yellow-200' :
+                                'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-200'
+                              }`}>
+                                {report.avgProductivity}%
+                              </span>
+                              {/* ✅ FIX: Show warning indicator for suspicious data */}
+                              {(report.totalWorkingHours === 0 && report.avgProductivity > 0) && (
+                                <span
+                                  className="text-orange-600 cursor-help"
+                                  title="Data quality issue: Productivity recorded with no working hours"
+                                >
+                                  ⚠️
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 text-center">
                             <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${
@@ -910,6 +1011,6 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
