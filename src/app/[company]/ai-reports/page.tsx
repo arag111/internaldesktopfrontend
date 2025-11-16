@@ -2,8 +2,6 @@
 import { useState, useEffect } from 'react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { Brain, Calendar, TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowLeft, User, Clock, Sparkles, Zap, Activity, Mail, BarChart3, ChevronRight } from 'lucide-react';
-import Navbar from '../../components/Navbar';
-import CompanySidebar from '../../components/CompanySidebar';
 import AttendanceReport from './AttendanceReport';
 import DateRangePickerComponent from '../../components/DateRangePicker2';
 import { rangePresets } from '../../utils/constants';
@@ -232,11 +230,8 @@ export default function AIReportsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
-      <Navbar />
-      <CompanySidebar />
-
-      <main className="ml-64 mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div className="flex-1 overflow-y-auto">
+      <main className="mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50" style={{ marginLeft: '16rem' }}>
         <div className="max-w-7xl mx-auto">
           {/* Hero Banner Section */}
           <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">

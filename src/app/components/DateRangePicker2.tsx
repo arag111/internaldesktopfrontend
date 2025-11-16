@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DateRange, RangeKeyDict } from 'react-date-range';
 import { addDays, format } from 'date-fns';
 import 'react-date-range/dist/styles.css'; // main css file
@@ -18,6 +18,12 @@ export default function DateRangePickerComponent({
   rangePresets,
 }: Props) {
   const [showPicker, setShowPicker] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Fix hydration error by only rendering dates after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSelect = (ranges: RangeKeyDict) => {
     const { startDate, endDate } = ranges.selection;
@@ -36,7 +42,7 @@ export default function DateRangePickerComponent({
           onClick={() => setShowPicker(!showPicker)}
           className="!bg-gray-100 !text-gray-700 !text-sm !px-3 !py-2 !rounded !shadow !border !border-gray-300 whitespace-nowrap"
         >
-          {formatDate(selectedRange[0])} - {formatDate(selectedRange[1])}
+          {mounted ? `${formatDate(selectedRange[0])} - ${formatDate(selectedRange[1])}` : 'Loading...'}
         </button>
 
         {showPicker && (

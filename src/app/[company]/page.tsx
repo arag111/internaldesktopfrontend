@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
-import Navbar from '@/app/components/Navbar';
-import CompanySidebar from '@/app/components/CompanySidebar';
 import { baseUrl } from '@/app/utils/config';
 import moment from 'moment';
 import { io } from 'socket.io-client';
@@ -57,6 +55,23 @@ export default function CompanyDashboardPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [userStatuses, setUserStatuses] = useState<Record<string, UserStatus>>({});
+  const hasRestoredFromStorage = useRef(false);
+
+  // Initialize selectedUserId from localStorage on mount
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('selectedUserId');
+    if (storedUserId) {
+      setSelectedUserId(storedUserId);
+    }
+    hasRestoredFromStorage.current = true;
+  }, []);
+
+  // Save selectedUserId to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedUserId !== null) {
+      localStorage.setItem('selectedUserId', selectedUserId);
+    }
+  }, [selectedUserId]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -80,9 +95,6 @@ export default function CompanyDashboardPage() {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setAllUserStats(data);
-        if (!selectedUserId && data.length > 0) {
-          setSelectedUserId(data[0].user.id);
-        }
       } else {
         const userId = JSON.parse(atob(token.split('.')[1])).id;
         const { data } = await axios.get(
@@ -130,7 +142,7 @@ export default function CompanyDashboardPage() {
           avgProductivity: 0,
           activeDays: 0,
           totalUsers: allUserStats.length,
-          activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online').length,
+          activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online' || s.status === 'active').length,
           todayHours: 0,
           avgHoursPerUser: 0
         };
@@ -147,6 +159,7 @@ export default function CompanyDashboardPage() {
           const workingSeconds = (day.workingTimeInSeconds || 0) - (day.rejectedIdleTimeInSeconds || 0);
           const breakSeconds = day.breakTimeInSeconds || 0;
           const idleSeconds = day.idleTimeInSeconds || 0;
+          const rawWorkingSeconds = day.workingTimeInSeconds || 0;
 
           totalSeconds += workingSeconds;
           totalBreakSeconds += breakSeconds;
@@ -165,8 +178,10 @@ export default function CompanyDashboardPage() {
 
       const totalHours = Math.round((totalSeconds / 3600) * 10) / 10;
       const todayHours = Math.round((todaySeconds / 3600) * 10) / 10;
-      const productiveSeconds = totalSeconds - totalBreakSeconds - totalIdleSeconds;
-      const avgProductivity = totalSeconds > 0 ? Math.round((productiveSeconds / totalSeconds) * 100) : 0;
+      // Total time includes work, break, and idle time
+      const totalTimeAtDesk = totalSeconds + totalBreakSeconds + totalIdleSeconds;
+      // Productivity is the ratio of actual work time to total time at desk
+      const avgProductivity = totalTimeAtDesk > 0 ? Math.round((totalSeconds / totalTimeAtDesk) * 100) : 0;
       const avgHoursPerUser = allUserStats.length > 0 ? Math.round((totalHours / allUserStats.length) * 10) / 10 : 0;
 
       return {
@@ -174,7 +189,7 @@ export default function CompanyDashboardPage() {
         avgProductivity: Math.max(0, Math.min(100, avgProductivity)),
         activeDays: totalActiveDays,
         totalUsers: allUserStats.length,
-        activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online').length,
+        activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online' || s.status === 'active').length,
         todayHours,
         avgHoursPerUser
       };
@@ -226,18 +241,11 @@ export default function CompanyDashboardPage() {
   };
 
   return (
-    <div className="w-full h-screen flex flex-col bg-gray-100 text-[#075a96]">
-      <Navbar />
-
-      <div className="flex flex-1 overflow-hidden">
-        <CompanySidebar />
-        
-        {/* Dashboard Content */}
-        <main
-          className={`flex-1 overflow-y-auto mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50`}
-          style={{ marginLeft: '16rem' }}
-        >
-          {/* Hero Banner */}
+    <main
+      className={`flex-1 overflow-y-auto mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50`}
+      style={{ marginLeft: '16rem' }}
+    >
+      {/* Hero Banner */}
           <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
             <div className="flex items-start justify-between mb-5">
               <div className="flex items-center gap-3">
@@ -514,8 +522,6 @@ export default function CompanyDashboardPage() {
               </button>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+    </main>
   );
 }

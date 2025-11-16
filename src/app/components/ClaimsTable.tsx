@@ -8,6 +8,7 @@ import { Check, X, ChevronDown, Search, Clock, AlertCircle, CheckCircle, XCircle
 
 interface ClaimsTableProps {
     claims: any[];
+    setClaims: (claims: any[] | ((prev: any[]) => any[])) => void;
     selectedUserId: string | null;
     setSelectedUserId?: (id: string) => void;
     role: string | null;
@@ -22,6 +23,7 @@ interface ClaimsTableProps {
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
     claims,
+    setClaims,
     selectedUserId,
     setSelectedUserId,
     role,
@@ -33,14 +35,9 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
     summary = { total: 0, pending: 0, approved: 0, rejected: 0 },
     mlValue
 }) => {
-    const [localClaims, setLocalClaims] = useState(claims);
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [localSearchTerm, setLocalSearchTerm] = useState('');
     const userDropdownRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        setLocalClaims(claims);
-    }, [claims]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -60,6 +57,17 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
 
         const start = moment(startedAt);
         const end = moment(endedAt);
+
+        // Validate dates
+        if (!start.isValid() || !end.isValid()) {
+            return 'Invalid time';
+        }
+
+        // If end is before start, show error
+        if (end.isBefore(start)) {
+            return 'Invalid duration';
+        }
+
         const duration = moment.duration(end.diff(start));
 
         const hours = String(Math.floor(duration.asHours())).padStart(2, '0');
@@ -69,30 +77,49 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
         return `${hours}:${minutes}:${seconds}`;
     };
 
-    const handleStatusUpdate = async (claimId: string, eventId: string, status: string) => {
+    const handleStatusUpdate = async (claimId: number | string, eventId: number | string, status: string) => {
         if (role !== 'admin' && role !== 'manager') return;
 
         try {
+            // Ensure IDs are numbers
+            const activityId = typeof claimId === 'string' ? parseInt(claimId, 10) : claimId;
+            const idleEventId = typeof eventId === 'string' ? parseInt(eventId, 10) : eventId;
+
+            if (isNaN(activityId) || isNaN(idleEventId)) {
+                console.error('Invalid IDs:', { claimId, eventId, activityId, idleEventId });
+                console.error('Claim data sample:', claims[0]);
+                return;
+            }
+
+            console.log('Updating status:', { activityId, idleEventId, status });
+
             const token = localStorage.getItem('token');
-            await axios.put(
-                `${baseUrl}/idle/update/${claimId}/${eventId}`,
+            const response = await axios.put(
+                `${baseUrl}/idle/update/${activityId}/${idleEventId}`,
                 { status },
                 { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            setLocalClaims(prev =>
+            // Optimistic update - instant UI feedback
+            setClaims(prev =>
                 prev.map(claim => {
-                    if (claim._id !== claimId) return claim;
+                    const claimIdNum = typeof claim.id === 'string' ? parseInt(claim.id, 10) : claim.id;
+                    if (claimIdNum !== activityId) return claim;
                     return {
                         ...claim,
-                        idleEvents: claim.idleEvents.map((event: any) =>
-                            event._id === eventId ? { ...event, status } : event
-                        )
+                        idleEvents: claim.idleEvents.map((event: any) => {
+                            const eventIdNum = typeof event.id === 'string' ? parseInt(event.id, 10) : event.id;
+                            return eventIdNum === idleEventId ? { ...event, status } : event;
+                        })
                     };
                 })
             );
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error updating claim status', error);
+            if (error.response) {
+                console.error('Error response:', error.response.data);
+                console.error('Error status:', error.response.status);
+            }
         }
     };
 
@@ -102,7 +129,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
         return false;
     };
 
-    const filteredClaims = localClaims.filter((claim) => !selectedUserId || claim.userId === selectedUserId);
+    const filteredClaims = claims.filter((claim) => !selectedUserId || String(claim.userId) === selectedUserId);
 
     return (
         <main
@@ -137,7 +164,12 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                     onClick={() => setShowUserDropdown(!showUserDropdown)}
                                     className="group relative flex items-center justify-between px-3 py-1.5 h-[38px] w-80 bg-white text-black rounded-md text-sm font-medium hover:bg-white border border-slate-200 hover:border-slate-300 transition-colors duration-200"
                                 >
-                                    <span className="truncate">Select User</span>
+                                    <span className="truncate">
+                                        {selectedUserId
+                                            ? allUserStats.find(({ user }) => String(user.id) === selectedUserId)?.user.name || 'Select User'
+                                            : 'Select User'
+                                        }
+                                    </span>
                                     <ChevronDown className={`w-4 h-4 text-black transition-transform duration-200 flex-shrink-0 ${showUserDropdown ? 'transform rotate-180' : ''}`} />
                                 </button>
 
@@ -179,12 +211,12 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                                 return (
                                                     <div className="bg-white">
                                                         {filteredUsers.map(({ user }) => {
-                                                            const isSelected = user.id === selectedUserId;
+                                                            const isSelected = String(user.id) === selectedUserId;
                                                             return (
                                                                 <button
                                                                     key={user.id}
                                                                     onClick={() => {
-                                                                        setSelectedUserId(user.id);
+                                                                        setSelectedUserId(String(user.id));
                                                                         setShowUserDropdown(false);
                                                                         setLocalSearchTerm('');
                                                                     }}
@@ -268,6 +300,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Ended At</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Duration</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Reason</th>
                                 {(role === 'admin' || role === 'manager') && (
                                     <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Actions</th>
                                 )}
@@ -276,7 +309,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                         <tbody className="bg-white text-slate-700 text-sm divide-y divide-slate-200">
                             {filteredClaims.length === 0 ? (
                                 <tr>
-                                    <td colSpan={(role === 'admin' || role === 'manager') ? 6 : 5} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={(role === 'admin' || role === 'manager') ? 7 : 6} className="px-6 py-12 text-center text-slate-500">
                                         <div className="flex flex-col items-center gap-2">
                                             <AlertCircle className="w-8 h-8 text-slate-400" />
                                             <p className="text-sm font-medium">No claims found</p>
@@ -318,6 +351,9 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                                         {event.status?.charAt(0).toUpperCase() + event.status?.slice(1)}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-4 whitespace-normal max-w-xs">
+                                                    <span className="text-sm text-slate-700">{event.reason || 'N/A'}</span>
+                                                </td>
                                                 {(role === 'admin' || role === 'manager') && (
                                                     <td className="px-6 py-4">
                                                         {canAct(event.status) ? (
@@ -325,14 +361,14 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                                                 <button
                                                                     className="w-8 h-8 rounded-md bg-green-100 hover:bg-green-200 text-green-600 hover:text-green-700 flex items-center justify-center transition-colors duration-200"
                                                                     title="Approve"
-                                                                    onClick={() => handleStatusUpdate(claim._id, event._id, 'approved')}
+                                                                    onClick={() => handleStatusUpdate(claim.id, event.id, 'approved')}
                                                                 >
                                                                     <Check size={16} />
                                                                 </button>
                                                                 <button
                                                                     className="w-8 h-8 rounded-md bg-red-100 hover:bg-red-200 text-red-600 hover:text-red-700 flex items-center justify-center transition-colors duration-200"
                                                                     title="Reject"
-                                                                    onClick={() => handleStatusUpdate(claim._id, event._id, 'rejected')}
+                                                                    onClick={() => handleStatusUpdate(claim.id, event.id, 'rejected')}
                                                                 >
                                                                     <X size={16} />
                                                                 </button>

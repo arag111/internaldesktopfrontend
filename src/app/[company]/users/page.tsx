@@ -2,9 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
-import Navbar from '@/app/components/Navbar';
 import { baseUrl } from '@/app/utils/config';
-import CompanySidebar from '@/app/components/CompanySidebar';
 import { Users, UserPlus, Edit, Trash2, Search, Save, X, CheckCircle, XCircle, AlertCircle, Shield, Clock, Brain, Mail, User, Lock, Building2, Sparkles, Eye, EyeOff, ChevronDown } from 'lucide-react';
 
 interface User {
@@ -164,9 +162,14 @@ export default function UserManagementPage() {
     if (!formData.email) {
       errors.email = 'Email is required';
     }
+    // ✅ FIX: Email format validation
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
     if (!formData.role) {
       errors.role = 'Role is required';
     }
+    // ✅ FIX: Password only required when creating new user (not when editing)
     if (!selectedUser && !formData.password) {
       errors.password = 'Password is required';
     }
@@ -388,13 +391,8 @@ export default function UserManagementPage() {
     : 0;
 
   return (
-    <div className="w-full h-screen flex flex-col bg-gray-100 text-[#075a96]">
-      <Navbar />
-
-      <div className="flex flex-1 overflow-hidden">
-        <CompanySidebar />
-
-        <div className="ml-64 mt-16 flex-1 p-8 overflow-y-auto bg-gradient-to-br from-gray-50 via-white to-gray-50">
+    <div className="flex-1 overflow-y-auto">
+      <div className="mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50" style={{ marginLeft: '16rem' }}>
           {/* Hero Banner Section */}
           <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
             <div className="flex items-center justify-between">
@@ -448,6 +446,172 @@ export default function UserManagementPage() {
             </div>
           </div>
 
+          {/* Users Table Section */}
+          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-200 bg-white">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+                <div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-0.5">
+                    Team Members ({filteredUsers.length})
+                  </h3>
+                  <p className="text-xs text-slate-500">Manage and view all team members</p>
+                </div>
+                {company && company.subscription && users.length >= company.subscription.userLimit && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                    <span className="text-xs font-medium text-red-800">User limit reached - Upgrade plan to add more</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Search and Filter Bar */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex-1 min-w-[200px]">
+                  <input
+                    type="text"
+                    placeholder="Search users by name, username, or email..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-700">Filter by Role:</span>
+                  <div className="flex gap-1.5">
+                    {['all', 'admin', 'manager', 'user'].map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => setFilterRole(role)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 capitalize ${
+                          filterRole === role
+                            ? 'bg-blue-600 text-white'
+                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200'
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1000px] border-collapse">
+                <thead className="bg-slate-50 text-slate-900 sticky top-0 z-10">
+                  <tr>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Member</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Username</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Role</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Job Role</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Manager</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Track Type</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Teams</th>
+                    <th className="px-4 py-3 font-semibold text-xs text-center border-b border-slate-200 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white text-slate-700 text-sm">
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
+                        <div className="flex flex-col items-center gap-3">
+                          <Users className="w-10 h-10 text-slate-400" />
+                          <p className="text-base font-semibold">No users found</p>
+                          <p className="text-xs text-slate-500">Try adjusting your search or filter criteria</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors duration-200"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xs font-semibold border border-blue-200">
+                              {user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="font-semibold text-slate-900 text-sm">{user.name || user.username}</span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 text-sm">{user.username}</td>
+                        <td className="px-4 py-3 text-slate-700 text-sm" title={user.email}>
+                          <span className="max-w-[200px] block truncate">
+                            {user.email}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
+                            user.role === 'admin'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : user.role === 'manager'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 text-sm" title={user.jobRole || 'Not specified'}>
+                          {user.jobRole || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 text-sm" title={user.manager || 'Not specified'}>
+                          {user.manager || '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
+                            user.tracktype === '24x7'
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          }`}>
+                            {user.tracktype === '24x7' ? '24x7' : 'Punch In/Out'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-700 text-sm">
+                          {user.teams.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {user.teams.slice(0, 2).map((team, idx) => (
+                                <span key={idx} className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-xs border border-slate-200">
+                                  {team}
+                                </span>
+                              ))}
+                              {user.teams.length > 2 && (
+                                <span className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-xs border border-slate-200">
+                                  +{user.teams.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            '-'
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex gap-1.5 justify-center">
+                            <button
+                              onClick={() => handleEdit(user)}
+                              className="p-1.5 rounded-md hover:bg-blue-50 text-slate-600 hover:text-blue-600 flex items-center justify-center transition-colors duration-200"
+                              title="Edit user details"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(user.id, user.name || user.username)}
+                              className="p-1.5 rounded-md hover:bg-red-50 text-slate-600 hover:text-red-600 flex items-center justify-center transition-colors duration-200"
+                              title="Delete user"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
           {/* User Form Section */}
           <div ref={formSectionRef} className="bg-white rounded-lg p-6 mb-8 border border-slate-200">
             <div className="flex items-center justify-between mb-6">
@@ -465,30 +629,36 @@ export default function UserManagementPage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <button 
-                  onClick={handleSubmit} 
-                  className="flex items-center gap-2 px-6 py-2.5 bg-slate-100 text-slate-900 rounded-lg hover:bg-slate-200 border border-slate-200 hover:border-slate-300 transition-colors duration-200 font-medium text-sm"
+                <button
+                  onClick={handleSubmit}
+                  disabled={!selectedUser && company && users.length >= company.subscription.userLimit}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg border transition-colors duration-200 font-medium text-sm ${
+                    !selectedUser && company && users.length >= company.subscription.userLimit
+                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
+                      : 'bg-slate-100 text-slate-900 border-slate-200 hover:bg-slate-200 hover:border-slate-300'
+                  }`}
+                  title={!selectedUser && company && users.length >= company.subscription.userLimit ? 'User limit reached - Please upgrade your plan' : ''}
                 >
-                  <Save className="w-4 h-4 text-slate-900" />
+                  <Save className="w-4 h-4" />
                   <span>{selectedUser ? 'Update Member' : 'Add Member'}</span>
                 </button>
                 {selectedUser && (
                   <button
                     onClick={() => {
                       setSelectedUser(null);
-                      setFormData({ 
-                        name: '', 
-                        username: '', 
-                        email: '', 
-                        password: '', 
-                        role: '', 
+                      setFormData({
+                        name: '',
+                        username: '',
+                        email: '',
+                        password: '',
+                        role: '',
                         jobRole: '',
                         productiveActivities: [],
                         unproductiveActivities: [],
-                        manager: '', 
-                        desktop: '', 
-                        teams: '', 
-                        tracktype: 'punchin-punchout' 
+                        manager: '',
+                        desktop: '',
+                        teams: '',
+                        tracktype: 'punchin-punchout'
                       });
                       setFieldErrors({});
                     }}
@@ -606,61 +776,71 @@ export default function UserManagementPage() {
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">
                       Role <span className="text-red-500">*</span>
                     </label>
-                  <input
-                    name="role"
-                    placeholder="Enter role (admin, manager, user)"
-                    value={formData.role}
-                    onChange={handleInputChange}
-                      className={`w-full px-3 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] box-border ${fieldErrors.role ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
-                      style={{ paddingTop: '0.625rem', paddingBottom: '0.625rem', lineHeight: '1.5', display: 'block' }}
-                    required
-                  />
+                  <div className="relative">
+                    <select
+                      name="role"
+                      value={formData.role}
+                      onChange={handleInputChange}
+                        className={`w-full px-3 py-2.5 pr-8 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 appearance-none cursor-pointer text-slate-900 text-sm h-[42px] leading-[1.5] box-border ${fieldErrors.role ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
+                        style={{ paddingTop: '0.625rem', paddingBottom: '0.75rem', lineHeight: '1.5', display: 'block' }}
+                      required
+                    >
+                      <option value="">Select Role</option>
+                      <option value="admin">Admin</option>
+                      <option value="manager">Manager</option>
+                      <option value="user">User</option>
+                    </select>
+                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
                   {fieldErrors.role && (
                     <p className="text-red-500 text-xs mt-1">{fieldErrors.role}</p>
                   )}
                 </div>
                   <div className="relative flex flex-col">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Job Role (Optional)</label>
-                    <select
-                      name="jobRole"
-                      value={formData.jobRole}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer text-slate-900 text-sm h-[42px] leading-[1.5] box-border"
-                      style={{ paddingTop: '0.625rem', paddingBottom: '0.75rem', lineHeight: '1.5', display: 'block' }}
-                    >
-                      <option value="">Select Job Role</option>
-                      <optgroup label="IT Department">
-                        <option value="Software Developer">Software Developer</option>
-                        <option value="DevOps Engineer">DevOps Engineer</option>
-                        <option value="QA/Test Engineer">QA/Test Engineer</option>
-                        <option value="IT Support">IT Support</option>
-                        <option value="System Administrator">System Administrator</option>
-                        <option value="Data Engineer">Data Engineer</option>
-                        <option value="Security Analyst">Security Analyst</option>
-                      </optgroup>
-                      <optgroup label="Finance Department">
-                        <option value="Accountant">Accountant</option>
-                        <option value="Financial Analyst">Financial Analyst</option>
-                        <option value="Accounts Payable/Receivable">Accounts Payable/Receivable</option>
-                        <option value="Controller">Controller</option>
-                        <option value="Bookkeeper">Bookkeeper</option>
-                        <option value="Tax Specialist">Tax Specialist</option>
-                      </optgroup>
-                      <optgroup label="Marketing Department">
-                        <option value="Marketing">Marketing</option>
-                        <option value="Digital Marketing Specialist">Digital Marketing Specialist</option>
-                        <option value="Content Marketing Manager">Content Marketing Manager</option>
-                        <option value="Social Media Manager">Social Media Manager</option>
-                        <option value="Marketing Analyst">Marketing Analyst</option>
-                        <option value="Brand Manager">Brand Manager</option>
-                      </optgroup>
-                      <optgroup label="Other Departments">
-                        <option value="Designer">Designer</option>
-                        <option value="Manager">Manager</option>
-                        <option value="Sales">Sales</option>
-                        <option value="HR">HR</option>
-                      </optgroup>
-                    </select>
+                    <div className="relative">
+                      <select
+                        name="jobRole"
+                        value={formData.jobRole}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 pr-8 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer text-slate-900 text-sm h-[42px] leading-[1.5] box-border"
+                        style={{ paddingTop: '0.625rem', paddingBottom: '0.75rem', lineHeight: '1.5', display: 'block' }}
+                      >
+                        <option value="">Select Job Role</option>
+                        <optgroup label="IT Department">
+                          <option value="Software Developer">Software Developer</option>
+                          <option value="DevOps Engineer">DevOps Engineer</option>
+                          <option value="QA/Test Engineer">QA/Test Engineer</option>
+                          <option value="IT Support">IT Support</option>
+                          <option value="System Administrator">System Administrator</option>
+                          <option value="Data Engineer">Data Engineer</option>
+                          <option value="Security Analyst">Security Analyst</option>
+                        </optgroup>
+                        <optgroup label="Finance Department">
+                          <option value="Accountant">Accountant</option>
+                          <option value="Financial Analyst">Financial Analyst</option>
+                          <option value="Accounts Payable/Receivable">Accounts Payable/Receivable</option>
+                          <option value="Controller">Controller</option>
+                          <option value="Bookkeeper">Bookkeeper</option>
+                          <option value="Tax Specialist">Tax Specialist</option>
+                        </optgroup>
+                        <optgroup label="Marketing Department">
+                          <option value="Marketing">Marketing</option>
+                          <option value="Digital Marketing Specialist">Digital Marketing Specialist</option>
+                          <option value="Content Marketing Manager">Content Marketing Manager</option>
+                          <option value="Social Media Manager">Social Media Manager</option>
+                          <option value="Marketing Analyst">Marketing Analyst</option>
+                          <option value="Brand Manager">Brand Manager</option>
+                        </optgroup>
+                        <optgroup label="Other Departments">
+                          <option value="Designer">Designer</option>
+                          <option value="Manager">Manager</option>
+                          <option value="Sales">Sales</option>
+                          <option value="HR">HR</option>
+                        </optgroup>
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    </div>
                 </div>
                 <div className="relative flex flex-col">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Manager</label>
@@ -694,17 +874,20 @@ export default function UserManagementPage() {
                   <h3 className="text-sm font-semibold text-slate-900">Tracking Settings</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="relative">
+                  <div className="relative flex flex-col">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Track Type</label>
-                    <select
-                      name="tracktype"
-                      value={formData.tracktype}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer font-medium text-slate-900 text-sm h-[38px] leading-[1.5]"
-                    >
-                      <option value="punchin-punchout">Punch In - Punch Out</option>
-                      <option value="24x7">24x7 Tracking</option>
-                    </select>
+                    <div className="relative">
+                      <select
+                        name="tracktype"
+                        value={formData.tracktype}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2.5 pr-8 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer font-medium text-slate-900 text-sm h-[38px] leading-[1.5]"
+                      >
+                        <option value="punchin-punchout">Punch In - Punch Out</option>
+                        <option value="24x7">24x7 Tracking</option>
+                      </select>
+                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    </div>
                 </div>
                 <div className="relative">
                     <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Desktop</label>
@@ -813,164 +996,7 @@ export default function UserManagementPage() {
               </div>
             )}
           </div>
-
-          {/* Users Table Section */}
-          <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-            <div className="p-5 border-b border-slate-200 bg-white">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-0.5">
-                    Team Members ({filteredUsers.length})
-                  </h3>
-                  <p className="text-xs text-slate-500">Manage and view all team members</p>
-                </div>
-                {company && company.subscription && users.length >= company.subscription.userLimit && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-600" />
-                    <span className="text-xs font-medium text-red-800">User limit reached - Upgrade plan to add more</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Search and Filter Bar */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="relative flex-1 min-w-[200px]">
-                  <input
-                    type="text"
-                    placeholder="Search users by name, username, or email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 text-sm"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-slate-700">Filter by Role:</span>
-                  <div className="flex gap-1.5">
-                    {['all', 'admin', 'manager', 'user'].map((role) => (
-                      <button
-                        key={role}
-                        onClick={() => setFilterRole(role)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 capitalize ${
-                          filterRole === role
-                            ? 'bg-blue-600 text-white'
-                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-slate-200'
-                        }`}
-                      >
-                        {role}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1000px] border-collapse">
-                <thead className="bg-slate-50 text-slate-900 sticky top-0 z-10">
-                  <tr>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Member</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Username</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Role</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Track Type</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Desktop</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Teams</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-center border-b border-slate-200 uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white text-slate-700 text-sm">
-                  {filteredUsers.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
-                        <div className="flex flex-col items-center gap-3">
-                          <Users className="w-10 h-10 text-slate-400" />
-                          <p className="text-base font-semibold">No users found</p>
-                          <p className="text-xs text-slate-500">Try adjusting your search or filter criteria</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredUsers.map((user) => (
-                      <tr 
-                        key={user.id} 
-                        className="border-b border-slate-200 hover:bg-slate-50 transition-colors duration-200"
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xs font-semibold border border-blue-200">
-                              {user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
-                            </div>
-                            <span className="font-semibold text-slate-900 text-sm">{user.name || user.username}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-slate-700 text-sm">{user.username}</td>
-                        <td className="px-4 py-3 text-slate-700 text-sm">{user.email}</td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
-                            user.role === 'admin' 
-                              ? 'bg-blue-50 text-blue-700 border-blue-200' 
-                              : user.role === 'manager'
-                              ? 'bg-purple-50 text-purple-700 border-purple-200'
-                              : 'bg-slate-50 text-slate-700 border-slate-200'
-                          }`}>
-                            {user.role}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
-                            user.tracktype === '24x7' 
-                              ? 'bg-purple-50 text-purple-700 border-purple-200' 
-                              : 'bg-blue-50 text-blue-700 border-blue-200'
-                          }`}>
-                            {user.tracktype === '24x7' ? '24x7' : 'Punch In/Out'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-700 text-sm">{user.desktop || '-'}</td>
-                        <td className="px-4 py-3 text-slate-700 text-sm">
-                          {user.teams.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {user.teams.slice(0, 2).map((team, idx) => (
-                                <span key={idx} className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-xs border border-slate-200">
-                                  {team}
-                                </span>
-                              ))}
-                              {user.teams.length > 2 && (
-                                <span className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-xs border border-slate-200">
-                                  +{user.teams.length - 2}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            '-'
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1.5 justify-center">
-                            <button
-                              onClick={() => handleEdit(user)}
-                              className=" text-white flex items-center justify-center transition-colors duration-200"
-                              title="Edit User"
-                            >
-                              <Edit className="w-5 h-5 text-black" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(user.id, user.name || user.username)}
-                              className=" text-white flex items-center justify-center transition-colors duration-200"
-                              title="Delete User"
-                            >
-                              <Trash2 className="w-5 h-5 text-black" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
-      </div>
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmation.show && (

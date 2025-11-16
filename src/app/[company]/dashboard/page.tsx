@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo, useCallback, memo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, memo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
@@ -26,8 +26,6 @@ import {
   PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { baseUrl } from '@/app/utils/config';
-import Navbar from '@/app/components/Navbar';
-import CompanySidebar from '@/app/components/CompanySidebar';
 
 const theme = createTheme({
   palette: {
@@ -147,12 +145,27 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
+  const hasRestoredFromStorage = useRef(false);
 
-  // Initialize role on mount
+  // Initialize role and selectedUserId from localStorage on mount
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
     setRole(storedRole);
+
+    // Restore selected user from localStorage
+    const storedUserId = localStorage.getItem('selectedUserId');
+    if (storedUserId) {
+      setSelectedUserId(parseInt(storedUserId));
+    }
+    hasRestoredFromStorage.current = true;
   }, []);
+
+  // Save selectedUserId to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedUserId !== null) {
+      localStorage.setItem('selectedUserId', selectedUserId.toString());
+    }
+  }, [selectedUserId]);
 
   // Fetch data when range changes (not when selectedUserId changes)
   useEffect(() => {
@@ -189,10 +202,6 @@ export default function DashboardPage() {
           setAllUserStats(statsResponse.data);
           // Set initial user statuses
           setUserStatuses(statusesResponse.data);
-          // Only set selectedUserId if it's not already set
-          if (selectedUserId === null && statsResponse.data.length > 0) {
-            setSelectedUserId(statsResponse.data[0].user.id);
-          }
         } else {
           const userId = JSON.parse(atob(token.split('.')[1])).id;
           const { data } = await axios.get(
@@ -212,9 +221,9 @@ export default function DashboardPage() {
     fetchData();
   }, [router, selectedRange]);
 
-  // Initialize selectedUserId from allUserStats if needed
+  // Initialize selectedUserId from allUserStats if needed (only if not restored from localStorage)
   useEffect(() => {
-    if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0) {
+    if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0 && hasRestoredFromStorage.current) {
       setSelectedUserId(allUserStats[0].user.id);
     }
   }, [allUserStats, role, selectedUserId]);
@@ -302,9 +311,9 @@ export default function DashboardPage() {
       });
 
       const totalHours = Math.round((totalSeconds / 3600) * 10) / 10;
-      // Calculate productivity: (working - breaks - idle) / working * 100
-      const productiveSeconds = totalSeconds - totalBreakSeconds - totalIdleSeconds;
-      const avgProductivity = totalSeconds > 0 ? Math.round((productiveSeconds / totalSeconds) * 100) : 0;
+      // Calculate productivity: working / (working + breaks + idle) * 100
+      const totalTimeAtDesk = totalSeconds + totalBreakSeconds + totalIdleSeconds;
+      const avgProductivity = totalTimeAtDesk > 0 ? Math.round((totalSeconds / totalTimeAtDesk) * 100) : 0;
 
       return {
         totalHours,
@@ -312,7 +321,7 @@ export default function DashboardPage() {
         activeDays: totalActiveDays,
         peakHours: '0',
         totalUsers: allUserStats.length,
-        activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online').length
+        activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online' || s.status === 'active').length
       };
     }
 
@@ -348,8 +357,8 @@ export default function DashboardPage() {
     });
 
     const totalHours = Math.round((totalSeconds / 3600) * 10) / 10;
-    const productiveSeconds = totalSeconds - totalBreakSeconds - totalIdleSeconds;
-    const avgProductivity = totalSeconds > 0 ? Math.round((productiveSeconds / totalSeconds) * 100) : 0;
+    const totalTimeAtDesk = totalSeconds + totalBreakSeconds + totalIdleSeconds;
+    const avgProductivity = totalTimeAtDesk > 0 ? Math.round((totalSeconds / totalTimeAtDesk) * 100) : 0;
     const peakHours = (peakSeconds / 3600).toFixed(1);
 
     return {
@@ -358,7 +367,7 @@ export default function DashboardPage() {
       activeDays,
       peakHours,
       totalUsers: allUserStats.length,
-      activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online').length
+      activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online' || s.status === 'active').length
     };
   }, [role, currentStats, allUserStats, userStatuses]);
 
@@ -367,8 +376,8 @@ export default function DashboardPage() {
     const workingSeconds = day.workingTimeInSeconds || 0;
     const breakSeconds = day.breakTimeInSeconds || 0;
     const idleSeconds = day.idleTimeInSeconds || 0;
-    const productiveSeconds = workingSeconds - breakSeconds - idleSeconds;
-    const productivity = workingSeconds > 0 ? Math.round((productiveSeconds / workingSeconds) * 100) : 0;
+    const totalTimeAtDesk = workingSeconds + breakSeconds + idleSeconds;
+    const productivity = totalTimeAtDesk > 0 ? Math.round((workingSeconds / totalTimeAtDesk) * 100) : 0;
 
     return {
       date: format(new Date(day.date), 'MMM dd'),
@@ -462,17 +471,6 @@ export default function DashboardPage() {
   return (
     <ThemeProvider theme={theme}>
       <Box sx={{
-        minHeight: '100vh',
-        backgroundColor: '#fafafa',
-        display: 'flex',
-        flexDirection: 'column'
-      }}>
-        <Navbar />
-
-        <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <CompanySidebar />
-
-          <Box sx={{
             flex: 1,
             overflow: 'auto',
             p: { xs: 3, sm: 4, md: 5 },
@@ -824,7 +822,7 @@ export default function DashboardPage() {
                           <List>
                             {allUserStats.slice(0, 5).map((userStat, index) => {
                               const status = userStatuses[userStat.user.id];
-                              const isOnline = status?.status === 'online';
+                              const isOnline = status?.status === 'online' || status?.status === 'active';
 
                               return (
                                 <ListItem
@@ -895,8 +893,8 @@ export default function DashboardPage() {
                                         const working = day.workingTimeInSeconds || 0;
                                         const breaks = day.breakTimeInSeconds || 0;
                                         const idle = day.idleTimeInSeconds || 0;
-                                        const productive = working - breaks - idle;
-                                        const productivity = working > 0 ? Math.round((productive / working) * 100) : 0;
+                                        const totalTimeAtDesk = working + breaks + idle;
+                                        const productivity = totalTimeAtDesk > 0 ? Math.round((working / totalTimeAtDesk) * 100) : 0;
                                         return `${Math.max(0, Math.min(100, productivity))}%`;
                                       })()}
                                     </Typography>
@@ -912,8 +910,6 @@ export default function DashboardPage() {
                 )}
               </Grid>
             </Container>
-          </Box>
-        </Box>
       </Box>
 
       <style jsx global>{`

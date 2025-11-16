@@ -3,8 +3,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { io, Socket } from 'socket.io-client';
-import Navbar from '@/app/components/Navbar';
-import CompanySidebar from "@/app/components/CompanySidebar";
 import axios from 'axios';
 import { format } from 'date-fns';
 import { baseUrl } from '@/app/utils/config';
@@ -12,6 +10,7 @@ import DateRangePickerComponent from '@/app/components/DateRangePicker2';
 import ClaimsTable from '@/app/components/ClaimsTable';
 import { rangePresets } from '@/app/utils/constants';
 import { ChevronDown, Search, Check, X } from 'lucide-react';
+import { toISTDate } from '@/app/utils/timezone';
 
 export default function ClaimsPage() {
     const router = useRouter();
@@ -26,12 +25,27 @@ export default function ClaimsPage() {
     const [localSearchTerm, setLocalSearchTerm] = useState('');
     const [socket, setSocket] = useState<Socket | null>(null);
     const userDropdownRef = useRef<HTMLDivElement>(null);
+    const hasRestoredFromStorage = useRef(false);
 
-    // Initialize role on mount
+    // Initialize role and selectedUserId from localStorage on mount
     useEffect(() => {
         const storedRole = localStorage.getItem('role');
         setRole(storedRole);
+
+        // Restore selected user from localStorage
+        const storedUserId = localStorage.getItem('selectedUserId');
+        if (storedUserId) {
+            setSelectedUserId(storedUserId);
+        }
+        hasRestoredFromStorage.current = true;
     }, []);
+
+    // Save selectedUserId to localStorage whenever it changes
+    useEffect(() => {
+        if (selectedUserId !== null) {
+            localStorage.setItem('selectedUserId', selectedUserId);
+        }
+    }, [selectedUserId]);
 
     // Fetch data when range changes (not when selectedUserId changes)
     useEffect(() => {
@@ -44,8 +58,9 @@ export default function ClaimsPage() {
 
         const fetchData = async () => {
             try {
+                // FIXED: Apply IST timezone conversion before formatting dates
                 const [start, end] = selectedRange.map((date) =>
-                    format(date, 'yyyy-MM-dd')
+                    format(toISTDate(date), 'yyyy-MM-dd')
                 );
                 const userId = JSON.parse(atob(token.split('.')[1])).id;
                 const url =
@@ -57,10 +72,6 @@ export default function ClaimsPage() {
                 });
                 if (storedRole === 'admin' || storedRole === 'manager') {
                     setAllUserStats(data);
-                    // Only set selectedUserId if it's not already set
-                    if (selectedUserId === null && data.length > 0) {
-                        setSelectedUserId(data[0].user.id);
-                    }
                     const filteredActivities = data.flatMap((userObj: { activities: any[]; user: any; }) => {
                         return userObj.activities
                             .filter(activity => activity.idleEvents && activity.idleEvents.length > 0)
@@ -79,12 +90,17 @@ export default function ClaimsPage() {
         };
 
         fetchData();
+
+        // Auto-refresh every 5 seconds to show new idle claims
+        const intervalId = setInterval(fetchData, 5000);
+
+        return () => clearInterval(intervalId);
     }, [router, selectedRange]);
 
-    // Initialize selectedUserId from allUserStats if needed
+    // Initialize selectedUserId from allUserStats if needed (only if not restored from localStorage)
     useEffect(() => {
-        if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0) {
-            setSelectedUserId(allUserStats[0].user.id);
+        if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0 && hasRestoredFromStorage.current) {
+            setSelectedUserId(String(allUserStats[0].user.id));
         }
     }, [allUserStats, role, selectedUserId]);
 
@@ -144,7 +160,7 @@ export default function ClaimsPage() {
     
     // Memoize summary calculation
     const summary = useMemo(() => {
-        const filteredClaims = claims.filter((claim) => !selectedUserId || claim.userId === selectedUserId);
+        const filteredClaims = claims.filter((claim) => !selectedUserId || String(claim.userId) === selectedUserId);
         const allEvents = filteredClaims.flatMap(claim => claim.idleEvents || []);
         return {
             total: allEvents.length,
@@ -155,25 +171,18 @@ export default function ClaimsPage() {
     }, [claims, selectedUserId]);
 
     return (
-        <div className="w-full h-screen flex flex-col bg-gray-100 text-[#075a96]">
-            <Navbar />
-
-            <div className="flex flex-1 overflow-hidden">
-                <CompanySidebar />
-                <ClaimsTable
-                    claims={claims}
-                    role={role}
-                    selectedUserId={selectedUserId}
-                    setSelectedUserId={handleSetSelectedUserId}
-                    setSelectedRange={handleSetSelectedRange}
-                    selectedRange={selectedRange}
-                    rangePresets={rangePresets}
-                    allUserStats={allUserStats}
-                    userStatuses={userStatuses}
-                    summary={summary}
-                    mlValue={mlValue} />
-
-            </div>
-        </div>
+        <ClaimsTable
+            claims={claims}
+            setClaims={setClaims}
+            role={role}
+            selectedUserId={selectedUserId}
+            setSelectedUserId={handleSetSelectedUserId}
+            setSelectedRange={handleSetSelectedRange}
+            selectedRange={selectedRange}
+            rangePresets={rangePresets}
+            allUserStats={allUserStats}
+            userStatuses={userStatuses}
+            summary={summary}
+            mlValue={mlValue} />
     );
 }

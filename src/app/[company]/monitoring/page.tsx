@@ -5,9 +5,8 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import ScreenshotGallery from '@/app/components/ScreenshotGallery';
 import { baseUrl } from '@/app/utils/config';
-import Navbar from '@/app/components/Navbar';
-import CompanySidebar from "@/app/components/CompanySidebar";
 import { Calendar, Users as UsersIcon, BarChart3, RefreshCw, ChevronDown } from 'lucide-react';
+import { datetimeLocalToISO, ISOToDatetimeLocal } from '@/app/utils/timezone';
 
 interface Screenshot {
   _id: string;
@@ -42,11 +41,12 @@ export default function MonitoringPage() {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
 
+  // ✅ FIX: Properly format for datetime-local input (keeps local time)
   const [startDateTime, setStartDateTime] = useState<string>(
-    todayStart.toISOString().slice(0, 16)
+    ISOToDatetimeLocal(todayStart.toISOString())
   );
   const [endDateTime, setEndDateTime] = useState<string>(
-    todayEnd.toISOString().slice(0, 16)
+    ISOToDatetimeLocal(todayEnd.toISOString())
   );
 
   const router = useRouter();
@@ -80,10 +80,14 @@ export default function MonitoringPage() {
     const token = localStorage.getItem('token');
     if (!token || !startDateTime || !endDateTime) return;
 
+    // ✅ FIX: Convert datetime-local to ISO (UTC) before sending to API
+    const startISO = datetimeLocalToISO(startDateTime);
+    const endISO = datetimeLocalToISO(endDateTime);
+
     try {
       if (role === 'admin' || role === 'manager') {
         const { data } = await axios.get(
-          `${baseUrl}/api/screenshots/all-in-range?startDate=${startDateTime}&endDate=${endDateTime}`,
+          `${baseUrl}/api/screenshots/all-in-range?startDate=${startISO}&endDate=${endISO}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setUserScreenshots(data);
@@ -93,7 +97,7 @@ export default function MonitoringPage() {
         }
       } else {
         const { data } = await axios.get(
-          `${baseUrl}/api/screenshots/range?startDate=${startDateTime}&endDate=${endDateTime}`,
+          `${baseUrl}/api/screenshots/range?startDate=${startISO}&endDate=${endISO}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setScreenshots(data.screenshots || []);
@@ -113,14 +117,8 @@ export default function MonitoringPage() {
   );
 
   return (
-    <>
-      <div className="w-full h-screen flex flex-col bg-gray-100 text-[#075a96]">
-        <Navbar />
-    
-        <div className="flex flex-1 overflow-hidden">
-          <CompanySidebar />
-
-          <main className="flex-1 ml-64 mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto">
+      <main className="mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50" style={{ marginLeft: '16rem' }}>
             {/* Hero Banner Section */}
             <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
               <div className="flex items-start justify-between mb-5">
@@ -246,8 +244,6 @@ export default function MonitoringPage() {
               <ScreenshotGallery screenshots={currentUserShots} />
             </div>
           </main>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }
