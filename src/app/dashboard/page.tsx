@@ -28,6 +28,7 @@ import {
 import { baseUrl } from '@/app/utils/config';
 import Navbar from '@/app/components/Navbar';
 import Sidebar from '@/app/components/Sidebar';
+import WhosInOutWidget from '@/app/components/WhosInOutWidget';
 
 const socket = io(baseUrl);
 
@@ -568,9 +569,9 @@ export default function DashboardPage() {
               </Grid>
 
               {/* Recent Activity */}
-              <Grid container spacing={3}>
-                {(role === 'admin' || role === 'manager') && (
-                  <Grid size={12}>
+              {(role === 'admin' || role === 'manager') && (
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 8 }}>
                     <Fade in={!loading} timeout={900}>
                       <Card>
                         <CardContent>
@@ -656,8 +657,15 @@ export default function DashboardPage() {
                       </Card>
                     </Fade>
                   </Grid>
-                )}
-              </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Fade in={!loading} timeout={900}>
+                      <Box>
+                        <WhosInOutWidget />
+                      </Box>
+                    </Fade>
+                  </Grid>
+                </Grid>
+              )}
             </Container>
           </Box>
         </Box>
