@@ -20,6 +20,8 @@ import {
   Refresh, DateRange, Assessment, WorkHistory, Speed,
   Visibility, Download, FilterList, Today, ViewWeek, CalendarMonth
 } from '@mui/icons-material';
+import WhosInOutWidget from '@/app/components/WhosInOutWidget';
+import RecentTimeClaimsWidget from '@/app/components/RecentTimeClaimsWidget';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
   ResponsiveContainer, CartesianGrid, Legend, LineChart, Line,
@@ -141,7 +143,8 @@ export default function DashboardPage() {
   const [selectedPreset, setSelectedPreset] = useState(0);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [role, setRole] = useState<string | null>(null);
-  const [userStatuses, setUserStatuses] = useState<Record<string, { status: string; timestamp: string }>>({});
+  const userStatusesRef = useRef<Record<string, { status: string; timestamp: string }>>({});
+  const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -201,17 +204,38 @@ export default function DashboardPage() {
           ]);
           setAllUserStats(statsResponse.data);
           // Set initial user statuses
-          setUserStatuses(statusesResponse.data);
+          userStatusesRef.current = statusesResponse.data;
+          // Calculate initial active users count
+          const initialActiveCount = Object.values(statusesResponse.data).filter((s: any) => s.status === 'online' || s.status === 'active').length;
+          setActiveUsersCount(initialActiveCount);
         } else {
           const userId = JSON.parse(atob(token.split('.')[1])).id;
-          const { data } = await axios.get(
-            `${baseUrl}/api/activity/range/${userId}?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
+          const apiUrl = `${baseUrl}/api/activity/range/${userId}?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`;
+
+          console.log('🔍 [User Dashboard Debug]');
+          console.log('   API URL:', apiUrl);
+          console.log('   User ID:', userId);
+          console.log('   Date Range:', format(istStart, 'yyyy-MM-dd'), 'to', format(istEnd, 'yyyy-MM-dd'));
+
+          const { data } = await axios.get(apiUrl, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          console.log('📊 [API Response]');
+          console.log('   Data type:', Array.isArray(data) ? 'Array' : typeof data);
+          console.log('   Number of records:', Array.isArray(data) ? data.length : 'N/A');
+          console.log('   Data:', data);
+
           setStats(data);
         }
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
+      } catch (error: any) {
+        console.error('❌ [API Error]');
+        console.error('   Message:', error.message);
+        if (error.response) {
+          console.error('   Status:', error.response.status);
+          console.error('   Data:', error.response.data);
+        }
+        console.error('   Full error:', error);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -229,10 +253,14 @@ export default function DashboardPage() {
   }, [allUserStats, role, selectedUserId]);
 
   const handleStatusUpdate = useCallback(({ userId, status, timestamp }: { userId: number; status: string; timestamp: string }) => {
-    setUserStatuses((prev) => ({
-      ...prev,
+    userStatusesRef.current = {
+      ...userStatusesRef.current,
       [userId]: { status, timestamp },
-    }));
+    };
+
+    // Calculate active users count
+    const activeCount = Object.values(userStatusesRef.current).filter((s: any) => s.status === 'online' || s.status === 'active').length;
+    setActiveUsersCount(activeCount);
   }, []);
 
   // Initialize socket connection
@@ -256,9 +284,18 @@ export default function DashboardPage() {
   }, [role, handleStatusUpdate]);
 
   const currentStats = useMemo(
-    () => role === 'admin' || role === 'manager'
-      ? allUserStats.find((u) => u.user.id === selectedUserId)?.stats || []
-      : stats,
+    () => {
+      const result = role === 'admin' || role === 'manager'
+        ? allUserStats.find((u) => u.user.id === selectedUserId)?.stats || []
+        : stats;
+
+      console.log('📈 [Current Stats]');
+      console.log('   Role:', role);
+      console.log('   Stats array length:', result.length);
+      console.log('   Stats:', result);
+
+      return result;
+    },
     [role, allUserStats, selectedUserId, stats]
   );
 
@@ -273,6 +310,22 @@ export default function DashboardPage() {
     setSelectedRange(rangePresets[index].range);
   }, []);
 
+  // Helper function to format seconds into "Xh Ym" format
+  const formatSecondsToTime = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    if (hours > 0 && minutes > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+      return `${hours}h`;
+    } else if (minutes > 0) {
+      return `${minutes}m`;
+    } else {
+      return '0m';
+    }
+  };
+
   // Calculate summary stats with memoization
   const summaryStats = useMemo(() => {
     // For admin/manager: aggregate stats across ALL users
@@ -280,6 +333,7 @@ export default function DashboardPage() {
       if (!allUserStats || allUserStats.length === 0) {
         return {
           totalHours: 0,
+          totalSeconds: 0,
           avgProductivity: 0,
           activeDays: 0,
           peakHours: '0',
@@ -317,11 +371,12 @@ export default function DashboardPage() {
 
       return {
         totalHours,
+        totalSeconds,
         avgProductivity: Math.max(0, Math.min(100, avgProductivity)), // Clamp between 0-100
         activeDays: totalActiveDays,
         peakHours: '0',
         totalUsers: allUserStats.length,
-        activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online' || s.status === 'active').length
+        activeUsers: allUserStats.length // Will be calculated separately to avoid re-renders
       };
     }
 
@@ -329,6 +384,7 @@ export default function DashboardPage() {
     if (!currentStats || currentStats.length === 0) {
       return {
         totalHours: 0,
+        totalSeconds: 0,
         avgProductivity: 0,
         activeDays: 0,
         peakHours: '0',
@@ -363,35 +419,15 @@ export default function DashboardPage() {
 
     return {
       totalHours,
+      totalSeconds,
       avgProductivity: Math.max(0, Math.min(100, avgProductivity)),
       activeDays,
       peakHours,
       totalUsers: allUserStats.length,
-      activeUsers: Object.values(userStatuses).filter((s: any) => s.status === 'online' || s.status === 'active').length
+      activeUsers: 1 // Will be calculated separately to avoid re-renders
     };
-  }, [role, currentStats, allUserStats, userStatuses]);
+  }, [role, currentStats, allUserStats]);
 
-  // Prepare chart data with memoization
-  const chartData = useMemo(() => currentStats.map(day => {
-    const workingSeconds = day.workingTimeInSeconds || 0;
-    const breakSeconds = day.breakTimeInSeconds || 0;
-    const idleSeconds = day.idleTimeInSeconds || 0;
-    const totalTimeAtDesk = workingSeconds + breakSeconds + idleSeconds;
-    const productivity = totalTimeAtDesk > 0 ? Math.round((workingSeconds / totalTimeAtDesk) * 100) : 0;
-
-    return {
-      date: format(new Date(day.date), 'MMM dd'),
-      hours: Math.round((workingSeconds / 3600) * 10) / 10,
-      productivity: Math.max(0, Math.min(100, productivity)),
-      screenshots: day.screenshots || 0
-    };
-  }), [currentStats]);
-
-  const pieData = useMemo(() => [
-    { name: 'Productive', value: summaryStats.avgProductivity, color: theme.palette.success.main },
-    { name: 'Neutral', value: 30, color: theme.palette.warning.main },
-    { name: 'Unproductive', value: 100 - summaryStats.avgProductivity - 30, color: theme.palette.error.main }
-  ], [summaryStats.avgProductivity]);
 
   const StatCard = memo(({ title, value, icon, color, trend, subtitle }: any) => {
     const colorMap: any = {
@@ -403,7 +439,7 @@ export default function DashboardPage() {
     const colors = colorMap[color] || colorMap.primary;
 
     return (
-      <Grow in={!loading} timeout={600}>
+      <Grow in={true} appear={false}>
         <Card sx={{
           height: '100%',
           backgroundColor: 'white',
@@ -567,7 +603,7 @@ export default function DashboardPage() {
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <StatCard
                     title="Total Hours"
-                    value={`${summaryStats.totalHours}h`}
+                    value={formatSecondsToTime(summaryStats.totalSeconds)}
                     icon={<AccessTime sx={{ fontSize: 28 }} />}
                     color="primary"
                     subtitle="Tracked this period"
@@ -598,7 +634,7 @@ export default function DashboardPage() {
                   <StatCard
                     title={role === 'admin' || role === 'manager' ? 'Team Members' : 'Peak Hours'}
                     value={role === 'admin' || role === 'manager' ?
-                      `${summaryStats.activeUsers}/${summaryStats.totalUsers}` :
+                      `${activeUsersCount}/${summaryStats.totalUsers}` :
                       `${summaryStats.peakHours}h`
                     }
                     icon={role === 'admin' || role === 'manager' ?
@@ -611,177 +647,19 @@ export default function DashboardPage() {
                 </Grid>
               </Grid>
 
-              {/* Charts */}
-              <Grid container spacing={3}>
-                {/* Activity Chart */}
-                <Grid size={{ xs: 12, lg: 8 }}>
-                  <Fade in={!loading} timeout={700}>
-                    <Card sx={{
-                      backgroundColor: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-                    }}>
-                      <CardContent sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                          <Typography variant="h6" sx={{ 
-                            fontWeight: 600,
-                            color: '#111827',
-                            fontSize: '1.125rem'
-                          }}>
-                            Activity Overview
-                          </Typography>
-                        </Box>
-                        {loading ? (
-                          <Skeleton variant="rectangular" height={300} />
-                        ) : (
-                          <ResponsiveContainer width="100%" height={300}>
-                            <AreaChart data={chartData}>
-                              <defs>
-                                <linearGradient id="colorHours" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor={theme.palette.primary.main} stopOpacity={0.8}/>
-                                  <stop offset="95%" stopColor={theme.palette.primary.main} stopOpacity={0.1}/>
-                                </linearGradient>
-                                <linearGradient id="colorProductivity" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor={theme.palette.success.main} stopOpacity={0.8}/>
-                                  <stop offset="95%" stopColor={theme.palette.success.main} stopOpacity={0.1}/>
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis
-                                dataKey="date"
-                                tick={{ fontSize: 11, fill: '#94a3b8' }}
-                                stroke="#e2e8f0"
-                                axisLine={false}
-                                tickLine={false}
-                              />
-                              <YAxis
-                                yAxisId="left"
-                                tick={{ fontSize: 11, fill: '#94a3b8' }}
-                                stroke="#e2e8f0"
-                                axisLine={false}
-                                tickLine={false}
-                              />
-                              <YAxis
-                                yAxisId="right"
-                                orientation="right"
-                                tick={{ fontSize: 11, fill: '#94a3b8' }}
-                                stroke="#e2e8f0"
-                                axisLine={false}
-                                tickLine={false}
-                              />
-                              <RechartsTooltip
-                                contentStyle={{
-                                  backgroundColor: '#ffffff',
-                                  border: '1px solid #e2e8f0',
-                                  borderRadius: 8,
-                                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
-                                }}
-                              />
-                              <Area
-                                yAxisId="left"
-                                type="monotone"
-                                dataKey="hours"
-                                stroke={theme.palette.primary.main}
-                                fillOpacity={1}
-                                fill="url(#colorHours)"
-                                strokeWidth={2}
-                                name="Hours"
-                              />
-                              <Area
-                                yAxisId="right"
-                                type="monotone"
-                                dataKey="productivity"
-                                stroke={theme.palette.success.main}
-                                fillOpacity={1}
-                                fill="url(#colorProductivity)"
-                                strokeWidth={2}
-                                name="Productivity %"
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Fade>
-                </Grid>
+              {/* Recent Time Claims Widget - Top Priority */}
+              {(role === 'admin' || role === 'manager') && (
+                <Fade in={!loading} timeout={700}>
+                  <Box sx={{ mb: 3 }}>
+                    <RecentTimeClaimsWidget />
+                  </Box>
+                </Fade>
+              )}
 
-                {/* Productivity Breakdown */}
-                <Grid size={{ xs: 12, lg: 4 }}>
-                  <Fade in={!loading} timeout={800}>
-                    <Card sx={{
-                      height: '100%',
-                      backgroundColor: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-                    }}>
-                      <CardContent sx={{ p: 3 }}>
-                        <Typography variant="h6" sx={{ 
-                          fontWeight: 600, 
-                          mb: 3,
-                          color: '#111827',
-                          fontSize: '1.125rem'
-                        }}>
-                          Productivity Breakdown
-                        </Typography>
-                        {loading ? (
-                          <Skeleton variant="circular" width={200} height={200} sx={{ mx: 'auto' }} />
-                        ) : (
-                          <>
-                            <ResponsiveContainer width="100%" height={200}>
-                              <PieChart>
-                                <Pie
-                                  data={pieData}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={60}
-                                  outerRadius={80}
-                                  paddingAngle={5}
-                                  dataKey="value"
-                                >
-                                  {pieData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={entry.color} />
-                                  ))}
-                                </Pie>
-                                <RechartsTooltip />
-                              </PieChart>
-                            </ResponsiveContainer>
-                            <Box sx={{ mt: 2 }}>
-                              {pieData.map((item) => (
-                                <Box key={item.name} sx={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center',
-                                  mb: 1
-                                }}>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box sx={{
-                                      width: 12,
-                                      height: 12,
-                                      borderRadius: '50%',
-                                      bgcolor: item.color
-                                    }} />
-                                    <Typography variant="body2" color="textSecondary">
-                                      {item.name}
-                                    </Typography>
-                                  </Box>
-                                  <Typography variant="body2" fontWeight={600}>
-                                    {item.value}%
-                                  </Typography>
-                                </Box>
-                              ))}
-                            </Box>
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Fade>
-                </Grid>
-
-                {/* Recent Activity */}
-                {(role === 'admin' || role === 'manager') && (
-                  <Grid size={12}>
+              {/* Recent Activity */}
+              {(role === 'admin' || role === 'manager') && (
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 8 }}>
                     <Fade in={!loading} timeout={900}>
                       <Card sx={{
                         backgroundColor: 'white',
@@ -821,7 +699,7 @@ export default function DashboardPage() {
                           </Box>
                           <List>
                             {allUserStats.slice(0, 5).map((userStat, index) => {
-                              const status = userStatuses[userStat.user.id];
+                              const status = userStatusesRef.current[userStat.user.id];
                               const isOnline = status?.status === 'online' || status?.status === 'active';
 
                               return (
@@ -907,8 +785,15 @@ export default function DashboardPage() {
                       </Card>
                     </Fade>
                   </Grid>
-                )}
-              </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <Fade in={!loading} timeout={900}>
+                      <Box>
+                        <WhosInOutWidget />
+                      </Box>
+                    </Fade>
+                  </Grid>
+                </Grid>
+              )}
             </Container>
       </Box>
 
