@@ -279,7 +279,7 @@ export default function SuperAdminDashboard() {
         localStorage.setItem('username', data.adminUsername || 'admin'); // Use returned admin username
 
         // Redirect to company admin dashboard
-        router.push('/admin');
+        router.push(`/${company.slug}/dashboard`);
       } else {
         const error = await response.json();
         // Backend returns 'msg' property, not 'message'

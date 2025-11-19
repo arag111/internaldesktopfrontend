@@ -178,18 +178,35 @@ const Attendance: React.FC<AttendanceProps> = ({
         saveAs(blob, 'Attendance_Report.csv');
     };
 
+    // Helper function to format seconds into "Xh Ym" format
+    const formatSecondsToTime = (seconds: number): string => {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+
+        if (hours > 0 && minutes > 0) {
+            return `${hours}h ${minutes}m`;
+        } else if (hours > 0) {
+            return `${hours}h`;
+        } else if (minutes > 0) {
+            return `${minutes}m`;
+        } else {
+            return '0m';
+        }
+    };
+
     // Calculate summary stats
     const calculateSummary = () => {
         if (!currentStats || currentStats.length === 0) {
-            return { totalHours: 0, avgHours: 0, attendanceDays: 0 };
+            return { totalHours: 0, totalSeconds: 0, avgHours: 0, avgSeconds: 0, attendanceDays: 0 };
         }
         const totalSeconds = currentStats.reduce((sum: number, s: any) => {
             return sum + ((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0));
         }, 0);
         const totalHours = Math.round((totalSeconds / 3600) * 10) / 10;
+        const avgSeconds = currentStats.length > 0 ? totalSeconds / currentStats.length : 0;
         const avgHours = currentStats.length > 0 ? Math.round((totalHours / currentStats.length) * 10) / 10 : 0;
         const attendanceDays = currentStats.filter((s: any) => (s.workingTimeInSeconds || 0) > 0).length;
-        return { totalHours, avgHours, attendanceDays };
+        return { totalHours, totalSeconds, avgHours, avgSeconds, attendanceDays };
     };
 
     const summary = calculateSummary();
@@ -361,7 +378,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                             <div>
                                 <p className="text-xs font-medium text-slate-600 mb-0.5">Total Hours</p>
                                 <p className="text-lg font-semibold text-slate-900">
-                                    {summary.totalHours}h
+                                    {formatSecondsToTime(summary.totalSeconds)}
                                 </p>
                             </div>
                         </div>
@@ -372,7 +389,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                             <div>
                                 <p className="text-xs font-medium text-slate-600 mb-0.5">Average Hours/Day</p>
                                 <p className="text-lg font-semibold text-slate-900">
-                                    {summary.avgHours}h
+                                    {formatSecondsToTime(summary.avgSeconds)}
                                 </p>
                             </div>
                         </div>
