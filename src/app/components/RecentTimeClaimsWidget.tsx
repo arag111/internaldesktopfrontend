@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Card, CardContent, Box, Typography, CircularProgress, IconButton, Divider } from '@mui/material';
-import { CheckCircle, Cancel, AccessTime } from '@mui/icons-material';
+import { Card, CardContent, Box, Typography, CircularProgress, Button, Divider } from '@mui/material';
+import { AccessTime } from '@mui/icons-material';
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
 import { format } from 'date-fns';
@@ -134,95 +134,135 @@ export default function RecentTimeClaimsWidget() {
             {claims.map((claim, index) => (
               <React.Fragment key={claim.idleEventId}>
                 {index > 0 && <Divider sx={{ my: 1.5 }} />}
-                <Box sx={{ py: 1 }}>
-                  {/* First Row: Name and Date */}
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                      {claim.userName}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                      {format(new Date(claim.date), 'MMM d')}
-                    </Typography>
-                  </Box>
+                {/* Single Line Layout */}
+                <Box sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 2,
+                  py: 1
+                }}>
+                  {/* Left Section: Name */}
+                  <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem', minWidth: '100px' }}>
+                    {claim.userName}
+                  </Typography>
 
-                  {/* Second Row: Time Range and Reason with Action Buttons */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
-                        {format(new Date(claim.startedAt), 'h:mm a')} → {format(new Date(claim.endedAt), 'h:mm a')}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{
-                          fontSize: '0.8125rem',
-                          fontStyle: claim.reason === 'No reason provided' ? 'italic' : 'normal',
-                          opacity: claim.reason === 'No reason provided' ? 0.6 : 0.9,
-                        }}
-                      >
-                        {claim.reason}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      <IconButton
-                        size="small"
-                        disabled={processingClaim === claim.idleEventId}
-                        onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'approved')}
-                        sx={{
-                          color: 'success.main',
-                          '&:hover': { bgcolor: 'success.light', color: 'success.dark' }
-                        }}
-                      >
-                        <CheckCircle fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        disabled={processingClaim === claim.idleEventId}
-                        onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'rejected')}
-                        sx={{
-                          color: 'error.main',
-                          '&:hover': { bgcolor: 'error.light', color: 'error.dark' }
-                        }}
-                      >
-                        <Cancel fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Box>
-
-                  {/* Third Row: Actual Duration and Status Badge */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  {/* Middle Section: Time Range and Reason */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      {format(new Date(claim.startedAt), 'h:mm a')} → {format(new Date(claim.endedAt), 'h:mm a')}
+                    </Typography>
                     <Typography
                       variant="body2"
+                      color="text.secondary"
                       sx={{
-                        color: 'primary.main',
-                        fontWeight: 700,
-                        fontSize: '0.875rem'
+                        fontSize: '0.8125rem',
+                        fontStyle: claim.reason === 'No reason provided' ? 'italic' : 'normal',
+                        opacity: claim.reason === 'No reason provided' ? 0.6 : 0.9,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
                       }}
                     >
-                      {formatActualDuration(claim.startedAt, claim.endedAt)}
+                      {claim.reason}
                     </Typography>
-                    <Box
+                  </Box>
+
+                  {/* Duration */}
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: 'primary.main',
+                      fontWeight: 700,
+                      fontSize: '0.875rem',
+                      minWidth: '50px'
+                    }}
+                  >
+                    {formatActualDuration(claim.startedAt, claim.endedAt)}
+                  </Typography>
+
+                  {/* Status Badge */}
+                  <Box
+                    sx={{
+                      px: 1,
+                      py: 0.25,
+                      borderRadius: 1,
+                      bgcolor: '#fee2e2',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      minWidth: '70px',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
                       sx={{
-                        px: 1,
-                        py: 0.25,
-                        borderRadius: 1,
-                        bgcolor: 'warning.light',
-                        display: 'inline-flex',
-                        alignItems: 'center'
+                        color: '#991b1b',
+                        fontWeight: 600,
+                        fontSize: '0.6875rem',
+                        textTransform: 'capitalize'
                       }}
                     >
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: 'warning.dark',
-                          fontWeight: 600,
-                          fontSize: '0.6875rem',
-                          textTransform: 'capitalize'
-                        }}
-                      >
-                        {claim.status}
-                      </Typography>
-                    </Box>
+                      {claim.status}
+                    </Typography>
+                  </Box>
+
+                  {/* Right Section: Action Buttons */}
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={processingClaim === claim.idleEventId}
+                      onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'approved')}
+                      sx={{
+                        bgcolor: '#86efac !important',
+                        color: '#065f46 !important',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        px: 2,
+                        py: 0.5,
+                        minWidth: '70px',
+                        boxShadow: 'none !important',
+                        '&:hover': {
+                          bgcolor: '#4ade80 !important',
+                          boxShadow: 'none !important'
+                        },
+                        '&:disabled': {
+                          bgcolor: '#e5e7eb !important',
+                          color: '#9ca3af !important'
+                        }
+                      }}
+                    >
+                      Accept
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={processingClaim === claim.idleEventId}
+                      onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'rejected')}
+                      sx={{
+                        bgcolor: '#fca5a5 !important',
+                        color: '#991b1b !important',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        px: 2,
+                        py: 0.5,
+                        minWidth: '70px',
+                        boxShadow: 'none !important',
+                        '&:hover': {
+                          bgcolor: '#f87171 !important',
+                          boxShadow: 'none !important'
+                        },
+                        '&:disabled': {
+                          bgcolor: '#e5e7eb !important',
+                          color: '#9ca3af !important'
+                        }
+                      }}
+                    >
+                      Reject
+                    </Button>
                   </Box>
                 </Box>
               </React.Fragment>
