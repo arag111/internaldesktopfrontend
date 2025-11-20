@@ -29,12 +29,24 @@ interface UserScreenshots {
 
 export default function MonitoringPage() {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
-  const [userScreenshots, setUserScreenshots] = useState<UserScreenshots>({});
-  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [users, setUsers] = useState<Array<{ id: number; name: string; email: string }>>([]);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState<string | null>(null);
   const [searchUser, setSearchUser] = useState('');
   const [role, setRole] = useState<string | null>(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+
+  // ✅ NEW: Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false
+  });
+  const [loading, setLoading] = useState(false);
 
   // Set default to today
   const now = new Date();
@@ -60,9 +72,28 @@ export default function MonitoringPage() {
 
   useEffect(() => {
     if (role) {
+      if (role === 'admin' || role === 'manager') {
+        fetchUsers(); // Fetch user list for dropdown
+      }
       handleFetchClick(); // fetch once role is set
     }
   }, [role]);
+
+  // ✅ NEW: Fetch users for dropdown
+  const fetchUsers = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+      const { data } = await axios.get(
+        `${baseUrl}/api/users/company-users`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -76,25 +107,29 @@ export default function MonitoringPage() {
     };
   }, []);
 
-  const handleFetchClick = async () => {
+  // ✅ NEW: Fetch with pagination
+  const fetchScreenshots = async (page: number = 1) => {
     const token = localStorage.getItem('token');
     if (!token || !startDateTime || !endDateTime) return;
 
-    // ✅ FIX: Convert datetime-local to ISO (UTC) before sending to API
+    setLoading(true);
+
+    // Convert datetime-local to ISO (UTC)
     const startISO = datetimeLocalToISO(startDateTime);
     const endISO = datetimeLocalToISO(endDateTime);
 
     try {
       if (role === 'admin' || role === 'manager') {
+        // ✅ Use new paginated endpoint
+        const userIdParam = selectedUserId ? `&userId=${selectedUserId}` : '';
         const { data } = await axios.get(
-          `${baseUrl}/api/screenshots/all-in-range?startDate=${startISO}&endDate=${endISO}`,
+          `${baseUrl}/api/screenshots/all-in-range-paginated?startDate=${startISO}&endDate=${endISO}&page=${page}&limit=50${userIdParam}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setUserScreenshots(data);
-        const userKeys = Object.keys(data);
-        if (userKeys.length > 0 && !selectedUser) {
-          setSelectedUser(userKeys[0]);
-        }
+
+        // Update screenshots and pagination
+        setScreenshots(data.data || []);
+        setPagination(data.pagination);
       } else {
         const { data } = await axios.get(
           `${baseUrl}/api/screenshots/range?startDate=${startISO}&endDate=${endISO}`,
@@ -104,16 +139,24 @@ export default function MonitoringPage() {
       }
     } catch (error) {
       console.error('Error fetching screenshots:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const currentUserShots =
-    role === 'admin' || role === 'manager'
-      ? userScreenshots?.[selectedUser || '']?.screenshots || []
-      : screenshots;
+  const handleFetchClick = () => {
+    setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1
+    fetchScreenshots(1);
+  };
 
-  const filteredUserList = Object.keys(userScreenshots).filter((name) =>
-    name.toLowerCase().includes(searchUser.toLowerCase())
+  // ✅ NEW: Handle page changes
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+    fetchScreenshots(newPage);
+  };
+
+  const filteredUserList = users.filter((user) =>
+    user.name.toLowerCase().includes(searchUser.toLowerCase())
   );
 
   return (
@@ -145,7 +188,7 @@ export default function MonitoringPage() {
                       onClick={() => setShowUserDropdown(!showUserDropdown)}
                       className="group relative flex items-center justify-between px-3 py-1.5 h-[38px] w-full sm:w-80 bg-white text-black rounded-md text-sm font-medium hover:bg-white border border-slate-200 hover:border-slate-300 transition-colors duration-200"
                     >
-                      <span className="truncate">{selectedUser || 'Select User'}</span>
+                      <span className="truncate">{selectedUserName || 'All Users'}</span>
                       <ChevronDown className={`w-4 h-4 text-black transition-transform duration-200 flex-shrink-0 ${showUserDropdown ? 'transform rotate-180' : ''}`} />
                     </button>
 
@@ -171,28 +214,48 @@ export default function MonitoringPage() {
 
                         {/* User List */}
                         <div className="max-h-[400px] overflow-y-auto bg-white">
+                          {/* "All Users" Option */}
+                          <button
+                            onClick={() => {
+                              setSelectedUserId(null);
+                              setSelectedUserName(null);
+                              setShowUserDropdown(false);
+                              setSearchUser('');
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-slate-50 border-b border-slate-100"
+                          >
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border bg-white border-slate-200">
+                              <UsersIcon className="w-4 h-4 text-black" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate text-black">
+                                All Users
+                              </p>
+                            </div>
+                          </button>
+
                           {filteredUserList.length > 0 ? (
                             <div className="bg-white">
-                              {filteredUserList.map((name) => (
+                              {filteredUserList.map((user) => (
                                 <button
-                                  key={name}
+                                  key={user.id}
                                   onClick={() => {
-                                    setSelectedUser(name);
+                                    setSelectedUserId(user.id);
+                                    setSelectedUserName(user.name);
                                     setShowUserDropdown(false);
                                     setSearchUser('');
                                   }}
-                                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-white active:bg-white focus:bg-white border-b border-slate-100 last:border-b-0"
-                                  style={{ backgroundColor: 'white' }}
+                                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
                                 >
                                   {/* Avatar Icon */}
                                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border bg-white border-slate-200">
                                     <UsersIcon className="w-4 h-4 text-black" />
                                   </div>
-                                  
+
                                   {/* User Name */}
                                   <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium truncate text-black">
-                                      {name}
+                                      {user.name}
                                     </p>
                                   </div>
                                 </button>
@@ -240,8 +303,63 @@ export default function MonitoringPage() {
             </div>
 
             {/* Main Content Area */}
-            <div className="bg-white rounded-lg p-6 border border-slate-200">
-              <ScreenshotGallery screenshots={currentUserShots} />
+            <div className="bg-white rounded-lg border border-slate-200">
+              {/* Loading Indicator */}
+              {loading && (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
+                  <span className="ml-3 text-sm text-slate-600">Loading screenshots...</span>
+                </div>
+              )}
+
+              {/* Screenshots Gallery */}
+              {!loading && (
+                <>
+                  <div className="p-6">
+                    <ScreenshotGallery screenshots={screenshots} />
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {screenshots.length > 0 && (
+                    <div className="border-t border-slate-200 px-6 py-4">
+                      <div className="flex items-center justify-between">
+                        {/* Page Info */}
+                        <div className="text-sm text-slate-600">
+                          Showing page <span className="font-medium text-slate-900">{pagination.page}</span> of{' '}
+                          <span className="font-medium text-slate-900">{pagination.totalPages}</span>
+                          {' '}({pagination.total} total screenshots)
+                        </div>
+
+                        {/* Navigation Buttons */}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handlePageChange(pagination.page - 1)}
+                            disabled={!pagination.hasPrev}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors duration-200 ${
+                              pagination.hasPrev
+                                ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                            }`}
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => handlePageChange(pagination.page + 1)}
+                            disabled={!pagination.hasNext}
+                            className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors duration-200 ${
+                              pagination.hasNext
+                                ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                            }`}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </main>
     </div>

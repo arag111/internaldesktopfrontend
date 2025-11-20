@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Play } from 'l
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
 import { formatInUserTimezone, toUserTimezone } from '@/app/utils/timezone';
+import { LazyLoadImage } from 'react-lazy-load-image-component';
+import 'react-lazy-load-image-component/src/effects/blur.css';
 
 interface Screenshot {
   _id: string;
@@ -280,7 +282,13 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
                           onClick={() => openModal(globalIndex)}
                         >
                           <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
-                            <img src={s.url} alt="Screenshot" className="w-full h-full object-cover" />
+                            <LazyLoadImage
+                              src={s.url}
+                              alt="Screenshot"
+                              className="w-full h-full object-cover"
+                              effect="blur"
+                              placeholderSrc="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect fill='%23f3f4f6' width='400' height='300'/%3E%3C/svg%3E"
+                            />
                             {/* Processing status overlay */}
                             <div className="absolute top-2 right-2 bg-white/80 backdrop-blur-sm rounded-lg p-1">
                               <ProcessingStatusBadge
@@ -337,10 +345,11 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
             )}
 
             {/* Image */}
-            <img
+            <LazyLoadImage
               src={flat[selectedImageIndex].url}
               alt="Full Screenshot"
               className="w-full h-auto max-h-[80vh] rounded-lg shadow-lg"
+              effect="blur"
             />
 
             {/* Screenshot Info */}
