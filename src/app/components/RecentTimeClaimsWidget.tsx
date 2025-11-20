@@ -76,6 +76,28 @@ export default function RecentTimeClaimsWidget() {
     return `${hours}h ${mins}m`;
   };
 
+  // Format actual duration from start/end times (more accurate)
+  const formatActualDuration = (startedAt: string, endedAt: string) => {
+    const start = new Date(startedAt);
+    const end = new Date(endedAt);
+    const diffMs = end.getTime() - start.getTime();
+
+    const hours = Math.floor(diffMs / 3600000);
+    const minutes = Math.floor((diffMs % 3600000) / 60000);
+    const seconds = Math.floor((diffMs % 60000) / 1000);
+
+    // Show hours only if > 0
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    // Show minutes and seconds
+    if (minutes > 0) {
+      return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+    }
+    // Show seconds only
+    return `${seconds}s`;
+  };
+
   if (loading) {
     return (
       <Card>
@@ -111,63 +133,96 @@ export default function RecentTimeClaimsWidget() {
           <Box>
             {claims.map((claim, index) => (
               <React.Fragment key={claim.idleEventId}>
-                {index > 0 && <Divider sx={{ my: 1 }} />}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.75 }}>
-                  <Typography variant="body2" sx={{ fontWeight: 500, minWidth: '140px' }}>
-                    {claim.userName}
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ minWidth: '90px' }}>
-                    {format(new Date(claim.claimRequestedAt), 'MMM d • h:mm a')}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      flex: 1,
-                      fontSize: '0.8125rem',
-                      fontStyle: claim.reason === 'No reason provided' ? 'italic' : 'normal',
-                      opacity: claim.reason === 'No reason provided' ? 0.6 : 0.9,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {claim.reason}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'primary.main',
-                      fontWeight: 600,
-                      minWidth: '35px',
-                      textAlign: 'right'
-                    }}
-                  >
-                    {formatDuration(claim.durationInMinutes)}
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    <IconButton
-                      size="small"
-                      disabled={processingClaim === claim.idleEventId}
-                      onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'approved')}
+                {index > 0 && <Divider sx={{ my: 1.5 }} />}
+                <Box sx={{ py: 1 }}>
+                  {/* First Row: Name and Date */}
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                      {claim.userName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                      {format(new Date(claim.date), 'MMM d')}
+                    </Typography>
+                  </Box>
+
+                  {/* Second Row: Time Range and Reason with Action Buttons */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.75rem', fontWeight: 500 }}>
+                        {format(new Date(claim.startedAt), 'h:mm a')} → {format(new Date(claim.endedAt), 'h:mm a')}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{
+                          fontSize: '0.8125rem',
+                          fontStyle: claim.reason === 'No reason provided' ? 'italic' : 'normal',
+                          opacity: claim.reason === 'No reason provided' ? 0.6 : 0.9,
+                        }}
+                      >
+                        {claim.reason}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <IconButton
+                        size="small"
+                        disabled={processingClaim === claim.idleEventId}
+                        onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'approved')}
+                        sx={{
+                          color: 'success.main',
+                          '&:hover': { bgcolor: 'success.light', color: 'success.dark' }
+                        }}
+                      >
+                        <CheckCircle fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        disabled={processingClaim === claim.idleEventId}
+                        onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'rejected')}
+                        sx={{
+                          color: 'error.main',
+                          '&:hover': { bgcolor: 'error.light', color: 'error.dark' }
+                        }}
+                      >
+                        <Cancel fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </Box>
+
+                  {/* Third Row: Actual Duration and Status Badge */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Typography
+                      variant="body2"
                       sx={{
-                        color: 'success.main',
-                        '&:hover': { bgcolor: 'success.light', color: 'success.dark' }
+                        color: 'primary.main',
+                        fontWeight: 700,
+                        fontSize: '0.875rem'
                       }}
                     >
-                      <CheckCircle fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      disabled={processingClaim === claim.idleEventId}
-                      onClick={() => handleStatusUpdate(claim.activityId, claim.idleEventId, 'rejected')}
+                      {formatActualDuration(claim.startedAt, claim.endedAt)}
+                    </Typography>
+                    <Box
                       sx={{
-                        color: 'error.main',
-                        '&:hover': { bgcolor: 'error.light', color: 'error.dark' }
+                        px: 1,
+                        py: 0.25,
+                        borderRadius: 1,
+                        bgcolor: 'warning.light',
+                        display: 'inline-flex',
+                        alignItems: 'center'
                       }}
                     >
-                      <Cancel fontSize="small" />
-                    </IconButton>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: 'warning.dark',
+                          fontWeight: 600,
+                          fontSize: '0.6875rem',
+                          textTransform: 'capitalize'
+                        }}
+                      >
+                        {claim.status}
+                      </Typography>
+                    </Box>
                   </Box>
                 </Box>
               </React.Fragment>
