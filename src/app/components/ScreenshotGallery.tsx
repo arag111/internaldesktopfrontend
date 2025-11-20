@@ -178,22 +178,9 @@ const groupByDateHour = (screenshots: Screenshot[]) => {
 const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) => {
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [flatScreenshots, setFlatScreenshots] = useState<Screenshot[]>([]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  const filteredScreenshots = useMemo(() => {
-    if (!startDate && !endDate) return screenshots;
-
-    return screenshots.filter((screenshot) => {
-      const timestamp = new Date(screenshot.timestamp).getTime();
-      const start = startDate ? new Date(startDate).getTime() : -Infinity;
-      const end = endDate ? new Date(endDate).getTime() + 86400000 : Infinity;
-      return timestamp >= start && timestamp <= end;
-    });
-  }, [screenshots, startDate, endDate]);
 
   const { grouped, flat, indexMap } = useMemo(() => {
-    const sorted = [...filteredScreenshots].sort((a, b) =>
+    const sorted = [...screenshots].sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
     const groupedData = groupByDateHour(sorted);
@@ -216,7 +203,7 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
     });
 
     return { grouped: groupedData, flat: flatArray, indexMap: indexLookup };
-  }, [filteredScreenshots]);
+  }, [screenshots]);
 
   // Update state when flat array changes
   React.useEffect(() => {
@@ -235,32 +222,9 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
 
   return (
     <>
-      {/* Filter UI */}
-      <div className="flex items-center gap-3 flex-wrap mb-8">
-        <label className="text-sm text-slate-700 font-medium whitespace-nowrap">Search In Range</label>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <label className="text-xs font-medium text-slate-600 whitespace-nowrap">Start Date:</label>
-          <input
-            type="date"
-            className="flex-1 min-w-0 px-2.5 py-1.5 h-[38px] border border-slate-300 rounded-md bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all duration-200 text-sm text-slate-900"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <label className="text-xs font-medium text-slate-600 whitespace-nowrap">End Date:</label>
-          <input
-            type="date"
-            className="flex-1 min-w-0 px-2.5 py-1.5 h-[38px] border border-slate-300 rounded-md bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all duration-200 text-sm text-slate-900"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-        </div>
-      </div>
-
       {/* Screenshot Grid */}
-      {filteredScreenshots.length === 0 ? (
-        <div className="text-center text-gray-500 mt-10">No screenshots available for the selected date range.</div>
+      {screenshots.length === 0 ? (
+        <div className="text-center text-gray-500 mt-10">No screenshots available.</div>
       ) : (
         <div className="space-y-10 max-w-6xl mx-auto px-4">
           {grouped.map(({ date, hours }) => (

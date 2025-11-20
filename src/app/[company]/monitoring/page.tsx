@@ -27,6 +27,8 @@ interface UserScreenshots {
   };
 }
 
+type DatePreset = 'today' | 'yesterday' | '7days' | '30days' | 'custom';
+
 export default function MonitoringPage() {
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
   const [users, setUsers] = useState<Array<{ id: number; name: string; email: string }>>([]);
@@ -36,6 +38,9 @@ export default function MonitoringPage() {
   const [role, setRole] = useState<string | null>(null);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
+
+  // ✅ NEW: Date preset state
+  const [datePreset, setDatePreset] = useState<DatePreset>('today');
 
   // ✅ NEW: Pagination state
   const [pagination, setPagination] = useState({
@@ -63,6 +68,57 @@ export default function MonitoringPage() {
 
   const router = useRouter();
 
+  // ✅ NEW: Helper function to calculate date range based on preset
+  const getDateRangeForPreset = (preset: DatePreset): { start: string; end: string } => {
+    const now = new Date();
+    let start: Date;
+    let end: Date;
+
+    switch (preset) {
+      case 'today':
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+        break;
+      case 'yesterday':
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 0, 0);
+        end = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59);
+        break;
+      case '7days':
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+        start = new Date(sevenDaysAgo.getFullYear(), sevenDaysAgo.getMonth(), sevenDaysAgo.getDate(), 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+        break;
+      case '30days':
+        const thirtyDaysAgo = new Date(now);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+        start = new Date(thirtyDaysAgo.getFullYear(), thirtyDaysAgo.getMonth(), thirtyDaysAgo.getDate(), 0, 0);
+        end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59);
+        break;
+      case 'custom':
+      default:
+        // Use existing state values for custom
+        return { start: startDateTime, end: endDateTime };
+    }
+
+    return {
+      start: ISOToDatetimeLocal(start.toISOString()),
+      end: ISOToDatetimeLocal(end.toISOString())
+    };
+  };
+
+  // ✅ NEW: Handle date preset selection
+  const handleDatePresetChange = (preset: DatePreset) => {
+    setDatePreset(preset);
+    if (preset !== 'custom') {
+      const { start, end } = getDateRangeForPreset(preset);
+      setStartDateTime(start);
+      setEndDateTime(end);
+    }
+  };
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const userRole = localStorage.getItem('role');
@@ -75,9 +131,17 @@ export default function MonitoringPage() {
       if (role === 'admin' || role === 'manager') {
         fetchUsers(); // Fetch user list for dropdown
       }
-      handleFetchClick(); // fetch once role is set
+      // Auto-fetch screenshots on initial load
+      fetchScreenshots(1);
     }
   }, [role]);
+
+  // ✅ NEW: Auto-fetch when user selection or date range changes
+  useEffect(() => {
+    if (role && startDateTime && endDateTime) {
+      fetchScreenshots(1);
+    }
+  }, [selectedUserId, startDateTime, endDateTime]);
 
   // ✅ NEW: Fetch users for dropdown
   const fetchUsers = async () => {
@@ -144,11 +208,6 @@ export default function MonitoringPage() {
     }
   };
 
-  const handleFetchClick = () => {
-    setPagination(prev => ({ ...prev, page: 1 })); // Reset to page 1
-    fetchScreenshots(1);
-  };
-
   // ✅ NEW: Handle page changes
   const handlePageChange = (newPage: number) => {
     setPagination(prev => ({ ...prev, page: newPage }));
@@ -163,53 +222,77 @@ export default function MonitoringPage() {
     <div className="flex-1 overflow-y-auto">
       <main className="mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50" style={{ marginLeft: '16rem' }}>
             {/* Hero Banner Section */}
-            <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
-              <div className="flex items-start justify-between mb-5">
+            <div className="mb-8 bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+              <div className="flex items-start justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <BarChart3 className="w-4 h-4 text-blue-600" />
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                    <BarChart3 className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h1 className="text-xl font-semibold text-slate-900 mb-0.5">
+                    <h1 className="text-xl font-semibold text-gray-900 mb-1">
                       Monitoring
                     </h1>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-600">
                       Track and monitor user activity screenshots
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Date Range Filter */}
-              <div className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3 pt-4">
+              {/* Filter Controls */}
+              <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* User Dropdown */}
                 {(role === 'admin' || role === 'manager') && (
-                  <div className="relative w-full sm:w-auto" ref={userDropdownRef}>
+                  <div className="relative w-full lg:w-80" ref={userDropdownRef}>
+                    <label className="block text-xs font-medium text-slate-700 mb-1.5">Select User</label>
                     <button
                       onClick={() => setShowUserDropdown(!showUserDropdown)}
-                      className="group relative flex items-center justify-between px-3 py-1.5 h-[38px] w-full sm:w-80 bg-white text-black rounded-md text-sm font-medium hover:bg-white border border-slate-200 hover:border-slate-300 transition-colors duration-200"
+                      className="group relative flex items-center justify-between px-3 py-2 h-[42px] w-full bg-white text-gray-900 rounded-xl text-sm font-medium border border-slate-300 focus:outline-none focus:ring-2 transition-all duration-200"
+                      style={{
+                        borderColor: showUserDropdown ? '#667eea' : undefined,
+                        boxShadow: showUserDropdown ? '0 0 0 3px rgba(102, 126, 234, 0.1)' : undefined
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!showUserDropdown) e.currentTarget.style.borderColor = '#667eea';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!showUserDropdown) e.currentTarget.style.borderColor = '';
+                      }}
                     >
                       <span className="truncate">{selectedUserName || 'All Users'}</span>
-                      <ChevronDown className={`w-4 h-4 text-black transition-transform duration-200 flex-shrink-0 ${showUserDropdown ? 'transform rotate-180' : ''}`} />
+                      <ChevronDown className={`w-4 h-4 text-slate-600 transition-transform duration-200 flex-shrink-0 ${showUserDropdown ? 'transform rotate-180' : ''}`} />
                     </button>
 
                     {/* User Selector Dropdown */}
                     {showUserDropdown && (
-                      <div className="absolute top-full left-0 mt-1.5 bg-white rounded-lg border border-slate-200 shadow-xl overflow-hidden w-full sm:w-80 z-50">
+                      <div className="absolute top-full left-0 mt-2 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden w-full sm:w-80 z-50">
                         {/* Search Input */}
-                        <div className="p-2.5 border-b border-slate-200 bg-white">
+                        <div className="p-3 border-b border-slate-100 bg-gray-50">
                           <input
                             type="text"
                             placeholder="Search users..."
                             value={searchUser}
                             onChange={(e) => setSearchUser(e.target.value)}
-                            className="w-full px-2.5 py-1.5 text-sm bg-white border border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-slate-400 transition-all duration-200"
+                            className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg text-gray-900 placeholder:text-slate-400 focus:outline-none transition-all duration-200"
+                            style={{
+                              boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
+                              borderColor: '#667eea'
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = '#667eea';
+                              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = '';
+                              e.currentTarget.style.boxShadow = '';
+                            }}
                             autoFocus
                           />
                         </div>
 
                         {/* "All" Category Bar */}
-                        <div className="bg-white border-b border-slate-200 px-2.5 py-2">
-                          <span className="text-sm font-semibold text-black">All</span>
+                        <div className="bg-gray-50 border-b border-slate-100 px-3 py-1.5">
+                          <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Users</span>
                         </div>
 
                         {/* User List */}
@@ -222,13 +305,28 @@ export default function MonitoringPage() {
                               setShowUserDropdown(false);
                               setSearchUser('');
                             }}
-                            className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-slate-50 border-b border-slate-100"
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-b border-slate-100 transition-colors duration-150 ${
+                              !selectedUserId ? 'bg-white' : 'bg-white'
+                            }`}
+                            style={{
+                              backgroundColor: !selectedUserId ? 'rgba(102, 126, 234, 0.08)' : undefined
+                            }}
+                            onMouseEnter={(e) => {
+                              if (selectedUserId !== null) {
+                                e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (selectedUserId !== null) {
+                                e.currentTarget.style.backgroundColor = '';
+                              }
+                            }}
                           >
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border bg-white border-slate-200">
-                              <UsersIcon className="w-4 h-4 text-black" />
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+                              <UsersIcon className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate text-black">
+                              <p className="text-sm font-medium truncate text-gray-900">
                                 All Users
                               </p>
                             </div>
@@ -245,17 +343,37 @@ export default function MonitoringPage() {
                                     setShowUserDropdown(false);
                                     setSearchUser('');
                                   }}
-                                  className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
+                                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-b border-slate-100 last:border-b-0 transition-colors duration-150 ${
+                                    selectedUserId === user.id ? 'bg-white' : 'bg-white'
+                                  }`}
+                                  style={{
+                                    backgroundColor: selectedUserId === user.id ? 'rgba(102, 126, 234, 0.08)' : undefined
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (selectedUserId !== user.id) {
+                                      e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                                    }
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (selectedUserId !== user.id) {
+                                      e.currentTarget.style.backgroundColor = '';
+                                    }
+                                  }}
                                 >
                                   {/* Avatar Icon */}
-                                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border bg-white border-slate-200">
-                                    <UsersIcon className="w-4 h-4 text-black" />
+                                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-gray-100">
+                                    <span className="text-xs font-medium text-gray-700">
+                                      {user.name.charAt(0).toUpperCase()}
+                                    </span>
                                   </div>
 
                                   {/* User Name */}
                                   <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium truncate text-black">
+                                    <p className="text-sm font-medium truncate text-gray-900">
                                       {user.name}
+                                    </p>
+                                    <p className="text-xs text-slate-500 truncate">
+                                      {user.email}
                                     </p>
                                   </div>
                                 </button>
@@ -272,43 +390,203 @@ export default function MonitoringPage() {
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <label className="text-xs font-medium text-slate-600 whitespace-nowrap">Start:</label>
-                  <input
-                    type="datetime-local"
-                    className="flex-1 min-w-0 px-2.5 py-1.5 h-[38px] border border-slate-300 rounded-md bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all duration-200 text-sm text-slate-900"
-                    value={startDateTime}
-                    onChange={(e) => setStartDateTime(e.target.value)}
-                  />
+                {/* Date Preset Buttons */}
+                <div className="flex-1 w-full">
+                  <label className="block text-xs font-medium text-slate-700 mb-1.5">Time Period</label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => handleDatePresetChange('today')}
+                      className={`px-5 py-2.5 h-[42px] rounded-xl text-sm font-medium border transition-all duration-200 ${
+                        datePreset === 'today'
+                          ? 'text-white border-transparent shadow-md'
+                          : 'bg-white text-gray-700 border-slate-300'
+                      }`}
+                      style={{
+                        background: datePreset === 'today'
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : undefined
+                      }}
+                      onMouseEnter={(e) => {
+                        if (datePreset !== 'today') {
+                          e.currentTarget.style.borderColor = '#667eea';
+                          e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (datePreset !== 'today') {
+                          e.currentTarget.style.borderColor = '';
+                          e.currentTarget.style.backgroundColor = '';
+                        }
+                      }}
+                    >
+                      Today
+                    </button>
+                    <button
+                      onClick={() => handleDatePresetChange('yesterday')}
+                      className={`px-5 py-2.5 h-[42px] rounded-xl text-sm font-medium border transition-all duration-200 ${
+                        datePreset === 'yesterday'
+                          ? 'text-white border-transparent shadow-md'
+                          : 'bg-white text-gray-700 border-slate-300'
+                      }`}
+                      style={{
+                        background: datePreset === 'yesterday'
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : undefined
+                      }}
+                      onMouseEnter={(e) => {
+                        if (datePreset !== 'yesterday') {
+                          e.currentTarget.style.borderColor = '#667eea';
+                          e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (datePreset !== 'yesterday') {
+                          e.currentTarget.style.borderColor = '';
+                          e.currentTarget.style.backgroundColor = '';
+                        }
+                      }}
+                    >
+                      Yesterday
+                    </button>
+                    <button
+                      onClick={() => handleDatePresetChange('7days')}
+                      className={`px-5 py-2.5 h-[42px] rounded-xl text-sm font-medium border transition-all duration-200 ${
+                        datePreset === '7days'
+                          ? 'text-white border-transparent shadow-md'
+                          : 'bg-white text-gray-700 border-slate-300'
+                      }`}
+                      style={{
+                        background: datePreset === '7days'
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : undefined
+                      }}
+                      onMouseEnter={(e) => {
+                        if (datePreset !== '7days') {
+                          e.currentTarget.style.borderColor = '#667eea';
+                          e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (datePreset !== '7days') {
+                          e.currentTarget.style.borderColor = '';
+                          e.currentTarget.style.backgroundColor = '';
+                        }
+                      }}
+                    >
+                      Last 7 Days
+                    </button>
+                    <button
+                      onClick={() => handleDatePresetChange('30days')}
+                      className={`px-5 py-2.5 h-[42px] rounded-xl text-sm font-medium border transition-all duration-200 ${
+                        datePreset === '30days'
+                          ? 'text-white border-transparent shadow-md'
+                          : 'bg-white text-gray-700 border-slate-300'
+                      }`}
+                      style={{
+                        background: datePreset === '30days'
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : undefined
+                      }}
+                      onMouseEnter={(e) => {
+                        if (datePreset !== '30days') {
+                          e.currentTarget.style.borderColor = '#667eea';
+                          e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (datePreset !== '30days') {
+                          e.currentTarget.style.borderColor = '';
+                          e.currentTarget.style.backgroundColor = '';
+                        }
+                      }}
+                    >
+                      Last 30 Days
+                    </button>
+                    <button
+                      onClick={() => handleDatePresetChange('custom')}
+                      className={`px-5 py-2.5 h-[42px] rounded-xl text-sm font-medium border transition-all duration-200 ${
+                        datePreset === 'custom'
+                          ? 'text-white border-transparent shadow-md'
+                          : 'bg-white text-gray-700 border-slate-300'
+                      }`}
+                      style={{
+                        background: datePreset === 'custom'
+                          ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                          : undefined
+                      }}
+                      onMouseEnter={(e) => {
+                        if (datePreset !== 'custom') {
+                          e.currentTarget.style.borderColor = '#667eea';
+                          e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (datePreset !== 'custom') {
+                          e.currentTarget.style.borderColor = '';
+                          e.currentTarget.style.backgroundColor = '';
+                        }
+                      }}
+                    >
+                      Custom
+                    </button>
+                  </div>
                 </div>
-                
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <label className="text-xs font-medium text-slate-600 whitespace-nowrap">End:</label>
-                  <input
-                    type="datetime-local"
-                    className="flex-1 min-w-0 px-2.5 py-1.5 h-[38px] border border-slate-300 rounded-md bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-all duration-200 text-sm text-slate-900"
-                    value={endDateTime}
-                    onChange={(e) => setEndDateTime(e.target.value)}
-                  />
-                </div>
-
-                <button
-                  className="bg-white hover:bg-white text-black px-3 py-1.5 h-[38px] rounded-md text-sm font-medium border border-slate-200 hover:border-slate-300 transition-colors duration-200 flex items-center justify-center gap-1.5 whitespace-nowrap"
-                  onClick={handleFetchClick}
-                >
-                  <RefreshCw size={14} className="text-black" />
-                  <span>Fetch</span>
-                </button>
               </div>
+
+              {/* Custom Date Range Inputs - Only shown when Custom is selected */}
+              {datePreset === 'custom' && (
+                <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-4 p-4 rounded-xl mt-5" style={{ backgroundColor: 'rgba(102, 126, 234, 0.05)', borderWidth: '1px', borderStyle: 'solid', borderColor: 'rgba(102, 126, 234, 0.2)' }}>
+                  <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <label className="text-xs font-medium text-slate-700">Start Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      className="w-full px-3 py-2 h-[42px] border border-slate-300 rounded-xl bg-white focus:outline-none transition-all duration-200 text-sm text-gray-900"
+                      value={startDateTime}
+                      onChange={(e) => setStartDateTime(e.target.value)}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#667eea';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '';
+                        e.currentTarget.style.boxShadow = '';
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                    <label className="text-xs font-medium text-slate-700">End Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      className="w-full px-3 py-2 h-[42px] border border-slate-300 rounded-xl bg-white focus:outline-none transition-all duration-200 text-sm text-gray-900"
+                      value={endDateTime}
+                      onChange={(e) => setEndDateTime(e.target.value)}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = '#667eea';
+                        e.currentTarget.style.boxShadow = '0 0 0 3px rgba(102, 126, 234, 0.1)';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = '';
+                        e.currentTarget.style.boxShadow = '';
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Main Content Area */}
-            <div className="bg-white rounded-lg border border-slate-200">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
               {/* Loading Indicator */}
               {loading && (
-                <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="w-6 h-6 text-blue-600 animate-spin" />
-                  <span className="ml-3 text-sm text-slate-600">Loading screenshots...</span>
+                <div className="flex flex-col items-center justify-center py-16">
+                  <div className="w-8 h-8 mb-3 animate-spin" style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    WebkitMask: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2\'/%3E%3C/svg%3E") center/contain no-repeat',
+                    mask: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'24\' height=\'24\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2\'/%3E%3C/svg%3E") center/contain no-repeat'
+                  }} />
+                  <span className="text-sm font-medium text-slate-600">Loading screenshots...</span>
+                  <span className="text-xs text-slate-400 mt-1">Please wait</span>
                 </div>
               )}
 
@@ -321,13 +599,14 @@ export default function MonitoringPage() {
 
                   {/* Pagination Controls */}
                   {screenshots.length > 0 && (
-                    <div className="border-t border-slate-200 px-6 py-4">
-                      <div className="flex items-center justify-between">
+                    <div className="border-t border-slate-100 px-6 py-5 bg-gray-50">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                         {/* Page Info */}
                         <div className="text-sm text-slate-600">
-                          Showing page <span className="font-medium text-slate-900">{pagination.page}</span> of{' '}
-                          <span className="font-medium text-slate-900">{pagination.totalPages}</span>
-                          {' '}({pagination.total} total screenshots)
+                          Showing page <span className="font-semibold text-gray-900">{pagination.page}</span> of{' '}
+                          <span className="font-semibold text-gray-900">{pagination.totalPages}</span>
+                          <span className="text-slate-400 mx-1">·</span>
+                          <span className="font-medium text-slate-700">{pagination.total}</span> total screenshots
                         </div>
 
                         {/* Navigation Buttons */}
@@ -335,22 +614,50 @@ export default function MonitoringPage() {
                           <button
                             onClick={() => handlePageChange(pagination.page - 1)}
                             disabled={!pagination.hasPrev}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors duration-200 ${
+                            className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-200 ${
                               pagination.hasPrev
-                                ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                ? 'bg-white text-gray-700 border-slate-300'
+                                : 'bg-gray-100 text-slate-400 border-slate-200 cursor-not-allowed'
                             }`}
+                            onMouseEnter={(e) => {
+                              if (pagination.hasPrev) {
+                                e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                                e.currentTarget.style.borderColor = '#667eea';
+                                e.currentTarget.style.color = '#667eea';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (pagination.hasPrev) {
+                                e.currentTarget.style.backgroundColor = '';
+                                e.currentTarget.style.borderColor = '';
+                                e.currentTarget.style.color = '';
+                              }
+                            }}
                           >
                             Previous
                           </button>
                           <button
                             onClick={() => handlePageChange(pagination.page + 1)}
                             disabled={!pagination.hasNext}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md border transition-colors duration-200 ${
+                            className={`px-4 py-2 text-sm font-medium rounded-xl border transition-all duration-200 ${
                               pagination.hasNext
-                                ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                                : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed'
+                                ? 'bg-white text-gray-700 border-slate-300'
+                                : 'bg-gray-100 text-slate-400 border-slate-200 cursor-not-allowed'
                             }`}
+                            onMouseEnter={(e) => {
+                              if (pagination.hasNext) {
+                                e.currentTarget.style.backgroundColor = 'rgba(102, 126, 234, 0.05)';
+                                e.currentTarget.style.borderColor = '#667eea';
+                                e.currentTarget.style.color = '#667eea';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (pagination.hasNext) {
+                                e.currentTarget.style.backgroundColor = '';
+                                e.currentTarget.style.borderColor = '';
+                                e.currentTarget.style.color = '';
+                              }
+                            }}
                           >
                             Next
                           </button>
