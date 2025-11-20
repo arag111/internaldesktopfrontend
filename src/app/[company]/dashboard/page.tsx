@@ -147,6 +147,8 @@ export default function DashboardPage() {
   const [activeUsersCount, setActiveUsersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showAllTeamActivity, setShowAllTeamActivity] = useState(false);
+  const [statusUpdateTrigger, setStatusUpdateTrigger] = useState(0);
   const [socket, setSocket] = useState<Socket | null>(null);
   const hasRestoredFromStorage = useRef(false);
 
@@ -257,6 +259,8 @@ export default function DashboardPage() {
       ...userStatusesRef.current,
       [userId]: { status, timestamp },
     };
+    // ✅ Trigger re-render to update sorted team activity
+    setStatusUpdateTrigger(prev => prev + 1);
 
     // Calculate active users count
     const activeCount = Object.values(userStatusesRef.current).filter((s: any) => s.status === 'online' || s.status === 'active').length;
@@ -428,6 +432,25 @@ export default function DashboardPage() {
     };
   }, [role, currentStats, allUserStats]);
 
+  // ✅ NEW: Sorted team activity list - prioritize online users with low working time
+  const sortedTeamActivity = useMemo(() => {
+    return [...allUserStats].sort((a, b) => {
+      const statusA = userStatusesRef.current[a.user.id];
+      const statusB = userStatusesRef.current[b.user.id];
+      const isOnlineA = statusA?.status === 'online' || statusA?.status === 'active';
+      const isOnlineB = statusB?.status === 'online' || statusB?.status === 'active';
+
+      // First priority: Online status (online users first)
+      if (isOnlineA && !isOnlineB) return -1;
+      if (!isOnlineA && isOnlineB) return 1;
+
+      // Second priority: Working time (lower working time first within same status)
+      const workingTimeA = a.stats[0]?.workingTimeInSeconds || 0;
+      const workingTimeB = b.stats[0]?.workingTimeInSeconds || 0;
+
+      return workingTimeA - workingTimeB;
+    });
+  }, [allUserStats, statusUpdateTrigger]);
 
   const StatCard = memo(({ title, value, icon, color, trend, subtitle }: any) => {
     const colorMap: any = {
@@ -679,7 +702,8 @@ export default function DashboardPage() {
                             <Button
                               size="small"
                               startIcon={<Visibility />}
-                              sx={{ 
+                              onClick={() => setShowAllTeamActivity(!showAllTeamActivity)}
+                              sx={{
                                 textTransform: 'none',
                                 color: '#111827 !important',
                                 fontWeight: 500,
@@ -694,11 +718,11 @@ export default function DashboardPage() {
                                 }
                               }}
                             >
-                              View All
+                              {showAllTeamActivity ? 'Show Less' : 'View All'}
                             </Button>
                           </Box>
                           <List>
-                            {allUserStats.slice(0, 5).map((userStat, index) => {
+                            {(showAllTeamActivity ? sortedTeamActivity : sortedTeamActivity.slice(0, 5)).map((userStat, index) => {
                               const status = userStatusesRef.current[userStat.user.id];
                               const isOnline = status?.status === 'online' || status?.status === 'active';
 
