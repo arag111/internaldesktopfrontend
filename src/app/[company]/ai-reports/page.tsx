@@ -19,6 +19,13 @@ interface UserSummary {
     unproductiveCount: number;
     averageProductivity: number;
     productivityPercentage: number;
+    aiScore?: number;
+    timeBasedScore?: number;
+    screenshotBasedScore?: number;
+    scoreBreakdown?: {
+      timeWeight: number;
+      screenshotWeight: number;
+    };
     error?: string;
   };
   hasData: boolean;
@@ -53,6 +60,13 @@ interface AIReport {
     unproductiveCount: number;
     averageProductivity: number;
     productivityPercentage: number;
+    aiScore?: number;
+    timeBasedScore?: number;
+    screenshotBasedScore?: number;
+    scoreBreakdown?: {
+      timeWeight: number;
+      screenshotWeight: number;
+    };
     topRecommendations: string[];
   };
   analyses: Analysis[];
@@ -388,54 +402,83 @@ export default function AIReportsPage() {
           {/* Overview View - User Cards */}
           {view === 'overview' && !loading && userSummaries.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {userSummaries.map((userSummary) => (
-                <div
-                  key={userSummary.user.id}
-                  onClick={() => userSummary.hasData && handleCardClick(userSummary.user.id)}
-                  className={`group bg-white rounded-lg border border-slate-200 p-6 transition-all duration-200 ${
-                    userSummary.hasData
-                      ? 'hover:shadow-md hover:border-blue-300 cursor-pointer'
-                      : 'opacity-60'
-                  }`}
-                >
-                  {/* User Info */}
-                  <div className="flex items-start justify-between mb-5">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <User className="w-4 h-4 text-blue-600" />
+              {userSummaries.map((userSummary) => {
+                // Use aiScore if available, otherwise fall back to productivityPercentage
+                const displayScore = userSummary.summary.aiScore ?? userSummary.summary.productivityPercentage;
+                const isLowScore = displayScore < 40;
+
+                return (
+                  <div
+                    key={userSummary.user.id}
+                    onClick={() => userSummary.hasData && handleCardClick(userSummary.user.id)}
+                    className={`group rounded-lg border p-6 transition-all duration-200 ${
+                      userSummary.hasData
+                        ? isLowScore
+                          ? 'bg-red-50 border-red-300 hover:shadow-lg hover:shadow-red-200/50 hover:border-red-400 cursor-pointer'
+                          : 'bg-white border-slate-200 hover:shadow-md hover:border-blue-300 cursor-pointer'
+                        : 'bg-white border-slate-200 opacity-60'
+                    }`}
+                  >
+                    {/* User Info */}
+                    <div className="flex items-start justify-between mb-5">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            isLowScore && userSummary.hasData ? 'bg-red-100' : 'bg-blue-50'
+                          }`}>
+                            <User className={`w-4 h-4 ${
+                              isLowScore && userSummary.hasData ? 'text-red-600' : 'text-blue-600'
+                            }`} />
+                          </div>
+                          <div>
+                            <h3 className={`font-bold text-base ${
+                              isLowScore && userSummary.hasData ? 'text-red-900' : 'text-slate-900'
+                            }`}>{userSummary.user.name}</h3>
+                            <p className={`text-xs font-medium ${
+                              isLowScore && userSummary.hasData ? 'text-red-700' : 'text-slate-500'
+                            }`}>{userSummary.user.jobRole}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h3 className="font-bold text-slate-900 text-base">{userSummary.user.name}</h3>
-                          <p className="text-xs text-slate-500 font-medium">{userSummary.user.jobRole}</p>
-                        </div>
+                        <p className={`text-xs ml-11 ${
+                          isLowScore && userSummary.hasData ? 'text-red-600' : 'text-slate-400'
+                        }`}>{userSummary.user.email}</p>
                       </div>
-                      <p className="text-xs text-slate-400 ml-11">{userSummary.user.email}</p>
+                      {userSummary.hasData && (
+                        <div className="text-center">
+                          <div
+                            className={`text-2xl font-bold ${
+                              displayScore >= 70
+                                ? 'text-green-600'
+                                : displayScore >= 40
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                            }`}
+                          >
+                            {displayScore}%
+                          </div>
+                          <p className={`text-xs font-medium ${
+                            isLowScore ? 'text-red-700' : 'text-slate-500'
+                          }`}>
+                            {userSummary.summary.aiScore !== undefined ? 'AI Score' : 'Score'}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    {userSummary.hasData && (
-                      <div className="text-center">
-                        <div
-                          className={`text-2xl font-bold ${
-                            userSummary.summary.productivityPercentage >= 70
-                              ? 'text-green-600'
-                              : userSummary.summary.productivityPercentage >= 40
-                              ? 'text-yellow-600'
-                              : 'text-red-600'
-                          }`}
-                        >
-                          {userSummary.summary.productivityPercentage}%
-                        </div>
-                        <p className="text-xs text-slate-500 font-medium">Score</p>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Summary Stats */}
                   {userSummary.hasData ? (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between text-sm p-2 bg-slate-50 rounded-lg">
-                        <span className="text-slate-600 font-medium">Total Screenshots:</span>
-                        <span className="font-bold text-slate-900 px-3 py-1 bg-white rounded-lg border border-slate-200">
+                      <div className={`flex items-center justify-between text-sm p-2 rounded-lg ${
+                        isLowScore ? 'bg-red-100/50' : 'bg-slate-50'
+                      }`}>
+                        <span className={`font-medium ${isLowScore ? 'text-red-800' : 'text-slate-600'}`}>
+                          Total Screenshots:
+                        </span>
+                        <span className={`font-bold px-3 py-1 bg-white rounded-lg border ${
+                          isLowScore
+                            ? 'text-red-900 border-red-300'
+                            : 'text-slate-900 border-slate-200'
+                        }`}>
                           {userSummary.summary.totalScreenshots}
                         </span>
                       </div>
@@ -448,33 +491,49 @@ export default function AIReportsPage() {
                           {userSummary.summary.productiveCount}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between text-sm p-2 bg-red-50 rounded-lg border border-red-100">
-                        <span className="text-slate-700 font-medium flex items-center gap-2">
+                      <div className={`flex items-center justify-between text-sm p-2 rounded-lg border ${
+                        isLowScore
+                          ? 'bg-red-100 border-red-200'
+                          : 'bg-red-50 border-red-100'
+                      }`}>
+                        <span className={`font-medium flex items-center gap-2 ${
+                          isLowScore ? 'text-red-900' : 'text-slate-700'
+                        }`}>
                           <AlertCircle className="w-4 h-4 text-red-600" />
                           Unproductive:
                         </span>
-                        <span className="font-bold text-red-700 px-3 py-1 bg-white rounded-lg border border-red-200">
+                        <span className={`font-bold px-3 py-1 bg-white rounded-lg border ${
+                          isLowScore
+                            ? 'text-red-800 border-red-300'
+                            : 'text-red-700 border-red-200'
+                        }`}>
                           {userSummary.summary.unproductiveCount}
                         </span>
                       </div>
 
                       {/* Progress Bar */}
                       <div className="mt-4">
-                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                        <div className={`w-full rounded-full h-2 overflow-hidden ${
+                          isLowScore ? 'bg-red-200' : 'bg-slate-200'
+                        }`}>
                           <div
                             className={`h-2 rounded-full transition-all duration-500 ${
-                              userSummary.summary.productivityPercentage >= 70
+                              displayScore >= 70
                                 ? 'bg-green-500'
-                                : userSummary.summary.productivityPercentage >= 40
+                                : displayScore >= 40
                                 ? 'bg-yellow-500'
                                 : 'bg-red-500'
                             }`}
-                            style={{ width: `${userSummary.summary.productivityPercentage}%` }}
+                            style={{ width: `${displayScore}%` }}
                           />
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-center gap-2 mt-3 text-xs text-slate-500 font-medium group-hover:text-blue-600 transition-colors">
+                      <div className={`flex items-center justify-center gap-2 mt-3 text-xs font-medium transition-colors ${
+                        isLowScore
+                          ? 'text-red-700 group-hover:text-red-800'
+                          : 'text-slate-500 group-hover:text-blue-600'
+                      }`}>
                         <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                         Click to view detailed analysis
                       </div>
@@ -488,7 +547,8 @@ export default function AIReportsPage() {
                     </div>
                   )}
                 </div>
-              ))}
+              );
+            })}
             </div>
           )}
 
@@ -504,9 +564,17 @@ export default function AIReportsPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-bold text-blue-600">
-                      {selectedReport.summary.productivityPercentage}%
+                      {selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%
                     </div>
-                    <p className="text-sm text-gray-600">Productivity Score</p>
+                    <p className="text-sm text-gray-600">
+                      {selectedReport.summary.aiScore !== undefined ? 'AI Score' : 'Productivity Score'}
+                    </p>
+                    {selectedReport.summary.aiScore !== undefined && (
+                      <div className="mt-2 text-xs text-gray-500 space-y-1">
+                        <div>Time: {selectedReport.summary.timeBasedScore}%</div>
+                        <div>Quality: {selectedReport.summary.screenshotBasedScore}%</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -585,7 +653,7 @@ export default function AIReportsPage() {
                       {/* Productive Activities Summary */}
                       <div className="bg-white rounded-md p-4 border-l-2 border-green-500">
                         <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                          <span className="text-base">✅</span> Productive Work ({selectedReport.summary.productivityPercentage}%)
+                          <span className="text-base">✅</span> Productive Work ({selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%)
                         </h4>
                         <div className="space-y-2 text-sm">
                           {(() => {
@@ -695,13 +763,13 @@ export default function AIReportsPage() {
                             <div className="flex-1 bg-gray-200 rounded-full h-2">
                               <div
                                 className={`h-2 rounded-full ${
-                                  selectedReport.summary.productivityPercentage >= 70 ? 'bg-green-500' :
-                                  selectedReport.summary.productivityPercentage >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                                  (selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage) >= 70 ? 'bg-green-500' :
+                                  (selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage) >= 40 ? 'bg-yellow-500' : 'bg-red-500'
                                 }`}
-                                style={{ width: `${selectedReport.summary.productivityPercentage}%` }}
+                                style={{ width: `${selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%` }}
                               />
                             </div>
-                            <span className="text-sm font-semibold">{selectedReport.summary.productivityPercentage}%</span>
+                            <span className="text-sm font-semibold">{selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%</span>
                           </div>
                         </div>
                       </div>
