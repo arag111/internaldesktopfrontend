@@ -478,153 +478,136 @@ export default function AIReportsPage() {
             </div>
           )}
 
-          {/* Overview View - Card-Table Hybrid */}
+          {/* Overview View - Classic Data Table */}
           {view === 'overview' && !loading && filteredUsers.length > 0 && (
             <>
-            <div className="space-y-3">
-              {paginatedUsers.map((userSummary) => {
-                // Use aiScore if available, otherwise fall back to productivityPercentage
-                const displayScore = userSummary.summary.aiScore ?? userSummary.summary.productivityPercentage;
-                const isLowScore = displayScore < 60; // Red theme for scores below 60%
-                const isMediumScore = displayScore >= 60 && displayScore < 70; // Yellow theme for 60-70%
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200">
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700">User</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700">Role</th>
+                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700">AI Score</th>
+                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Time</th>
+                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Quality</th>
+                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Screenshots</th>
+                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedUsers.map((userSummary) => {
+                    // Use aiScore if available, otherwise fall back to productivityPercentage
+                    const displayScore = userSummary.summary.aiScore ?? userSummary.summary.productivityPercentage;
+                    const isLowScore = displayScore < 60; // Red theme for scores below 60%
+                    const isMediumScore = displayScore >= 60 && displayScore < 70; // Yellow theme for 60-70%
 
-                // Score color for badge
-                const scoreColor = isLowScore
-                  ? 'bg-red-100 text-red-700 border-red-300'
-                  : isMediumScore
-                  ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
-                  : 'bg-green-100 text-green-700 border-green-300';
+                    // Row background color
+                    const rowBgClass = isLowScore
+                      ? 'bg-red-50 hover:bg-red-100'
+                      : isMediumScore
+                      ? 'bg-yellow-50 hover:bg-yellow-100'
+                      : 'hover:bg-slate-50';
 
-                const scoreEmoji = isLowScore ? '🔴' : isMediumScore ? '🟡' : '🟢';
+                    // Progress bar color
+                    const progressColor = isLowScore
+                      ? 'bg-red-500'
+                      : isMediumScore
+                      ? 'bg-yellow-500'
+                      : 'bg-green-500';
 
-                return (
-                  <div
-                    key={userSummary.user.id}
-                    onClick={() => userSummary.hasData && handleCardClick(userSummary.user.id)}
-                    className={`group bg-white rounded-xl border transition-all duration-200 overflow-hidden cursor-pointer ${
-                      isLowScore
-                        ? 'border-red-200 hover:border-red-400 hover:shadow-lg hover:shadow-red-100'
-                        : isMediumScore
-                        ? 'border-yellow-200 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-100'
-                        : 'border-slate-200 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-50'
-                    }`}
-                  >
-                    {/* Top Section: User Info & Score */}
-                    <div className="p-5 pb-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                          {userSummary.user.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                            {scoreEmoji} {userSummary.user.name}
-                          </h3>
-                          <p className="text-sm text-slate-500">
-                            {userSummary.user.jobRole} • {userSummary.user.email}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* AI Score Badge */}
-                      <div className="flex flex-col items-end gap-2">
-                        <div className={`px-4 py-2 rounded-lg border-2 ${scoreColor}`}>
-                          <div className="text-2xl font-bold leading-none">
-                            {displayScore}%
+                    return (
+                      <tr
+                        key={userSummary.user.id}
+                        onClick={() => userSummary.hasData && handleCardClick(userSummary.user.id)}
+                        className={`border-b border-slate-100 cursor-pointer transition-colors ${rowBgClass}`}
+                      >
+                        {/* User Column */}
+                        <td className="py-4 px-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+                              {userSummary.user.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-semibold text-slate-900 text-sm">
+                                {userSummary.user.name}
+                              </div>
+                              <div className="text-xs text-slate-500">
+                                {userSummary.user.email}
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-xs font-semibold mt-1">AI Score</div>
-                        </div>
-                        {userSummary.summary.timeBasedScore !== null && userSummary.summary.timeBasedScore !== undefined && (
-                          <div className="flex gap-1 text-xs">
-                            <span className="text-slate-500">Time: {userSummary.summary.timeBasedScore}%</span>
-                            <span className="text-slate-300">•</span>
-                            <span className="text-slate-500">Quality: {userSummary.summary.screenshotBasedScore}%</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                        </td>
 
-                    {/* Divider */}
-                    <div className="border-t border-slate-100"></div>
+                        {/* Role Column */}
+                        <td className="py-4 px-6">
+                          <span className="text-sm text-slate-700">{userSummary.user.jobRole}</span>
+                        </td>
 
-                    {/* Bottom Section: Stats Row */}
-                    <div className="p-5 pt-4">
-                      <div className="flex items-center gap-6 text-sm">
-                        {/* Total Screenshots */}
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                            <Activity className="w-4 h-4 text-blue-600" />
+                        {/* AI Score Column with Progress Bar */}
+                        <td className="py-4 px-6">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
+                                  style={{ width: `${displayScore}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-bold text-slate-900 min-w-[45px]">
+                                {displayScore}%
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <div className="text-lg font-bold text-slate-900">
+                        </td>
+
+                        {/* Time Column */}
+                        <td className="py-4 px-6 text-center">
+                          {userSummary.summary.timeBasedScore !== null && userSummary.summary.timeBasedScore !== undefined ? (
+                            <span className="text-sm font-medium text-slate-700">
+                              {userSummary.summary.timeBasedScore}%
+                            </span>
+                          ) : (
+                            <span className="text-sm text-slate-400">-</span>
+                          )}
+                        </td>
+
+                        {/* Quality Column */}
+                        <td className="py-4 px-6 text-center">
+                          {userSummary.summary.screenshotBasedScore !== null && userSummary.summary.screenshotBasedScore !== undefined ? (
+                            <span className="text-sm font-medium text-slate-700">
+                              {userSummary.summary.screenshotBasedScore}%
+                            </span>
+                          ) : (
+                            <span className="text-sm text-slate-400">-</span>
+                          )}
+                        </td>
+
+                        {/* Screenshots Column */}
+                        <td className="py-4 px-6">
+                          <div className="flex items-center justify-center gap-3 text-xs">
+                            <span className="text-slate-600 font-medium">
                               {userSummary.summary.totalScreenshots}
-                            </div>
-                            <div className="text-xs text-slate-500">screenshots</div>
+                            </span>
+                            <span className="text-green-600 font-semibold">
+                              ✅ {userSummary.summary.productiveCount}
+                            </span>
+                            <span className="text-red-600 font-semibold">
+                              ❌ {userSummary.summary.unproductiveCount}
+                            </span>
                           </div>
-                        </div>
+                        </td>
 
-                        <div className="w-px h-10 bg-slate-200"></div>
-
-                        {/* Productive */}
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-                            <CheckCircle className="w-4 h-4 text-green-600" />
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-green-700">
-                              {userSummary.summary.productiveCount}
-                            </div>
-                            <div className="text-xs text-slate-500">productive</div>
-                          </div>
-                        </div>
-
-                        <div className="w-px h-10 bg-slate-200"></div>
-
-                        {/* Unproductive */}
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
-                            <AlertCircle className="w-4 h-4 text-red-600" />
-                          </div>
-                          <div>
-                            <div className="text-lg font-bold text-red-700">
-                              {userSummary.summary.unproductiveCount}
-                            </div>
-                            <div className="text-xs text-slate-500">unproductive</div>
-                          </div>
-                        </div>
-
-                        {/* Spacer */}
-                        <div className="flex-1"></div>
-
-                        {/* View Details Button */}
-                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-slate-700 font-medium transition-colors group">
-                          <span className="text-sm">View Details</span>
-                          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                      </div>
-
-                      {/* Progress Bar */}
-                      <div className="mt-4">
-                        <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                          <span>Productivity</span>
-                          <span>{displayScore}%</span>
-                        </div>
-                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              displayScore >= 70
-                                ? 'bg-gradient-to-r from-green-400 to-green-600'
-                                : displayScore >= 60
-                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-600'
-                                : 'bg-gradient-to-r from-red-400 to-red-600'
-                            }`}
-                            style={{ width: `${displayScore}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                </div>
-              );
-            })}
+                        {/* Details Column */}
+                        <td className="py-4 px-6 text-center">
+                          <button className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors">
+                            <span>►</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
 
             {/* Pagination Controls */}
