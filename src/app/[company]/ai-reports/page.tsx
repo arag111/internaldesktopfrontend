@@ -283,105 +283,111 @@ export default function AIReportsPage() {
     <div className="flex-1 overflow-y-auto">
       <main className="mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50" style={{ marginLeft: '16rem' }}>
         <div className="max-w-7xl mx-auto">
-          {/* Hero Banner Section */}
-          <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
-            <div className="flex items-start justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-purple-600" />
-                </div>
+          {/* Material UI Inspired Header */}
+          <div className="mb-8">
+            {/* Title Section */}
+            <div className="mb-6">
+              <div className="flex items-start justify-between">
                 <div>
-                  <h1 className="text-xl font-semibold text-slate-900 mb-0.5">
+                  <h1 className="text-2xl font-normal text-slate-900 mb-1">
                     AI Productivity Reports
                   </h1>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600 font-normal">
                     AI-powered analysis of employee productivity based on screenshots and job roles
                   </p>
                 </div>
+                {view === 'detail' && (
+                  <button
+                    onClick={handleBackToOverview}
+                    className="group px-4 py-2 bg-white hover:bg-slate-50 transition-colors duration-200 flex items-center gap-2 text-sm font-medium text-slate-700"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back to Overview
+                  </button>
+                )}
               </div>
-              {view === 'detail' && (
-                <button
-                  onClick={handleBackToOverview}
-                  className="group px-4 py-2.5 bg-white border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors duration-200 flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-blue-600"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  Back to Overview
-                </button>
-              )}
             </div>
 
-            {/* Tab Navigation */}
+            {/* Tab Navigation - Material Design */}
             {view !== 'detail' && (
-              <div className="flex gap-3 mb-5 pt-4">
-                <button
-                  onClick={() => setView('overview')}
-                  className={`group flex-1 px-6 py-4 rounded-lg text-sm font-medium transition-colors duration-200 border ${
-                    view === 'overview'
-                      ? 'bg-slate-100 text-slate-900 border-slate-200'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Brain className={`w-4 h-4 ${view === 'overview' ? 'text-purple-500' : 'text-purple-500'}`} />
-                    <span>AI Productivity Reports</span>
-                  </div>
-                </button>
-                <button
-                  onClick={() => setView('attendance')}
-                  className={`group flex-1 px-6 py-4 rounded-lg text-sm font-medium transition-colors duration-200 border ${
-                    view === 'attendance'
-                      ? 'bg-slate-100 text-slate-900 border-slate-200'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Calendar className={`w-4 h-4 ${view === 'attendance' ? 'text-blue-500' : 'text-blue-500'}`} />
-                    <span>Attendance Report</span>
-                  </div>
-                </button>
+              <div className="border-b border-slate-200 mb-6">
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setView('overview')}
+                    className={`group relative px-6 py-3 text-sm font-medium transition-colors duration-200 ${
+                      view === 'overview'
+                        ? 'text-blue-600'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Brain className="w-4 h-4" />
+                      <span>AI Productivity Reports</span>
+                    </div>
+                    {view === 'overview' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setView('attendance')}
+                    className={`group relative px-6 py-3 text-sm font-medium transition-colors duration-200 ${
+                      view === 'attendance'
+                        ? 'text-blue-600'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>Attendance Report</span>
+                    </div>
+                    {view === 'attendance' && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"></div>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* Date Filter - Only show for AI Reports view */}
+            {/* Date Filter - Material Design Chips */}
             {view === 'overview' && (
-              <div className="flex items-center gap-3 flex-wrap pt-4">
-                {/* Preset Buttons */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Preset Buttons as Chips */}
                 <button
                   onClick={() => handleDatePresetChange('today')}
-                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                     datePreset === 'today'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   Today
                 </button>
                 <button
                   onClick={() => handleDatePresetChange('yesterday')}
-                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                     datePreset === 'yesterday'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   Yesterday
                 </button>
                 <button
                   onClick={() => handleDatePresetChange('last7days')}
-                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                     datePreset === 'last7days'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   Last 7 Days
                 </button>
                 <button
                   onClick={() => handleDatePresetChange('last30days')}
-                  className={`group px-4 py-2.5 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                     datePreset === 'last30days'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                   }`}
                 >
                   Last 30 Days
@@ -489,7 +495,6 @@ export default function AIReportsPage() {
             {/* Search Filter */}
             <div className="mb-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Search by name, email, or role..."
@@ -498,7 +503,7 @@ export default function AIReportsPage() {
                     setSearchQuery(e.target.value);
                     setCurrentPage(1); // Reset to first page on search
                   }}
-                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 />
                 {searchQuery && (
                   <button

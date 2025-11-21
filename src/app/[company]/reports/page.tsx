@@ -50,6 +50,17 @@ export default function ReportsPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Reset to page 1 when month changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedMonth]);
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const storedRole = localStorage.getItem('role');
@@ -61,7 +72,7 @@ export default function ReportsPage() {
     }
 
     fetchReportData();
-  }, [selectedMonth, router]);
+  }, [selectedMonth, currentPage, router]); // Add currentPage dependency
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -70,10 +81,37 @@ export default function ReportsPage() {
       const start = startOfMonth(selectedMonth);
       const end = endOfMonth(selectedMonth);
 
-      const { data } = await axios.get(
-        `${baseUrl}/api/activity/all-users?start=${format(start, 'yyyy-MM-dd')}&end=${format(end, 'yyyy-MM-dd')}`,
+      const response = await axios.get(
+        `${baseUrl}/api/activity/all-users?start=${format(start, 'yyyy-MM-dd')}&end=${format(end, 'yyyy-MM-dd')}&page=${currentPage}&limit=${itemsPerPage}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Handle both old and new response formats (backward compatibility)
+      let userData;
+      let paginationData;
+
+      if (response.data.data && response.data.pagination) {
+        // New paginated format
+        userData = response.data.data;
+        paginationData = response.data.pagination;
+      } else {
+        // Old format (direct array) - for backward compatibility
+        userData = Array.isArray(response.data) ? response.data : [];
+        // Calculate pagination from full dataset
+        const allUsers = userData.length;
+        const startIdx = (currentPage - 1) * itemsPerPage;
+        userData = userData.slice(startIdx, startIdx + itemsPerPage);
+        paginationData = {
+          total: allUsers,
+          page: currentPage,
+          limit: itemsPerPage,
+          totalPages: Math.ceil(allUsers / itemsPerPage)
+        };
+      }
+
+      // Update pagination metadata
+      setTotalUsers(paginationData.total);
+      setTotalPages(paginationData.totalPages);
 
       /**
        * Process raw activity data to calculate attendance reports
@@ -87,7 +125,7 @@ export default function ReportsPage() {
        * - Expected Hours: Weekdays only (Mon-Fri) × 8 hours/day
        * - Only count dates up to today (no future LOP)
        */
-      const reports: UserReport[] = data.map((userStat: any) => {
+      const reports: UserReport[] = userData.map((userStat: any) => {
         const allDaysInMonth = eachDayOfInterval({ start, end });
         const today = new Date();
         today.setHours(23, 59, 59, 999); // End of today
@@ -579,50 +617,51 @@ export default function ReportsPage() {
     setShowExportMenu(false);
   };
 
+  // Pagination calculations - Backend pagination (no need for slice)
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + userReports.length, startIndex + itemsPerPage);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
       <main className="mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50 min-h-screen" style={{ marginLeft: '16rem' }}>
         <div className="max-w-7xl mx-auto">
-          {/* Hero Banner Section */}
-          <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
-            <div className="flex items-start justify-between mb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-blue-600" />
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-slate-900 mb-0.5">
-                    Attendance Reports
-                  </h1>
-                  <p className="text-sm text-slate-500">Monthly attendance summary for all team members</p>
-                </div>
+          {/* Material Design Header */}
+          <div className="mb-8">
+            <div className="flex items-start justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-normal text-slate-900 mb-1">
+                  Attendance Reports
+                </h1>
+                <p className="text-sm text-slate-600 font-normal">Monthly attendance summary for all team members</p>
               </div>
             </div>
-            
+
             {/* Month Selector and Export Controls */}
-            <div className="flex items-center justify-between flex-wrap gap-4 pt-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               {/* Month Selector */}
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                </div>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleMonthChange('prev')}
-                  className="group px-4 py-2 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                  className="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
                 >
-                  <ChevronLeft size={16} className="group-hover:text-blue-600" />
+                  <ChevronLeft size={18} />
                   Previous
                 </button>
-                <span className="text-lg font-bold text-slate-800 min-w-[180px] text-center px-4 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                <span className="text-base font-medium text-slate-900 min-w-[140px] text-center px-4 py-2">
                   {format(selectedMonth, 'MMMM yyyy')}
                 </span>
                 <button
                   onClick={() => handleMonthChange('next')}
-                  className="group px-4 py-2 border border-slate-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-3 py-2 text-slate-600 hover:bg-slate-100 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={selectedMonth >= new Date()}
                 >
                   Next
-                  <ChevronRight size={16} className="group-hover:text-blue-600" />
+                  <ChevronRight size={18} />
                 </button>
               </div>
 
@@ -630,9 +669,9 @@ export default function ReportsPage() {
               <div className="relative">
                 <button
                   onClick={() => setShowExportMenu(!showExportMenu)}
-                  className="group flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-white text-black rounded-lg text-sm font-medium border border-slate-200 hover:border-slate-300 transition-colors duration-200"
+                  className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg text-sm font-medium transition-colors duration-200"
                 >
-                  <Download className="w-4 h-4 text-black" />
+                  <Download className="w-4 h-4" />
                   Export Report
                 </button>
 
@@ -640,23 +679,23 @@ export default function ReportsPage() {
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 z-10 overflow-hidden">
                     <button
                       onClick={exportToExcel}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 border-b border-slate-100 last:border-b-0"
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 border-b border-slate-100 last:border-b-0"
                     >
-                      <FileText className="w-4 h-4 text-blue-600" />
+                      <FileText className="w-4 h-4 text-slate-600" />
                       Export to Excel
                     </button>
                     <button
                       onClick={exportToPDF}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 border-b border-slate-100 last:border-b-0"
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2 border-b border-slate-100 last:border-b-0"
                     >
-                      <FileText className="w-4 h-4 text-blue-600" />
+                      <FileText className="w-4 h-4 text-slate-600" />
                       Export to PDF
                     </button>
                     <button
                       onClick={exportToCSV}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2"
+                      className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-medium transition-colors duration-200 flex items-center gap-2"
                     >
-                      <FileText className="w-4 h-4 text-blue-600" />
+                      <FileText className="w-4 h-4 text-slate-600" />
                       Export to CSV
                     </button>
                   </div>
@@ -664,32 +703,25 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4">
-            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all duration-200">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Users className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Employees</span>
-                </div>
-                <TrendingUp className="w-4 h-4 text-blue-500 opacity-60" />
+            {/* Summary Cards - Material Design */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+            <div className="bg-white rounded-lg p-6 border border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-slate-600 uppercase tracking-wide">Total Employees</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mb-1">{userReports.length}</p>
+              <p className="text-3xl font-normal text-slate-900">{totalUsers || userReports.length}</p>
+              {totalPages > 1 && (
+                <p className="text-xs text-slate-500 mt-1">Viewing page {currentPage} of {totalPages}</p>
+              )}
             </div>
 
-            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-green-300 hover:shadow-md transition-all duration-200">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Avg Attendance</span>
-                </div>
-                <TrendingUp className="w-4 h-4 text-green-500 opacity-60" />
+            <div className="bg-white rounded-lg p-6 border border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium text-slate-600 uppercase tracking-wide">Avg Attendance</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mb-1">
+              <p className="text-3xl font-normal text-slate-900">
                 {userReports.length > 0
                   ? Math.round(
                       userReports.reduce((sum, r) => {
@@ -701,32 +733,22 @@ export default function ReportsPage() {
               </p>
             </div>
 
-            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-purple-300 hover:shadow-md transition-all duration-200">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
-                    <Clock className="w-4 h-4 text-purple-600" />
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Hours</span>
-                </div>
-                <TrendingUp className="w-4 h-4 text-purple-500 opacity-60" />
+            <div className="bg-white rounded-lg p-6 border border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="w-5 h-5 text-purple-600" />
+                <span className="text-sm font-medium text-slate-600 uppercase tracking-wide">Total Hours</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mb-1">
+              <p className="text-3xl font-normal text-slate-900">
                 {Math.round(userReports.reduce((sum, r) => sum + r.totalWorkingHours, 0))}h
               </p>
             </div>
 
-            <div className="group bg-white rounded-lg p-5 border border-slate-200 hover:border-orange-300 hover:shadow-md transition-all duration-200">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-orange-600" />
-                  </div>
-                  <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Avg Productivity</span>
-                </div>
-                <TrendingUp className="w-4 h-4 text-orange-500 opacity-60" />
+            <div className="bg-white rounded-lg p-6 border border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="w-5 h-5 text-orange-600" />
+                <span className="text-sm font-medium text-slate-600 uppercase tracking-wide">Avg Productivity</span>
               </div>
-              <p className="text-2xl font-bold text-slate-900 mb-1">
+              <p className="text-3xl font-normal text-slate-900">
                 {userReports.length > 0
                   ? Math.round(userReports.reduce((sum, r) => sum + r.avgProductivity, 0) / userReports.length)
                   : 0}%
@@ -741,75 +763,75 @@ export default function ReportsPage() {
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Employee</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Email</th>
+                    <th className="px-3 py-3 text-left text-sm font-medium text-slate-700 uppercase whitespace-nowrap">Employee</th>
+                    <th className="px-3 py-3 text-left text-sm font-medium text-slate-700 uppercase whitespace-nowrap">Email</th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Days with ≥7.5 hours of work"
                     >
-                      Working Days
+                      Working
                     </th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Days with 4-7.5 hours of work"
                     >
-                      Half Days
+                      Half
                     </th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Loss of Pay: Weekdays with <4 hours (excludes weekends & future dates)"
                     >
                       LOP
                     </th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Total days present (Working Days + Half Days)"
                     >
                       Present
                     </th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Total hours worked in the month"
                     >
-                      Worked Hours
+                      Hours
                     </th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Expected hours = Weekdays in month × 8 hours"
                     >
-                      Expected Hours
+                      Expected
                     </th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Average productivity percentage from AI analysis"
                     >
                       Productivity
                     </th>
                     <th
-                      className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider cursor-help"
+                      className="px-2 py-3 text-center text-sm font-medium text-slate-700 uppercase cursor-help whitespace-nowrap"
                       title="Present days ÷ Elapsed weekdays × 100%"
                     >
-                      Attendance %
+                      Attendance
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-bold text-slate-700 uppercase tracking-wider">Action</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-slate-700 uppercase whitespace-nowrap">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {loading ? (
                     <tr>
-                      <td colSpan={11} className="px-6 py-16 text-center">
+                      <td colSpan={11} className="px-3 py-12 text-center">
                         <div className="flex flex-col items-center gap-3">
                           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                          <p className="text-slate-500 font-medium">Loading report data...</p>
+                          <p className="text-slate-500 font-medium text-sm">Loading report data...</p>
                         </div>
                       </td>
                     </tr>
                   ) : userReports.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="px-6 py-16 text-center">
+                      <td colSpan={11} className="px-3 py-12 text-center">
                         <div className="flex flex-col items-center gap-3">
                           <BarChart3 className="w-12 h-12 text-slate-300" />
-                          <p className="text-slate-500 font-medium">No data available for this month</p>
+                          <p className="text-slate-500 font-medium text-sm">No data available for this month</p>
                         </div>
                       </td>
                     </tr>
@@ -821,43 +843,45 @@ export default function ReportsPage() {
                         : '0';
 
                       return (
-                        <tr key={report.userId} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-slate-50 transition-all duration-200 border-b border-slate-100">
-                          <td className="px-6 py-4">
-                            <div className="font-semibold text-slate-900">{report.userName}</div>
+                        <tr key={report.userId} className="hover:bg-slate-50 transition-colors duration-200 border-b border-slate-100">
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-slate-900 text-sm whitespace-nowrap">{report.userName}</div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-slate-600">{report.email}</td>
-                          <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-100 to-blue-50 text-blue-700 border border-blue-200">
+                          <td className="px-3 py-2 text-sm text-slate-600 max-w-[200px]">
+                            <div className="truncate" title={report.email}>{report.email}</div>
+                          </td>
+                          <td className="px-2 py-2 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-blue-50 text-blue-700 border border-blue-200">
                               {report.workingDays}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border border-yellow-200">
+                          <td className="px-2 py-2 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-yellow-50 text-yellow-700 border border-yellow-200">
                               {report.halfDays}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-red-100 to-red-50 text-red-700 border border-red-200">
+                          <td className="px-2 py-2 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-red-50 text-red-700 border border-red-200">
                               {report.lopDays}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className="inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-green-100 to-green-50 text-green-700 border border-green-200">
+                          <td className="px-2 py-2 text-center">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-sm font-medium bg-green-50 text-green-700 border border-green-200">
                               {report.presentDays}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center text-sm font-semibold text-slate-900">
+                          <td className="px-2 py-2 text-center text-sm font-medium text-slate-900 whitespace-nowrap">
                             {report.totalWorkingHours.toFixed(1)}h
                           </td>
-                          <td className="px-6 py-4 text-center text-sm text-slate-600 font-medium">
+                          <td className="px-2 py-2 text-center text-sm text-slate-600 whitespace-nowrap">
                             {report.expectedWorkingHours}h
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${
-                                report.avgProductivity >= 70 ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200' :
-                                report.avgProductivity >= 50 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border-yellow-200' :
-                                'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-200'
+                          <td className="px-2 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium border ${
+                                report.avgProductivity >= 70 ? 'bg-green-50 text-green-700 border-green-200' :
+                                report.avgProductivity >= 50 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                'bg-red-50 text-red-700 border-red-200'
                               }`}>
                                 {report.avgProductivity}%
                               </span>
@@ -872,32 +896,30 @@ export default function ReportsPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-bold border ${
-                              parseFloat(attendancePercent) >= 90 ? 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200' :
-                              parseFloat(attendancePercent) >= 75 ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 text-yellow-700 border-yellow-200' :
-                              'bg-gradient-to-r from-red-100 to-red-50 text-red-700 border-red-200'
+                          <td className="px-2 py-2 text-center">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium border ${
+                              parseFloat(attendancePercent) >= 90 ? 'bg-green-50 text-green-700 border-green-200' :
+                              parseFloat(attendancePercent) >= 75 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                              'bg-red-50 text-red-700 border-red-200'
                             }`}>
                               {attendancePercent}%
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-center">
+                          <td className="px-3 py-2 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => exportIndividualReport(report)}
-                                className="group inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
+                                className="inline-flex items-center justify-center p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors duration-200"
                                 title="Export detailed daily report"
                               >
-                                <FileDown className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
-                                Export
+                                <FileDown className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleSendEmail(report)}
-                                className="group inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 active:scale-95"
+                                className="inline-flex items-center justify-center p-2 text-green-600 hover:bg-green-50 rounded transition-colors duration-200"
                                 title="Send report via email"
                               >
-                                <Mail className="w-3.5 h-3.5 group-hover:translate-y-0.5 transition-transform" />
-                                Email
+                                <Mail className="w-4 h-4" />
                               </button>
                             </div>
                           </td>
@@ -909,6 +931,66 @@ export default function ReportsPage() {
               </table>
             </div>
           </div>
+
+          {/* Pagination Controls */}
+          {!loading && userReports.length > 0 && totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-between">
+              <div className="text-sm text-slate-600">
+                Showing {startIndex + 1} to {startIndex + userReports.length} of {totalUsers} employees
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex gap-1">
+                  {[...Array(totalPages)].map((_, index) => {
+                    const page = index + 1;
+
+                    // Show first page, last page, current page, and pages around current
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white'
+                              : 'text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return <span key={page} className="px-2 text-slate-400">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
