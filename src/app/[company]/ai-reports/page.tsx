@@ -478,207 +478,150 @@ export default function AIReportsPage() {
             </div>
           )}
 
-          {/* Overview View - User Cards */}
+          {/* Overview View - Card-Table Hybrid */}
           {view === 'overview' && !loading && filteredUsers.length > 0 && (
             <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-3">
               {paginatedUsers.map((userSummary) => {
                 // Use aiScore if available, otherwise fall back to productivityPercentage
                 const displayScore = userSummary.summary.aiScore ?? userSummary.summary.productivityPercentage;
                 const isLowScore = displayScore < 60; // Red theme for scores below 60%
                 const isMediumScore = displayScore >= 60 && displayScore < 70; // Yellow theme for 60-70%
 
+                // Score color for badge
+                const scoreColor = isLowScore
+                  ? 'bg-red-100 text-red-700 border-red-300'
+                  : isMediumScore
+                  ? 'bg-yellow-100 text-yellow-700 border-yellow-300'
+                  : 'bg-green-100 text-green-700 border-green-300';
+
+                const scoreEmoji = isLowScore ? '🔴' : isMediumScore ? '🟡' : '🟢';
+
                 return (
                   <div
                     key={userSummary.user.id}
                     onClick={() => userSummary.hasData && handleCardClick(userSummary.user.id)}
-                    className={`group rounded-lg border p-6 transition-all duration-200 ${
-                      userSummary.hasData
-                        ? isLowScore
-                          ? 'bg-red-50 border-red-300 hover:shadow-lg hover:shadow-red-200/50 hover:border-red-400 cursor-pointer'
-                          : isMediumScore
-                          ? 'bg-yellow-50 border-yellow-300 hover:shadow-lg hover:shadow-yellow-200/50 hover:border-yellow-400 cursor-pointer'
-                          : 'bg-white border-slate-200 hover:shadow-md hover:border-blue-300 cursor-pointer'
-                        : 'bg-white border-slate-200 opacity-60'
+                    className={`group bg-white rounded-xl border transition-all duration-200 overflow-hidden cursor-pointer ${
+                      isLowScore
+                        ? 'border-red-200 hover:border-red-400 hover:shadow-lg hover:shadow-red-100'
+                        : isMediumScore
+                        ? 'border-yellow-200 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-100'
+                        : 'border-slate-200 hover:border-blue-400 hover:shadow-lg hover:shadow-blue-50'
                     }`}
                   >
-                    {/* User Info */}
-                    <div className="flex items-start justify-between mb-5">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            isLowScore && userSummary.hasData
-                              ? 'bg-red-100'
-                              : isMediumScore && userSummary.hasData
-                              ? 'bg-yellow-100'
-                              : 'bg-blue-50'
-                          }`}>
-                            <User className={`w-4 h-4 ${
-                              isLowScore && userSummary.hasData
-                                ? 'text-red-600'
-                                : isMediumScore && userSummary.hasData
-                                ? 'text-yellow-600'
-                                : 'text-blue-600'
-                            }`} />
-                          </div>
-                          <div>
-                            <h3 className={`font-bold text-base ${
-                              isLowScore && userSummary.hasData
-                                ? 'text-red-900'
-                                : isMediumScore && userSummary.hasData
-                                ? 'text-yellow-900'
-                                : 'text-slate-900'
-                            }`}>{userSummary.user.name}</h3>
-                            <p className={`text-xs font-medium ${
-                              isLowScore && userSummary.hasData
-                                ? 'text-red-700'
-                                : isMediumScore && userSummary.hasData
-                                ? 'text-yellow-700'
-                                : 'text-slate-500'
-                            }`}>{userSummary.user.jobRole}</p>
-                          </div>
+                    {/* Top Section: User Info & Score */}
+                    <div className="p-5 pb-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                          {userSummary.user.name.charAt(0).toUpperCase()}
                         </div>
-                        <p className={`text-xs ml-11 ${
-                          isLowScore && userSummary.hasData
-                            ? 'text-red-600'
-                            : isMediumScore && userSummary.hasData
-                            ? 'text-yellow-600'
-                            : 'text-slate-400'
-                        }`}>{userSummary.user.email}</p>
-                      </div>
-                      {userSummary.hasData && (
-                        <div className="text-center">
-                          <div
-                            className={`text-2xl font-bold ${
-                              displayScore >= 70
-                                ? 'text-green-600'
-                                : displayScore >= 40
-                                ? 'text-yellow-600'
-                                : 'text-red-600'
-                            }`}
-                          >
-                            {displayScore}%
-                          </div>
-                          <p className={`text-xs font-medium ${
-                            isLowScore
-                              ? 'text-red-700'
-                              : isMediumScore
-                              ? 'text-yellow-700'
-                              : 'text-slate-500'
-                          }`}>
-                            {userSummary.summary.aiScore !== undefined ? 'AI Score' : 'Score'}
+                        <div className="flex-1">
+                          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                            {scoreEmoji} {userSummary.user.name}
+                          </h3>
+                          <p className="text-sm text-slate-500">
+                            {userSummary.user.jobRole} • {userSummary.user.email}
                           </p>
                         </div>
-                      )}
+                      </div>
+
+                      {/* AI Score Badge */}
+                      <div className="flex flex-col items-end gap-2">
+                        <div className={`px-4 py-2 rounded-lg border-2 ${scoreColor}`}>
+                          <div className="text-2xl font-bold leading-none">
+                            {displayScore}%
+                          </div>
+                          <div className="text-xs font-semibold mt-1">AI Score</div>
+                        </div>
+                        {userSummary.summary.timeBasedScore !== null && userSummary.summary.timeBasedScore !== undefined && (
+                          <div className="flex gap-1 text-xs">
+                            <span className="text-slate-500">Time: {userSummary.summary.timeBasedScore}%</span>
+                            <span className="text-slate-300">•</span>
+                            <span className="text-slate-500">Quality: {userSummary.summary.screenshotBasedScore}%</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                  {/* Summary Stats */}
-                  {userSummary.hasData ? (
-                    <div className="space-y-3">
-                      <div className={`flex items-center justify-between text-sm p-2 rounded-lg ${
-                        isLowScore
-                          ? 'bg-red-100/50'
-                          : isMediumScore
-                          ? 'bg-yellow-100/50'
-                          : 'bg-slate-50'
-                      }`}>
-                        <span className={`font-medium ${
-                          isLowScore
-                            ? 'text-red-800'
-                            : isMediumScore
-                            ? 'text-yellow-800'
-                            : 'text-slate-600'
-                        }`}>
-                          Total Screenshots:
-                        </span>
-                        <span className={`font-bold px-3 py-1 bg-white rounded-lg border ${
-                          isLowScore
-                            ? 'text-red-900 border-red-300'
-                            : isMediumScore
-                            ? 'text-yellow-900 border-yellow-300'
-                            : 'text-slate-900 border-slate-200'
-                        }`}>
-                          {userSummary.summary.totalScreenshots}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-sm p-2 bg-green-50 rounded-lg border border-green-100">
-                        <span className="text-slate-700 font-medium flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                          Productive:
-                        </span>
-                        <span className="font-bold text-green-700 px-3 py-1 bg-white rounded-lg border border-green-200">
-                          {userSummary.summary.productiveCount}
-                        </span>
-                      </div>
-                      <div className={`flex items-center justify-between text-sm p-2 rounded-lg border ${
-                        isLowScore
-                          ? 'bg-red-100 border-red-200'
-                          : isMediumScore
-                          ? 'bg-yellow-100 border-yellow-200'
-                          : 'bg-red-50 border-red-100'
-                      }`}>
-                        <span className={`font-medium flex items-center gap-2 ${
-                          isLowScore
-                            ? 'text-red-900'
-                            : isMediumScore
-                            ? 'text-yellow-900'
-                            : 'text-slate-700'
-                        }`}>
-                          <AlertCircle className="w-4 h-4 text-red-600" />
-                          Unproductive:
-                        </span>
-                        <span className={`font-bold px-3 py-1 bg-white rounded-lg border ${
-                          isLowScore
-                            ? 'text-red-800 border-red-300'
-                            : isMediumScore
-                            ? 'text-yellow-800 border-yellow-300'
-                            : 'text-red-700 border-red-200'
-                        }`}>
-                          {userSummary.summary.unproductiveCount}
-                        </span>
+                    {/* Divider */}
+                    <div className="border-t border-slate-100"></div>
+
+                    {/* Bottom Section: Stats Row */}
+                    <div className="p-5 pt-4">
+                      <div className="flex items-center gap-6 text-sm">
+                        {/* Total Screenshots */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <Activity className="w-4 h-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-slate-900">
+                              {userSummary.summary.totalScreenshots}
+                            </div>
+                            <div className="text-xs text-slate-500">screenshots</div>
+                          </div>
+                        </div>
+
+                        <div className="w-px h-10 bg-slate-200"></div>
+
+                        {/* Productive */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-green-600" />
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-green-700">
+                              {userSummary.summary.productiveCount}
+                            </div>
+                            <div className="text-xs text-slate-500">productive</div>
+                          </div>
+                        </div>
+
+                        <div className="w-px h-10 bg-slate-200"></div>
+
+                        {/* Unproductive */}
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">
+                            <AlertCircle className="w-4 h-4 text-red-600" />
+                          </div>
+                          <div>
+                            <div className="text-lg font-bold text-red-700">
+                              {userSummary.summary.unproductiveCount}
+                            </div>
+                            <div className="text-xs text-slate-500">unproductive</div>
+                          </div>
+                        </div>
+
+                        {/* Spacer */}
+                        <div className="flex-1"></div>
+
+                        {/* View Details Button */}
+                        <button className="flex items-center gap-2 px-4 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-slate-700 font-medium transition-colors group">
+                          <span className="text-sm">View Details</span>
+                          <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                        </button>
                       </div>
 
                       {/* Progress Bar */}
                       <div className="mt-4">
-                        <div className={`w-full rounded-full h-2 overflow-hidden ${
-                          isLowScore
-                            ? 'bg-red-200'
-                            : isMediumScore
-                            ? 'bg-yellow-200'
-                            : 'bg-slate-200'
-                        }`}>
+                        <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
+                          <span>Productivity</span>
+                          <span>{displayScore}%</span>
+                        </div>
+                        <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-2 rounded-full transition-all duration-500 ${
+                            className={`h-full rounded-full transition-all duration-500 ${
                               displayScore >= 70
-                                ? 'bg-green-500'
+                                ? 'bg-gradient-to-r from-green-400 to-green-600'
                                 : displayScore >= 60
-                                ? 'bg-yellow-500'
-                                : 'bg-red-500'
+                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-600'
+                                : 'bg-gradient-to-r from-red-400 to-red-600'
                             }`}
                             style={{ width: `${displayScore}%` }}
                           />
                         </div>
                       </div>
-
-                      <div className={`flex items-center justify-center gap-2 mt-3 text-xs font-medium transition-colors ${
-                        isLowScore
-                          ? 'text-red-700 group-hover:text-red-800'
-                          : isMediumScore
-                          ? 'text-yellow-700 group-hover:text-yellow-800'
-                          : 'text-slate-500 group-hover:text-blue-600'
-                      }`}>
-                        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                        Click to view detailed analysis
-                      </div>
                     </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                        <AlertCircle className="w-6 h-6 text-slate-400" />
-                      </div>
-                      <p className="text-sm text-slate-500 font-medium">No screenshots for this period</p>
-                    </div>
-                  )}
                 </div>
               );
             })}
