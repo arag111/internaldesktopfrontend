@@ -28,6 +28,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { baseUrl } from '@/app/utils/config';
+import { formatISTDateRange } from '@/app/utils/timezone';
 
 const theme = createTheme({
   palette: {
@@ -182,13 +183,8 @@ export default function DashboardPage() {
     }
 
     const [start, end] = selectedRange;
-    const toISTDate = (date: Date) => {
-      const istOffset = 5.5 * 60;
-      const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-      return new Date(utc + istOffset * 60000);
-    };
-    const istStart = toISTDate(start);
-    const istEnd = toISTDate(end);
+    // ✅ Use centralized IST utility instead of duplicate function
+    const dateRange = formatISTDateRange(start, end);
 
     const fetchData = async () => {
       setLoading(true);
@@ -196,7 +192,7 @@ export default function DashboardPage() {
         if (storedRole === 'admin' || storedRole === 'manager') {
           const [statsResponse, statusesResponse] = await Promise.all([
             axios.get(
-              `${baseUrl}/api/activity/all-users?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`,
+              `${baseUrl}/api/activity/all-users?start=${dateRange.start}&end=${dateRange.end}`,
               { headers: { Authorization: `Bearer ${token}` } }
             ),
             axios.get(
@@ -212,12 +208,12 @@ export default function DashboardPage() {
           setActiveUsersCount(initialActiveCount);
         } else {
           const userId = JSON.parse(atob(token.split('.')[1])).id;
-          const apiUrl = `${baseUrl}/api/activity/range/${userId}?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`;
+          const apiUrl = `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`;
 
           console.log('🔍 [User Dashboard Debug]');
           console.log('   API URL:', apiUrl);
           console.log('   User ID:', userId);
-          console.log('   Date Range:', format(istStart, 'yyyy-MM-dd'), 'to', format(istEnd, 'yyyy-MM-dd'));
+          console.log('   Date Range:', dateRange.start, 'to', dateRange.end);
 
           const { data } = await axios.get(apiUrl, {
             headers: { Authorization: `Bearer ${token}` }

@@ -112,14 +112,73 @@ export const ISOToDatetimeLocal = (iso: string): string => {
 };
 
 /**
- * Legacy IST conversion function for backward compatibility
- * Converts a date to IST (UTC+5:30)
- * @deprecated Use getUserTimezone-based functions instead
+ * ✅ IST TIMEZONE UTILITIES
+ * TrackNexus is IST-centric (server and users in India)
+ * These functions handle IST date conversions consistently
+ */
+
+/**
+ * Convert a date to IST (UTC+5:30)
+ * Used for converting browser dates to IST before sending to API
+ *
+ * @param date Date in any timezone
+ * @returns Date object adjusted to IST
+ *
+ * @example
+ * const now = new Date(); // User's local time
+ * const istDate = toISTDate(now); // Converted to IST
+ * const dateString = format(istDate, 'yyyy-MM-dd'); // Format for API
  */
 export const toISTDate = (date: Date): Date => {
   const utc = date.getTime() + (date.getTimezoneOffset() * 60000);
   const istOffset = 5.5 * 60 * 60 * 1000; // IST is UTC+5:30
   return new Date(utc + istOffset);
+};
+
+/**
+ * Format a date as IST date string (YYYY-MM-DD)
+ * Convenience function for API calls
+ *
+ * @param date Date to format
+ * @returns Date string in YYYY-MM-DD format (IST)
+ *
+ * @example
+ * formatISTDate(new Date()) // "2025-11-21"
+ */
+export const formatISTDate = (date: Date): string => {
+  const istDate = toISTDate(date);
+  return format(istDate, 'yyyy-MM-dd');
+};
+
+/**
+ * Get today's date in IST as a string
+ *
+ * @returns Today's date in IST (YYYY-MM-DD)
+ *
+ * @example
+ * getTodayIST() // "2025-11-21"
+ */
+export const getTodayIST = (): string => {
+  return formatISTDate(new Date());
+};
+
+/**
+ * Convert date range to IST date strings
+ * Helper for API calls with date ranges
+ *
+ * @param start Start date
+ * @param end End date
+ * @returns Object with start and end as IST date strings
+ *
+ * @example
+ * const range = formatISTDateRange(startDate, endDate);
+ * // { start: "2025-11-20", end: "2025-11-21" }
+ */
+export const formatISTDateRange = (start: Date, end: Date): { start: string; end: string } => {
+  return {
+    start: formatISTDate(start),
+    end: formatISTDate(end)
+  };
 };
 
 /**

@@ -26,6 +26,7 @@ import {
   PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 import { baseUrl } from '@/app/utils/config';
+import { formatISTDateRange } from '@/app/utils/timezone';
 import Navbar from '@/app/components/Navbar';
 import Sidebar from '@/app/components/Sidebar';
 import WhosInOutWidget from '@/app/components/WhosInOutWidget';
@@ -153,20 +154,15 @@ export default function DashboardPage() {
     if (!token) return router.push('/');
 
     const [start, end] = selectedRange;
-    const toISTDate = (date: Date) => {
-      const istOffset = 5.5 * 60;
-      const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-      return new Date(utc + istOffset * 60000);
-    };
-    const istStart = toISTDate(start);
-    const istEnd = toISTDate(end);
+    // ✅ Use centralized IST utility instead of duplicate function
+    const dateRange = formatISTDateRange(start, end);
 
     const fetchData = async () => {
       setLoading(true);
       try {
         if (storedRole === 'admin' || storedRole === 'manager') {
           const { data } = await axios.get(
-            `${baseUrl}/api/activity/all-users?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`,
+            `${baseUrl}/api/activity/all-users?start=${dateRange.start}&end=${dateRange.end}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           setAllUserStats(data);
@@ -176,7 +172,7 @@ export default function DashboardPage() {
         } else {
           const userId = JSON.parse(atob(token.split('.')[1])).id;
           const { data } = await axios.get(
-            `${baseUrl}/api/activity/range/${userId}?start=${format(istStart, 'yyyy-MM-dd')}&end=${format(istEnd, 'yyyy-MM-dd')}`,
+            `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
           setStats(data);
