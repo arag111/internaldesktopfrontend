@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Calendar, MapPin, Clock, Mail, Loader2, TrendingUp, CheckCircle, AlertCircle, Building2, Users, Activity, BarChart3 } from 'lucide-react';
+import { Calendar, MapPin, Clock, Mail, Loader2, TrendingUp, CheckCircle, AlertCircle, Building2, Users, Activity, BarChart3, Search } from 'lucide-react';
 
 interface AttendanceRecord {
   userId: number;
@@ -54,6 +54,7 @@ export default function AttendanceReport() {
   const [sendingEmail, setSendingEmail] = useState<number | null>(null);
   const [officeIp, setOfficeIp] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadAttendanceReport();
@@ -151,6 +152,20 @@ export default function AttendanceReport() {
 
   const allDates = getAllDates();
 
+  // Filter attendance data based on search query
+  const filteredAttendanceData = attendanceData ? {
+    ...attendanceData,
+    attendance: attendanceData.attendance.filter(userAttendance => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        userAttendance.user.name.toLowerCase().includes(query) ||
+        userAttendance.user.email.toLowerCase().includes(query) ||
+        userAttendance.user.jobRole.toLowerCase().includes(query)
+      );
+    })
+  } : null;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -237,6 +252,30 @@ export default function AttendanceReport() {
       {/* Attendance Data */}
       {!loading && !error && attendanceData && (
         <div className="space-y-6">
+          {/* Search Filter */}
+          <div className="mb-6">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name, email, or role..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <div className="bg-white rounded-lg border border-slate-200 p-5">
@@ -284,7 +323,7 @@ export default function AttendanceReport() {
           </div>
 
           {/* Columnar Attendance Table */}
-          {attendanceData.attendance.length > 0 ? (
+          {filteredAttendanceData && filteredAttendanceData.attendance.length > 0 ? (
             <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -328,7 +367,7 @@ export default function AttendanceReport() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {attendanceData.attendance.map((userAttendance) => {
+                    {filteredAttendanceData.attendance.map((userAttendance) => {
                       // Create a map of date -> record for quick lookup
                       const recordsByDate = new Map(
                         userAttendance.records.map(r => [r.date, r])

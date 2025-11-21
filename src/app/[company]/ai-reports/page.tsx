@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
-import { Brain, Calendar, TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowLeft, User, Clock, Sparkles, Zap, Activity, Mail, BarChart3, ChevronRight } from 'lucide-react';
+import { Brain, Calendar, TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowLeft, User, Clock, Sparkles, Zap, Activity, Mail, BarChart3, ChevronRight, Search } from 'lucide-react';
 import AttendanceReport from './AttendanceReport';
 import DateRangePickerComponent from '../../components/DateRangePicker2';
 import { rangePresets } from '../../utils/constants';
@@ -86,6 +86,7 @@ export default function AIReportsPage() {
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailInput, setEmailInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -251,6 +252,16 @@ export default function AIReportsPage() {
   // Pagination calculations
   const filteredUsers = userSummaries
     .filter(u => u.hasData) // Only show users with data
+    .filter(u => {
+      // Filter by search query
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        u.user.name.toLowerCase().includes(query) ||
+        u.user.email.toLowerCase().includes(query) ||
+        u.user.jobRole.toLowerCase().includes(query)
+      );
+    })
     .sort((a, b) => {
       // Sort by AI Score (ascending - lowest scores first)
       const scoreA = a.summary.aiScore ?? a.summary.productivityPercentage;
@@ -382,12 +393,6 @@ export default function AIReportsPage() {
                   setSelectedRange={handleCustomRangeChange}
                   rangePresets={rangePresets}
                 />
-
-                {/* Date Range Display */}
-                <div className="flex items-center gap-2 text-sm text-slate-600 font-medium px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                  Data from {format(selectedRange[0], 'PPP')} to {format(selectedRange[1], 'PPP')}
-                </div>
               </div>
             )}
           </div>
@@ -481,6 +486,36 @@ export default function AIReportsPage() {
           {/* Overview View - Classic Data Table */}
           {view === 'overview' && !loading && filteredUsers.length > 0 && (
             <>
+            {/* Search Filter */}
+            <div className="mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or role..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1); // Reset to first page on search
+                  }}
+                  className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setCurrentPage(1);
+                    }}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <table className="w-full">
                 <thead>
