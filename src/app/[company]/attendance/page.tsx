@@ -35,34 +35,18 @@ export default function AttendancePage() {
   const [stats, setStats] = useState<any[]>([]);
   const [allUserStats, setAllUserStats] = useState<UserStats[]>([]);
   const [selectedRange, setSelectedRange] = useState(rangePresets[0].range);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [role, setRole] = useState<string | null>(null);
   const [userStatuses, setUserStatuses] = useState<Record<string, { status: string; timestamp: string }>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [socket, setSocket] = useState<Socket | null>(null);
   const isInitialMount = useRef(true);
   const prevRangeRef = useRef<string>('');
-  const hasRestoredFromStorage = useRef(false);
 
-  // Initialize role and selectedUserId from localStorage on mount
+  // Initialize role from localStorage on mount
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
     setRole(storedRole);
-
-    // Restore selected user from localStorage
-    const storedUserId = localStorage.getItem('selectedUserId');
-    if (storedUserId) {
-      setSelectedUserId(parseInt(storedUserId));
-    }
-    hasRestoredFromStorage.current = true;
   }, []);
-
-  // Save selectedUserId to localStorage whenever it changes
-  useEffect(() => {
-    if (selectedUserId !== null) {
-      localStorage.setItem('selectedUserId', selectedUserId.toString());
-    }
-  }, [selectedUserId]);
 
   // Fetch data when range changes (not when selectedUserId changes)
   useEffect(() => {
@@ -110,13 +94,6 @@ export default function AttendancePage() {
     fetchData();
   }, [router, selectedRange]);
 
-  // Initialize selectedUserId from allUserStats if needed (only if not restored from localStorage)
-  useEffect(() => {
-    if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0 && hasRestoredFromStorage.current) {
-      setSelectedUserId(allUserStats[0].user.id);
-    }
-  }, [allUserStats, role, selectedUserId]);
-
   // Socket connection management
   useEffect(() => {
     if (role === 'admin' || role === 'manager') {
@@ -147,21 +124,9 @@ export default function AttendancePage() {
     }
   }, [role]);
 
-  // Memoize currentStats to avoid recalculation
-  const currentStats = useMemo(() => {
-    if (role === 'admin' || role === 'manager') {
-      return allUserStats.find((u) => u.user.id === selectedUserId)?.stats || [];
-    }
-    return stats;
-  }, [role, allUserStats, selectedUserId, stats]);
-
   const mlValue = role === 'admin' || role === 'manager' ? '32rem' : '16rem';
 
   // Memoize handlers
-  const handleSetSelectedUserId = useCallback((id: number) => {
-    setSelectedUserId(id);
-  }, []);
-
   const handleSetSelectedRange = useCallback((range: [Date, Date]) => {
     setSelectedRange(range);
   }, []);
@@ -170,11 +135,10 @@ export default function AttendancePage() {
     <Attendance
       role={role}
       allUserStats={allUserStats}
-      selectedUserId={selectedUserId}
-      setSelectedUserId={handleSetSelectedUserId}
+      selectedUserId={null}
       setSelectedRange={handleSetSelectedRange}
       selectedRange={selectedRange}
-      currentStats={currentStats}
+      currentStats={stats}
       rangePresets={rangePresets}
       userStatuses={userStatuses}
       searchTerm={searchTerm}

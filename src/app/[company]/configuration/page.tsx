@@ -234,7 +234,7 @@ export default function ConfigurationPage() {
                   <Settings className="w-4 h-4 text-blue-600" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-semibold text-slate-900 mb-0.5">
+                  <h1 className="text-2xl font-normal text-slate-900 mb-0.5">
                     Configuration Settings
                   </h1>
                   <p className="text-sm text-slate-500">
@@ -266,14 +266,14 @@ export default function ConfigurationPage() {
                     <Camera className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-slate-900">Tracking Settings</h3>
+                    <h3 className="text-base font-medium text-slate-900">Tracking Settings</h3>
                     <p className="text-xs text-slate-500 mt-0.5">Configure activity monitoring and screenshot capture</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
+                    <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
                       Inactivity Duration (minutes)
                     </label>
                     <input
@@ -305,7 +305,7 @@ export default function ConfigurationPage() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
+                    <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
                       Screenshot Interval (minutes)
                     </label>
                     <input
@@ -345,14 +345,14 @@ export default function ConfigurationPage() {
                     <Shield className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-slate-900">Security Settings</h3>
+                    <h3 className="text-base font-medium text-slate-900">Security Settings</h3>
                     <p className="text-xs text-slate-500 mt-0.5">Change admin password (leave empty to keep current)</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
+                    <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
                       New Admin Password (Optional)
                     </label>
                     <div className="relative">
@@ -398,7 +398,7 @@ export default function ConfigurationPage() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
+                    <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
                       Confirm New Password
                     </label>
                     <div className="relative">
@@ -446,14 +446,14 @@ export default function ConfigurationPage() {
                     <Clock className="w-4 h-4 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="text-base font-semibold text-slate-900">Working Hours</h3>
+                    <h3 className="text-base font-medium text-slate-900">Working Hours</h3>
                     <p className="text-xs text-slate-500 mt-0.5">Set default punch in and punch out times</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
+                    <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
                       Punch In Time (HH:MM)
                     </label>
                     <input
@@ -483,7 +483,7 @@ export default function ConfigurationPage() {
                   </div>
 
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
+                    <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight block">
                       Punch Out Time (HH:MM)
                     </label>
                     <input

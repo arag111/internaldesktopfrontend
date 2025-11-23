@@ -401,7 +401,7 @@ export default function UserManagementPage() {
                   <Users size={20} className="text-blue-600" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-semibold text-slate-900 mb-0.5">
+                  <h1 className="text-xl font-normal text-slate-900 mb-0.5">
                     Team Management
                   </h1>
                   <p className="text-sm text-slate-500">Manage your team members and their access levels</p>
@@ -413,12 +413,12 @@ export default function UserManagementPage() {
                   <div className="text-right">
                     <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">User Capacity</p>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-slate-900">{users.length}</span>
+                      <span className="text-2xl font-normal text-slate-900">{users.length}</span>
                       <span className="text-slate-600 text-sm">/ {company.subscription.userLimit}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <div className={`px-2.5 py-1 rounded-md text-xs font-semibold border ${
+                    <div className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
                       capacityPercentage >= 90 ? 'bg-red-50 text-red-700 border-red-200' :
                       capacityPercentage >= 70 ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                       'bg-green-50 text-green-700 border-green-200'
@@ -451,7 +451,7 @@ export default function UserManagementPage() {
             <div className="p-5 border-b border-slate-200 bg-white">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-0.5">
+                  <h3 className="text-xl font-normal text-slate-900 mb-0.5">
                     Team Members ({filteredUsers.length})
                   </h3>
                   <p className="text-xs text-slate-500">Manage and view all team members</p>
@@ -500,15 +500,15 @@ export default function UserManagementPage() {
               <table className="w-full min-w-[1000px] border-collapse">
                 <thead className="bg-slate-50 text-slate-900 sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Member</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Username</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Email</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Role</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Job Role</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Manager</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Track Type</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-left border-b border-slate-200 uppercase tracking-wider">Teams</th>
-                    <th className="px-4 py-3 font-semibold text-xs text-center border-b border-slate-200 uppercase tracking-wider">Actions</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Member</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Username</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Email</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Role</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Job Role</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Manager</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Track Type</th>
+                    <th className="px-4 py-3 font-medium text-xs text-left border-b border-slate-200 uppercase tracking-wider">Teams</th>
+                    <th className="px-4 py-3 font-medium text-xs text-center border-b border-slate-200 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white text-slate-700 text-sm">
@@ -517,7 +517,7 @@ export default function UserManagementPage() {
                       <td colSpan={9} className="px-6 py-12 text-center text-slate-500">
                         <div className="flex flex-col items-center gap-3">
                           <Users className="w-10 h-10 text-slate-400" />
-                          <p className="text-base font-semibold">No users found</p>
+                          <p className="text-base font-medium">No users found</p>
                           <p className="text-xs text-slate-500">Try adjusting your search or filter criteria</p>
                         </div>
                       </td>
@@ -530,10 +530,10 @@ export default function UserManagementPage() {
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xs font-semibold border border-blue-200">
+                            <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-xs font-medium border border-blue-200">
                               {user.name ? user.name.charAt(0).toUpperCase() : user.username.charAt(0).toUpperCase()}
                             </div>
-                            <span className="font-semibold text-slate-900 text-sm">{user.name || user.username}</span>
+                            <span className="font-medium text-slate-900 text-sm">{user.name || user.username}</span>
                           </div>
                         </td>
                         <td className="px-4 py-3 text-slate-700 text-sm">{user.username}</td>
@@ -543,7 +543,7 @@ export default function UserManagementPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
                             user.role === 'admin'
                               ? 'bg-blue-50 text-blue-700 border-blue-200'
                               : user.role === 'manager'
@@ -560,7 +560,7 @@ export default function UserManagementPage() {
                           {user.manager || '-'}
                         </td>
                         <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold border ${
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
                             user.tracktype === '24x7'
                               ? 'bg-purple-50 text-purple-700 border-purple-200'
                               : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -572,12 +572,12 @@ export default function UserManagementPage() {
                           {user.teams.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
                               {user.teams.slice(0, 2).map((team, idx) => (
-                                <span key={idx} className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-xs border border-slate-200">
+                                <span key={idx} className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-full text-xs border border-slate-200">
                                   {team}
                                 </span>
                               ))}
                               {user.teams.length > 2 && (
-                                <span className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-md text-xs border border-slate-200">
+                                <span className="px-1.5 py-0.5 bg-slate-50 text-slate-700 rounded-full text-xs border border-slate-200">
                                   +{user.teams.length - 2}
                                 </span>
                               )}
@@ -613,17 +613,17 @@ export default function UserManagementPage() {
           </div>
 
           {/* User Form Section */}
-          <div ref={formSectionRef} className="bg-white rounded-lg p-6 mb-8 border border-slate-200">
+          <div ref={formSectionRef} className="bg-gradient-to-br from-white via-blue-50/30 to-white rounded-xl p-6 mb-8 border border-blue-100 shadow-lg shadow-blue-100/50">
             <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                  {selectedUser ? <Edit className="w-4 h-4 text-blue-600" /> : <UserPlus className="w-4 h-4 text-blue-600" />}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+                  {selectedUser ? <Edit className="w-5 h-5 text-white" /> : <UserPlus className="w-5 h-5 text-white" />}
               </div>
               <div>
-                  <h2 className="text-xl font-semibold text-slate-900 mb-0.5">
+                  <h2 className="text-2xl font-normal text-slate-900 mb-1">
                   {selectedUser ? 'Edit Team Member' : 'Add New Team Member'}
                 </h2>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-slate-600">
                   {selectedUser ? 'Update team member information' : 'Create a new team member account'}
                 </p>
                 </div>
@@ -632,10 +632,10 @@ export default function UserManagementPage() {
                 <button
                   onClick={handleSubmit}
                   disabled={!selectedUser && company && users.length >= company.subscription.userLimit}
-                  className={`flex items-center gap-2 px-6 py-2.5 rounded-lg border transition-colors duration-200 font-medium text-sm ${
+                  className={`flex items-center gap-2 px-8 py-3 rounded-lg transition-all duration-200 font-medium text-sm shadow-md ${
                     !selectedUser && company && users.length >= company.subscription.userLimit
-                      ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-50'
-                      : 'bg-slate-100 text-slate-900 border-slate-200 hover:bg-slate-200 hover:border-slate-300'
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-50'
+                      : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:shadow-blue-500/30 hover:-translate-y-0.5'
                   }`}
                   title={!selectedUser && company && users.length >= company.subscription.userLimit ? 'User limit reached - Please upgrade your plan' : ''}
                 >
@@ -662,7 +662,7 @@ export default function UserManagementPage() {
                       });
                       setFieldErrors({});
                     }}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg transition-colors duration-200 font-medium text-sm"
+                    className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg transition-all duration-200 font-medium text-sm shadow-md hover:shadow-lg hover:-translate-y-0.5"
                   >
                     <X className="w-4 h-4" />
                     Cancel
@@ -672,29 +672,28 @@ export default function UserManagementPage() {
             </div>
 
 
-            {/* Form Fields - Section Cards */}
-            <div className="space-y-4">
+            {/* Form Fields - Single Card */}
+            <div className="bg-white rounded-xl p-6 border border-slate-200 shadow-sm">
+
               {/* Basic Information Section */}
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <User className="w-3.5 h-3.5 text-blue-600" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-slate-900">Basic Information</h3>
+              <div className="mb-6">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <User className="w-4 h-4 text-slate-600" />
+                  <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Basic Information</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Full Name</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-2">Full Name</label>
                   <input
                     name="name"
                     placeholder="Enter full name"
                     value={formData.name}
                     onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 text-sm text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
                 <div className="relative">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">
+                    <label className="block text-xs font-medium text-slate-600 mb-2">
                       Username <span className="text-red-500">*</span>
                     </label>
                   <input
@@ -702,15 +701,18 @@ export default function UserManagementPage() {
                     placeholder="Enter username"
                     value={formData.username}
                     onChange={handleInputChange}
-                      className={`w-full px-3 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] ${fieldErrors.username ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition-all duration-200 text-sm text-slate-900 placeholder:text-slate-400 ${fieldErrors.username ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'}`}
                     required
                   />
                   {fieldErrors.username && (
-                    <p className="text-red-500 text-xs mt-1">{fieldErrors.username}</p>
+                    <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                      {fieldErrors.username}
+                    </p>
                   )}
                 </div>
-                <div className="relative">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">
+                <div className="relative md:col-span-2">
+                    <label className="block text-xs font-medium text-slate-600 mb-2">
                       Email Address <span className="text-red-500">*</span>
                     </label>
                   <input
@@ -719,61 +721,30 @@ export default function UserManagementPage() {
                     placeholder="Enter email address"
                     value={formData.email}
                     onChange={handleInputChange}
-                      className={`w-full px-3 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] ${fieldErrors.email ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
+                      className={`w-full px-4 py-3 border rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition-all duration-200 text-sm text-slate-900 placeholder:text-slate-400 ${fieldErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'}`}
                     required
                   />
                   {fieldErrors.email && (
-                    <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+                    <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                      {fieldErrors.email}
+                    </p>
                   )}
                 </div>
-                {!selectedUser && (
-                  <div className="relative">
-                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">
-                        Password <span className="text-red-500">*</span>
-                      </label>
-                    <div className="relative">
-                      <input
-                        name="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Enter password"
-                        value={formData.password}
-                        onChange={handleInputChange}
-                          className={`w-full px-3 pr-10 py-2.5 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] ${fieldErrors.password ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-2 top-[70%] -translate-y-1/2 flex items-center justify-center hover:text-blue-600 transition-colors duration-200 cursor-pointer z-10"
-                          style={{ background: 'transparent', border: 'none', padding: 0, margin: 0, outline: 'none', color: '#64748b' }}
-                          title={showPassword ? "Hide password" : "Show password"}
-                      >
-                          {showPassword ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
-                      </button>
-                    </div>
-                    {fieldErrors.password && (
-                      <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
-                    )}
-                  </div>
-                )}
               </div>
-            </div>
+
+              {/* Divider */}
+              <div className="border-t border-slate-200 my-6"></div>
 
               {/* Role & Access Section */}
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Shield className="w-3.5 h-3.5 text-blue-600" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-slate-900">Role & Access</h3>
+              <div className="mb-6">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <Shield className="w-4 h-4 text-slate-600" />
+                  <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Role & Access</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative flex flex-col">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">
+                    <label className="block text-xs font-medium text-slate-600 mb-2">
                       Role <span className="text-red-500">*</span>
                     </label>
                   <div className="relative">
@@ -781,8 +752,7 @@ export default function UserManagementPage() {
                       name="role"
                       value={formData.role}
                       onChange={handleInputChange}
-                        className={`w-full px-3 py-2.5 pr-8 border-b-2 bg-transparent focus:outline-none transition-colors duration-200 appearance-none cursor-pointer text-slate-900 text-sm h-[42px] leading-[1.5] box-border ${fieldErrors.role ? 'border-red-500' : 'border-slate-200 focus:border-blue-500'}`}
-                        style={{ paddingTop: '0.625rem', paddingBottom: '0.75rem', lineHeight: '1.5', display: 'block' }}
+                        className={`w-full px-4 py-3 pr-10 border rounded-lg bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 transition-all duration-200 appearance-none cursor-pointer text-slate-900 text-sm ${fieldErrors.role ? 'border-red-500 focus:border-red-500 focus:ring-red-500/20' : 'border-slate-200 focus:border-blue-500 focus:ring-blue-500/20'}`}
                       required
                     >
                       <option value="">Select Role</option>
@@ -790,21 +760,23 @@ export default function UserManagementPage() {
                       <option value="manager">Manager</option>
                       <option value="user">User</option>
                     </select>
-                    <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                   </div>
                   {fieldErrors.role && (
-                    <p className="text-red-500 text-xs mt-1">{fieldErrors.role}</p>
+                    <p className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-red-500 rounded-full"></span>
+                      {fieldErrors.role}
+                    </p>
                   )}
                 </div>
                   <div className="relative flex flex-col">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Job Role (Optional)</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-2">Job Role (Optional)</label>
                     <div className="relative">
                       <select
                         name="jobRole"
                         value={formData.jobRole}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 pr-8 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer text-slate-900 text-sm h-[42px] leading-[1.5] box-border"
-                        style={{ paddingTop: '0.625rem', paddingBottom: '0.75rem', lineHeight: '1.5', display: 'block' }}
+                        className="w-full px-4 py-3 pr-10 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 appearance-none cursor-pointer text-slate-900 text-sm"
                       >
                         <option value="">Select Job Role</option>
                         <optgroup label="IT Department">
@@ -839,82 +811,85 @@ export default function UserManagementPage() {
                           <option value="HR">HR</option>
                         </optgroup>
                       </select>
-                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
                 <div className="relative flex flex-col">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Manager</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-2">Manager</label>
                   <input
                     name="manager"
                     placeholder="Enter manager name"
                     value={formData.manager}
                     onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] box-border"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 text-sm text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
                 <div className="relative flex flex-col">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Teams (comma separated)</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-2">Teams (comma separated)</label>
                   <input
                     name="teams"
                     placeholder="Enter teams separated by commas"
                     value={formData.teams}
                     onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5] box-border"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 text-sm text-slate-900 placeholder:text-slate-400"
                   />
                 </div>
                 </div>
               </div>
 
+              {/* Divider */}
+              <div className="border-t border-slate-200 my-6"></div>
+
               {/* Tracking Settings Section */}
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <Clock className="w-3.5 h-3.5 text-blue-600" />
-            </div>
-                  <h3 className="text-sm font-semibold text-slate-900">Tracking Settings</h3>
+              <div className="mb-6">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <Clock className="w-4 h-4 text-slate-600" />
+                  <h3 className="text-sm font-medium text-slate-600 uppercase tracking-wide">Tracking Settings</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative flex flex-col">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Track Type</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-2">Track Type</label>
                     <div className="relative">
                       <select
                         name="tracktype"
                         value={formData.tracktype}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2.5 pr-8 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 appearance-none cursor-pointer font-medium text-slate-900 text-sm h-[38px] leading-[1.5]"
+                        className="w-full px-4 py-3 pr-10 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 appearance-none cursor-pointer text-slate-900 text-sm"
                       >
                         <option value="punchin-punchout">Punch In - Punch Out</option>
                         <option value="24x7">24x7 Tracking</option>
                       </select>
-                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
                 <div className="relative">
-                    <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5 h-4 leading-tight">Desktop</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-2">Desktop</label>
                   <input
                     name="desktop"
                     placeholder="Enter desktop identifier"
                     value={formData.desktop}
                     onChange={handleInputChange}
-                      className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:border-blue-500 focus:outline-none transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400 h-[38px] leading-[1.5]"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all duration-200 text-sm text-slate-900 placeholder:text-slate-400"
                   />
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* AI-Generated Activity Lists Section */}
-            {formData.jobRole && (
-              <div className="mt-6 space-y-6">
-                {/* Section Divider: AI Productivity Criteria */}
-                <div className="flex items-center justify-between pt-4 pb-3 border-t border-slate-200">
+              {/* AI-Generated Activity Lists Section */}
+              {formData.jobRole && (
+              <div className="mt-4">
+                {/* Divider */}
+                <div className="border-t border-slate-200 my-6"></div>
+
+                {/* Section Header: AI Productivity Criteria */}
+                <div className="flex items-center justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                      <Brain className="w-4 h-4 text-blue-600" />
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-md shadow-indigo-500/30">
+                      <Brain className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-base font-semibold text-slate-900">AI Productivity Criteria</h3>
-                      <p className="text-sm text-slate-500 mt-0.5">
+                      <h3 className="text-base font-medium text-slate-900">AI Productivity Criteria</h3>
+                      <p className="text-xs text-slate-600 mt-0.5">
                         Define what counts as productive/unproductive for {formData.jobRole}
                       </p>
                     </div>
@@ -923,10 +898,10 @@ export default function UserManagementPage() {
                     type="button"
                     onClick={() => generateActivitiesForJobRole(formData.jobRole)}
                     disabled={generatingActivities}
-                    className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-colors duration-200 ${
+                    className={`px-5 py-2.5 rounded-lg flex items-center gap-2 text-sm font-medium transition-all duration-200 shadow-md ${
                       generatingActivities
                         ? 'bg-slate-200 cursor-not-allowed text-slate-600'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white hover:shadow-lg hover:shadow-indigo-500/30 hover:-translate-y-0.5'
                     }`}
                   >
                     {generatingActivities ? (
@@ -945,13 +920,13 @@ export default function UserManagementPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Productive Activities */}
-                  <div className="bg-white rounded-lg p-4 border border-green-200">
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                     <div className="flex items-center gap-2 mb-3">
                       <CheckCircle className="w-4 h-4 text-green-600" />
-                      <label className="block text-sm font-semibold text-slate-700">
+                      <label className="block text-sm font-medium text-slate-900">
                         Productive Activities
                       </label>
-                      <span className="ml-auto px-2 py-1 bg-green-50 text-green-700 rounded-md text-xs font-semibold border border-green-200">
+                      <span className="ml-auto px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs font-medium border border-green-200">
                         {Array.isArray(formData.productiveActivities) ? formData.productiveActivities.length : 0}
                       </span>
                     </div>
@@ -960,18 +935,18 @@ export default function UserManagementPage() {
                       value={Array.isArray(formData.productiveActivities) ? formData.productiveActivities.join('\n') : ''}
                       onChange={handleTextareaChange}
                       placeholder="Enter productive activities (one per line)&#10;Example:&#10;Code editors (VS Code, IntelliJ)&#10;Terminal and command line&#10;API testing (Postman, browser)&#10;Git and version control&#10;Documentation and research"
-                      className="w-full h-48 border border-slate-200 rounded-lg p-4 text-sm font-mono focus:border-green-400 focus:ring-2 focus:ring-green-400/20 focus:outline-none transition-all duration-200 resize-vertical"
+                      className="w-full h-40 border border-slate-300 rounded-lg p-3 text-sm font-mono bg-white focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none transition-all duration-200 resize-vertical"
                     />
                   </div>
 
                   {/* Unproductive Activities */}
-                  <div className="bg-white rounded-lg p-4 border border-red-200">
+                  <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
                     <div className="flex items-center gap-2 mb-3">
                       <XCircle className="w-4 h-4 text-red-600" />
-                      <label className="block text-sm font-semibold text-slate-700">
+                      <label className="block text-sm font-medium text-slate-900">
                         Unproductive Activities
                       </label>
-                      <span className="ml-auto px-2 py-1 bg-red-50 text-red-700 rounded-md text-xs font-semibold border border-red-200">
+                      <span className="ml-auto px-2 py-0.5 bg-red-50 text-red-700 rounded-full text-xs font-medium border border-red-200">
                         {Array.isArray(formData.unproductiveActivities) ? formData.unproductiveActivities.length : 0}
                       </span>
                     </div>
@@ -980,21 +955,22 @@ export default function UserManagementPage() {
                       value={Array.isArray(formData.unproductiveActivities) ? formData.unproductiveActivities.join('\n') : ''}
                       onChange={handleTextareaChange}
                       placeholder="Enter unproductive activities (one per line)&#10;Example:&#10;Social media (Facebook, Twitter)&#10;Entertainment websites&#10;Gaming platforms&#10;Shopping sites&#10;Non-work videos"
-                      className="w-full h-48 border border-slate-200 rounded-lg p-4 text-sm font-mono focus:border-red-400 focus:ring-2 focus:ring-red-400/20 focus:outline-none transition-all duration-200 resize-vertical"
+                      className="w-full h-40 border border-slate-300 rounded-lg p-3 text-sm font-mono bg-white focus:border-red-500 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all duration-200 resize-vertical"
                     />
                   </div>
                 </div>
 
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="flex items-start gap-3">
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-start gap-2">
                     <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-blue-800">
-                      <strong>Tip:</strong> These lists help the AI accurately analyze productivity. You can edit them manually or regenerate with AI.
+                    <p className="text-xs text-blue-800">
+                      <strong className="font-medium">Tip:</strong> These lists help the AI accurately analyze productivity. You can edit them manually or regenerate with AI.
                     </p>
                   </div>
                 </div>
               </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -1014,9 +990,9 @@ export default function UserManagementPage() {
                 <AlertCircle className="w-5 h-5 text-red-600" />
               </div>
               <div className="flex-1">
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete User</h3>
+                <h3 className="text-lg font-medium text-slate-900 mb-2">Delete User</h3>
                 <p className="text-sm text-slate-600">
-                  Are you sure you want to delete <span className="font-semibold text-slate-900">{deleteConfirmation.userName}</span>? This action cannot be undone.
+                  Are you sure you want to delete <span className="font-medium text-slate-900">{deleteConfirmation.userName}</span>? This action cannot be undone.
                 </p>
               </div>
             </div>
@@ -1068,6 +1044,7 @@ export default function UserManagementPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

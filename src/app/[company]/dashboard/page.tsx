@@ -20,7 +20,6 @@ import {
   Refresh, DateRange, Assessment, WorkHistory, Speed,
   Visibility, Download, FilterList, Today, ViewWeek, CalendarMonth
 } from '@mui/icons-material';
-import WhosInOutWidget from '@/app/components/WhosInOutWidget';
 import RecentTimeClaimsWidget from '@/app/components/RecentTimeClaimsWidget';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
@@ -133,6 +132,14 @@ interface UserStats {
   stats: any[];
 }
 
+interface TeamStatus {
+  total: number;
+  active: number;
+  idle: number;
+  onBreak: number;
+  offline: number;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -146,6 +153,7 @@ export default function DashboardPage() {
   const [role, setRole] = useState<string | null>(null);
   const userStatusesRef = useRef<Record<string, { status: string; timestamp: string }>>({});
   const [activeUsersCount, setActiveUsersCount] = useState(0);
+  const [teamStatus, setTeamStatus] = useState<TeamStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showAllTeamActivity, setShowAllTeamActivity] = useState(false);
@@ -190,13 +198,17 @@ export default function DashboardPage() {
       setLoading(true);
       try {
         if (storedRole === 'admin' || storedRole === 'manager') {
-          const [statsResponse, statusesResponse] = await Promise.all([
+          const [statsResponse, statusesResponse, teamStatusResponse] = await Promise.all([
             axios.get(
               `${baseUrl}/api/activity/all-users?start=${dateRange.start}&end=${dateRange.end}`,
               { headers: { Authorization: `Bearer ${token}` } }
             ),
             axios.get(
               `${baseUrl}/api/activity/user-statuses`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            ),
+            axios.get(
+              `${baseUrl}/api/activity/team-status`,
               { headers: { Authorization: `Bearer ${token}` } }
             )
           ]);
@@ -206,6 +218,8 @@ export default function DashboardPage() {
           // Calculate initial active users count
           const initialActiveCount = Object.values(statusesResponse.data).filter((s: any) => s.status === 'online' || s.status === 'active').length;
           setActiveUsersCount(initialActiveCount);
+          // Set team status
+          setTeamStatus(teamStatusResponse.data);
         } else {
           const userId = JSON.parse(atob(token.split('.')[1])).id;
           const apiUrl = `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`;
@@ -621,47 +635,38 @@ export default function DashboardPage() {
               <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <StatCard
-                    title="Total Hours"
-                    value={formatSecondsToTime(summaryStats.totalSeconds)}
-                    icon={<AccessTime sx={{ fontSize: 28 }} />}
-                    color="primary"
-                    subtitle="Tracked this period"
-                    trend={12}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                  <StatCard
-                    title="Productivity"
-                    value={`${summaryStats.avgProductivity}%`}
-                    icon={<Speed sx={{ fontSize: 28 }} />}
+                    title="Active"
+                    value={teamStatus?.active || 0}
+                    icon={<CheckCircle sx={{ fontSize: 28 }} />}
                     color="success"
-                    subtitle="Average score"
-                    trend={8}
+                    subtitle={`${teamStatus?.active || 0}/${teamStatus?.total || 0} members`}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                   <StatCard
-                    title="Active Days"
-                    value={summaryStats.activeDays}
-                    icon={<CalendarToday sx={{ fontSize: 28 }} />}
-                    color="secondary"
-                    subtitle={`Out of ${currentStats.length} days`}
-                    trend={-5}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                  <StatCard
-                    title={role === 'admin' || role === 'manager' ? 'Team Members' : 'Peak Hours'}
-                    value={role === 'admin' || role === 'manager' ?
-                      `${activeUsersCount}/${summaryStats.totalUsers}` :
-                      `${summaryStats.peakHours}h`
-                    }
-                    icon={role === 'admin' || role === 'manager' ?
-                      <Groups sx={{ fontSize: 28 }} /> :
-                      <Timer sx={{ fontSize: 28 }} />
-                    }
+                    title="Idle"
+                    value={teamStatus?.idle || 0}
+                    icon={<AccessTime sx={{ fontSize: 28 }} />}
                     color="warning"
-                    subtitle={role === 'admin' || role === 'manager' ? 'Online now' : 'Maximum in a day'}
+                    subtitle={`${teamStatus?.idle || 0}/${teamStatus?.total || 0} members`}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <StatCard
+                    title="Break"
+                    value={teamStatus?.onBreak || 0}
+                    icon={<Timer sx={{ fontSize: 28 }} />}
+                    color="warning"
+                    subtitle={`${teamStatus?.onBreak || 0}/${teamStatus?.total || 0} members`}
+                  />
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                  <StatCard
+                    title="Offline"
+                    value={teamStatus?.offline || 0}
+                    icon={<Cancel sx={{ fontSize: 28 }} />}
+                    color="secondary"
+                    subtitle={`${teamStatus?.offline || 0}/${teamStatus?.total || 0} members`}
                   />
                 </Grid>
               </Grid>
@@ -677,142 +682,131 @@ export default function DashboardPage() {
 
               {/* Recent Activity */}
               {(role === 'admin' || role === 'manager') && (
-                <Grid container spacing={3}>
-                  <Grid size={{ xs: 12, md: 8 }}>
-                    <Fade in={!loading} timeout={900}>
-                      <Card sx={{
-                        backgroundColor: 'white',
-                        border: 'none',
-                        borderRadius: '12px',
-                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
-                      }}>
-                        <CardContent sx={{ p: 3 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                            <Typography variant="h6" sx={{ 
-                              fontWeight: 600,
-                              color: '#111827',
-                              fontSize: '1.125rem'
-                            }}>
-                              Team Activity
-                            </Typography>
-                            <Button
-                              size="small"
-                              startIcon={<Visibility />}
-                              onClick={() => setShowAllTeamActivity(!showAllTeamActivity)}
+                <Fade in={!loading} timeout={900}>
+                  <Card sx={{
+                    backgroundColor: 'white',
+                    border: 'none',
+                    borderRadius: '12px',
+                    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+                  }}>
+                    <CardContent sx={{ p: 3 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6" sx={{
+                          fontWeight: 600,
+                          color: '#111827',
+                          fontSize: '1.125rem'
+                        }}>
+                          Team Activity
+                        </Typography>
+                        <Button
+                          size="small"
+                          startIcon={<Visibility />}
+                          onClick={() => setShowAllTeamActivity(!showAllTeamActivity)}
+                          sx={{
+                            textTransform: 'none',
+                            color: '#111827 !important',
+                            fontWeight: 500,
+                            bgcolor: 'white !important',
+                            border: '1px solid #e5e7eb',
+                            '&:hover': {
+                              bgcolor: 'white !important',
+                              color: '#111827 !important'
+                            },
+                            '& .MuiSvgIcon-root': {
+                              color: '#111827 !important'
+                            }
+                          }}
+                        >
+                          {showAllTeamActivity ? 'Show Less' : 'View All'}
+                        </Button>
+                      </Box>
+                      <List>
+                        {(showAllTeamActivity ? sortedTeamActivity : sortedTeamActivity.slice(0, 5)).map((userStat, index) => {
+                          const status = userStatusesRef.current[userStat.user.id];
+                          const isOnline = status?.status === 'online' || status?.status === 'active';
+
+                          return (
+                            <ListItem
+                              key={userStat.user.id}
                               sx={{
-                                textTransform: 'none',
-                                color: '#111827 !important',
-                                fontWeight: 500,
-                                bgcolor: 'white !important',
-                                border: '1px solid #e5e7eb',
+                                borderRadius: 2,
+                                mb: 1,
+                                bgcolor: selectedUserId === userStat.user.id ?
+                                  '#f3f4f6' : 'transparent',
                                 '&:hover': {
-                                  bgcolor: 'white !important',
-                                  color: '#111827 !important'
-                                },
-                                '& .MuiSvgIcon-root': {
-                                  color: '#111827 !important'
+                                  bgcolor: '#f9fafb'
                                 }
                               }}
                             >
-                              {showAllTeamActivity ? 'Show Less' : 'View All'}
-                            </Button>
-                          </Box>
-                          <List>
-                            {(showAllTeamActivity ? sortedTeamActivity : sortedTeamActivity.slice(0, 5)).map((userStat, index) => {
-                              const status = userStatusesRef.current[userStat.user.id];
-                              const isOnline = status?.status === 'online' || status?.status === 'active';
-
-                              return (
-                                <ListItem
-                                  key={userStat.user.id}
-                                  sx={{
-                                    borderRadius: 2,
-                                    mb: 1,
-                                    bgcolor: selectedUserId === userStat.user.id ?
-                                      '#f3f4f6' : 'transparent',
-                                    '&:hover': {
-                                      bgcolor: '#f9fafb'
-                                    }
-                                  }}
+                              <ListItemAvatar>
+                                <Badge
+                                  overlap="circular"
+                                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                  badgeContent={
+                                    <Box sx={{
+                                      width: 12,
+                                      height: 12,
+                                      borderRadius: '50%',
+                                      bgcolor: isOnline ? theme.palette.success.main : theme.palette.grey[400],
+                                      border: '2px solid white'
+                                    }} />
+                                  }
                                 >
-                                  <ListItemAvatar>
-                                    <Badge
-                                      overlap="circular"
-                                      anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                      badgeContent={
-                                        <Box sx={{
-                                          width: 12,
-                                          height: 12,
-                                          borderRadius: '50%',
-                                          bgcolor: isOnline ? theme.palette.success.main : theme.palette.grey[400],
-                                          border: '2px solid white'
-                                        }} />
-                                      }
+                                  <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                                    {userStat.user.name?.charAt(0).toUpperCase() || 'U'}
+                                  </Avatar>
+                                </Badge>
+                              </ListItemAvatar>
+                              <ListItemText
+                                primary={userStat.user.name || userStat.user.email}
+                                secondary={
+                                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                    <span
+                                      style={{
+                                        display: 'inline-block',
+                                        padding: '2px 8px',
+                                        borderRadius: '12px',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        backgroundColor: isOnline ? '#4caf50' : '#9e9e9e',
+                                        color: 'white',
+                                        height: '20px',
+                                        lineHeight: '16px'
+                                      }}
                                     >
-                                      <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
-                                        {userStat.user.name?.charAt(0).toUpperCase() || 'U'}
-                                      </Avatar>
-                                    </Badge>
-                                  </ListItemAvatar>
-                                  <ListItemText
-                                    primary={userStat.user.name || userStat.user.email}
-                                    secondary={
-                                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                        <span
-                                          style={{
-                                            display: 'inline-block',
-                                            padding: '2px 8px',
-                                            borderRadius: '12px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: 500,
-                                            backgroundColor: isOnline ? '#4caf50' : '#9e9e9e',
-                                            color: 'white',
-                                            height: '20px',
-                                            lineHeight: '16px'
-                                          }}
-                                        >
-                                          {isOnline ? 'Online' : 'Offline'}
-                                        </span>
-                                        <Typography variant="caption" color="textSecondary" component="span">
-                                          {userStat.stats[0]?.workingTimeInSeconds
-                                            ? `${Math.round(userStat.stats[0].workingTimeInSeconds / 3600)}h today`
-                                            : 'No activity today'
-                                          }
-                                        </Typography>
-                                      </span>
-                                    }
-                                  />
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Computer sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
-                                    <Typography variant="body2" color="textSecondary">
-                                      {(() => {
-                                        const day = userStat.stats[0];
-                                        if (!day) return '0%';
-                                        const working = day.workingTimeInSeconds || 0;
-                                        const breaks = day.breakTimeInSeconds || 0;
-                                        const idle = day.idleTimeInSeconds || 0;
-                                        const totalTimeAtDesk = working + breaks + idle;
-                                        const productivity = totalTimeAtDesk > 0 ? Math.round((working / totalTimeAtDesk) * 100) : 0;
-                                        return `${Math.max(0, Math.min(100, productivity))}%`;
-                                      })()}
+                                      {isOnline ? 'Online' : 'Offline'}
+                                    </span>
+                                    <Typography variant="caption" color="textSecondary" component="span">
+                                      {userStat.stats[0]?.workingTimeInSeconds
+                                        ? `${Math.round(userStat.stats[0].workingTimeInSeconds / 3600)}h today`
+                                        : 'No activity today'
+                                      }
                                     </Typography>
-                                  </Box>
-                                </ListItem>
-                              );
-                            })}
-                          </List>
-                        </CardContent>
-                      </Card>
-                    </Fade>
-                  </Grid>
-                  <Grid size={{ xs: 12, md: 4 }}>
-                    <Fade in={!loading} timeout={900}>
-                      <Box>
-                        <WhosInOutWidget />
-                      </Box>
-                    </Fade>
-                  </Grid>
-                </Grid>
+                                  </span>
+                                }
+                              />
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Computer sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
+                                <Typography variant="body2" color="textSecondary">
+                                  {(() => {
+                                    const day = userStat.stats[0];
+                                    if (!day) return '0%';
+                                    const working = day.workingTimeInSeconds || 0;
+                                    const breaks = day.breakTimeInSeconds || 0;
+                                    const idle = day.idleTimeInSeconds || 0;
+                                    const totalTimeAtDesk = working + breaks + idle;
+                                    const productivity = totalTimeAtDesk > 0 ? Math.round((working / totalTimeAtDesk) * 100) : 0;
+                                    return `${Math.max(0, Math.min(100, productivity))}%`;
+                                  })()}
+                                </Typography>
+                              </Box>
+                            </ListItem>
+                          );
+                        })}
+                      </List>
+                    </CardContent>
+                  </Card>
+                </Fade>
               )}
             </Container>
       </Box>
