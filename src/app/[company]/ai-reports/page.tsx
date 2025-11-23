@@ -299,7 +299,7 @@ export default function AIReportsPage() {
                 {view === 'detail' && (
                   <button
                     onClick={handleBackToOverview}
-                    className="group px-4 py-2 bg-white hover:bg-slate-50 transition-colors duration-200 flex items-center gap-2 text-sm font-medium text-slate-700"
+                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm font-medium"
                   >
                     <ArrowLeft className="w-4 h-4" />
                     Back to Overview
@@ -413,8 +413,8 @@ export default function AIReportsPage() {
                 <AlertCircle className="w-4 h-4 text-red-600" />
               </div>
               <div>
-                <p className="font-bold text-red-900 mb-1">Error</p>
-                <p className="text-red-700 text-sm font-medium">{error}</p>
+                <p className="font-medium text-red-900 mb-1">Error</p>
+                <p className="text-red-700 text-sm font-normal">{error}</p>
               </div>
             </div>
           )}
@@ -432,13 +432,13 @@ export default function AIReportsPage() {
                     </div>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-900 mb-1">
+                    <h3 className="text-lg font-normal text-slate-900 mb-1">
                       Analyzing with AI...
                     </h3>
-                    <p className="text-slate-600 text-sm font-medium">
+                    <p className="text-slate-600 text-sm font-normal">
                       Processing screenshots and calculating productivity scores
                     </p>
-                    <p className="text-blue-600 text-xs font-medium mt-2">
+                    <p className="text-blue-600 text-xs font-normal mt-2">
                       {(() => {
                         const days = Math.ceil((new Date(selectedRange[1]).getTime() - new Date(selectedRange[0]).getTime()) / (1000 * 60 * 60 * 24)) + 1;
                         if (days > 7) {
@@ -525,13 +525,13 @@ export default function AIReportsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700">User</th>
-                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700">Role</th>
-                    <th className="text-left py-4 px-6 text-sm font-semibold text-slate-700">AI Score</th>
-                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Time</th>
-                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Quality</th>
-                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Screenshots</th>
-                    <th className="text-center py-4 px-6 text-sm font-semibold text-slate-700">Details</th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-700 uppercase tracking-wide">User</th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-700 uppercase tracking-wide">Role</th>
+                    <th className="text-left py-3 px-6 text-sm font-medium text-slate-700 uppercase tracking-wide">AI Score</th>
+                    <th className="text-center py-3 px-6 text-sm font-medium text-slate-700 uppercase tracking-wide">Time</th>
+                    <th className="text-center py-3 px-6 text-sm font-medium text-slate-700 uppercase tracking-wide">Quality</th>
+                    <th className="text-center py-3 px-6 text-sm font-medium text-slate-700 uppercase tracking-wide">Screenshots</th>
+                    <th className="text-center py-3 px-6 text-sm font-medium text-slate-700 uppercase tracking-wide">Details</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -564,11 +564,11 @@ export default function AIReportsPage() {
                         {/* User Column */}
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-base flex-shrink-0">
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium text-base flex-shrink-0">
                               {userSummary.user.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <div className="font-semibold text-slate-900 text-sm">
+                              <div className="font-medium text-slate-900 text-sm">
                                 {userSummary.user.name}
                               </div>
                               <div className="text-xs text-slate-500">
@@ -593,7 +593,7 @@ export default function AIReportsPage() {
                                   style={{ width: `${displayScore}%` }}
                                 />
                               </div>
-                              <span className="text-sm font-bold text-slate-900 min-w-[45px]">
+                              <span className="text-sm font-medium text-slate-900 min-w-[45px]">
                                 {displayScore}%
                               </span>
                             </div>
@@ -628,10 +628,10 @@ export default function AIReportsPage() {
                             <span className="text-slate-600 font-medium">
                               {userSummary.summary.totalScreenshots}
                             </span>
-                            <span className="text-green-600 font-semibold">
+                            <span className="text-green-600 font-medium">
                               ✅ {userSummary.summary.productiveCount}
                             </span>
-                            <span className="text-red-600 font-semibold">
+                            <span className="text-red-600 font-medium">
                               ❌ {userSummary.summary.unproductiveCount}
                             </span>
                           </div>
@@ -737,11 +737,11 @@ export default function AIReportsPage() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-xl font-bold text-gray-900">{selectedReport.user.name}</h2>
+                    <h2 className="text-xl font-normal text-gray-900">{selectedReport.user.name}</h2>
                     <p className="text-gray-600">{selectedReport.user.jobRole}</p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-blue-600">
+                    <div className="text-2xl font-normal text-blue-600">
                       {selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%
                     </div>
                     <p className="text-sm text-gray-600">
@@ -762,7 +762,7 @@ export default function AIReportsPage() {
                 <div className="flex items-start gap-3">
                   <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <h3 className="text-base font-semibold text-gray-900 mb-4">AI Verdict Summary</h3>
+                    <h3 className="text-base font-medium text-gray-900 mb-4">AI Verdict Summary</h3>
 
                     <div className="space-y-4 text-gray-700">
                       {/* Punch-in Time & Punctuality */}
@@ -814,12 +814,12 @@ export default function AIReportsPage() {
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
                                   <Clock className="w-4 h-4 text-gray-600" />
-                                  <span className="font-semibold text-gray-900 text-base">
+                                  <span className="font-medium text-gray-900 text-base">
                                     {format(punchInTime, 'hh:mm a')}
                                   </span>
                                   <span className="text-xs text-gray-500">(Office: 10:00 AM - 7:00 PM)</span>
                                 </div>
-                                <div className={`${punctualityColor} rounded px-3 py-1.5 font-medium text-sm`}>
+                                <div className={`${punctualityColor} rounded px-3 py-1.5 font-normal text-sm`}>
                                   {punctualityIcon} {punctualityText}
                                 </div>
                               </div>
@@ -830,7 +830,7 @@ export default function AIReportsPage() {
 
                       {/* Productive Activities Summary */}
                       <div className="bg-white rounded-md p-4 border-l-2 border-green-500">
-                        <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                        <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                           <span className="text-base">✅</span> Productive Work ({selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%)
                         </h4>
                         <div className="space-y-2 text-sm">
@@ -876,7 +876,7 @@ export default function AIReportsPage() {
                       {/* Unproductive Activities Summary */}
                       {selectedReport.summary.unproductiveCount > 0 && (
                         <div className="bg-white rounded-md p-4 border-l-2 border-red-500">
-                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                          <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
                             <span className="text-base">❌</span> Unproductive Time ({Math.round((selectedReport.summary.unproductiveCount / selectedReport.summary.totalScreenshots) * 100)}%)
                           </h4>
                           <div className="space-y-2 text-sm">
@@ -932,7 +932,7 @@ export default function AIReportsPage() {
                                 style={{ width: `${selectedReport.summary.averageProductivity}%` }}
                               />
                             </div>
-                            <span className="text-sm font-semibold">{selectedReport.summary.averageProductivity}/100</span>
+                            <span className="text-sm font-medium">{selectedReport.summary.averageProductivity}/100</span>
                           </div>
                         </div>
                         <div>
@@ -947,7 +947,7 @@ export default function AIReportsPage() {
                                 style={{ width: `${selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%` }}
                               />
                             </div>
-                            <span className="text-sm font-semibold">{selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%</span>
+                            <span className="text-sm font-medium">{selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%</span>
                           </div>
                         </div>
                       </div>
@@ -958,7 +958,7 @@ export default function AIReportsPage() {
                           setEmailInput('');
                           setShowEmailModal(true);
                         }}
-                        className="w-full mt-6 bg-gray-100 hover:bg-gray-200 text-black text-sm font-medium py-2.5 px-4 rounded flex items-center justify-center gap-2 transition-colors"
+                        className="w-full mt-6 text-blue-600 hover:bg-blue-50 text-sm font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
                       >
                         <Mail className="w-4 h-4" />
                         Send Report to Email
@@ -975,7 +975,7 @@ export default function AIReportsPage() {
                     <p className="text-sm text-gray-600">Total Screenshots</p>
                     <Calendar className="w-5 h-5 text-blue-600" />
                   </div>
-                  <p className="text-3xl font-bold text-gray-900">{selectedReport.summary.totalScreenshots}</p>
+                  <p className="text-3xl font-normal text-gray-900">{selectedReport.summary.totalScreenshots}</p>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -983,7 +983,7 @@ export default function AIReportsPage() {
                     <p className="text-sm text-gray-600">Productive</p>
                     <CheckCircle className="w-5 h-5 text-green-600" />
                   </div>
-                  <p className="text-3xl font-bold text-green-600">{selectedReport.summary.productiveCount}</p>
+                  <p className="text-3xl font-normal text-green-600">{selectedReport.summary.productiveCount}</p>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -991,7 +991,7 @@ export default function AIReportsPage() {
                     <p className="text-sm text-gray-600">Unproductive</p>
                     <AlertCircle className="w-5 h-5 text-red-600" />
                   </div>
-                  <p className="text-3xl font-bold text-red-600">{selectedReport.summary.unproductiveCount}</p>
+                  <p className="text-3xl font-normal text-red-600">{selectedReport.summary.unproductiveCount}</p>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -999,14 +999,14 @@ export default function AIReportsPage() {
                     <p className="text-sm text-gray-600">Avg Score</p>
                     <TrendingUp className="w-5 h-5 text-blue-600" />
                   </div>
-                  <p className="text-3xl font-bold text-blue-600">{selectedReport.summary.averageProductivity}</p>
+                  <p className="text-3xl font-normal text-blue-600">{selectedReport.summary.averageProductivity}</p>
                 </div>
               </div>
 
               {/* Top Recommendations */}
               {selectedReport.summary.topRecommendations.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h2 className="text-xl font-bold text-gray-900 mb-4">Top Recommendations</h2>
+                  <h2 className="text-xl font-normal text-gray-900 mb-4">Top Recommendations</h2>
                   <ul className="space-y-2">
                     {selectedReport.summary.topRecommendations.map((recommendation, index) => (
                       <li key={index} className="flex items-start gap-3">
@@ -1022,7 +1022,7 @@ export default function AIReportsPage() {
 
               {/* Detailed Analysis */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Detailed Analysis</h2>
+                <h2 className="text-xl font-normal text-gray-900 mb-4">Detailed Analysis</h2>
                 <div className="space-y-4">
                   {selectedReport.analyses.map((analysis, index) => (
                     <div
@@ -1087,8 +1087,8 @@ export default function AIReportsPage() {
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center mx-auto mb-6">
                 <Brain className="w-10 h-10 text-slate-400" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-900 mb-3">No Data Available</h3>
-              <p className="text-slate-600 font-medium">
+              <h3 className="text-2xl font-normal text-slate-900 mb-3">No Data Available</h3>
+              <p className="text-slate-600 font-normal">
                 No users with job roles and screenshots found for the selected period
               </p>
             </div>
@@ -1107,7 +1107,7 @@ export default function AIReportsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4">
-              <h3 className="text-base font-semibold text-slate-900 mb-3">Send Report to Email</h3>
+              <h3 className="text-base font-medium text-slate-900 mb-3">Send Report to Email</h3>
               <input
                 type="email"
                 value={emailInput}
@@ -1123,7 +1123,7 @@ export default function AIReportsPage() {
                   }
                 }}
                 placeholder="Enter email address"
-                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-1 focus:ring-slate-500 focus:border-slate-500 text-sm mb-4"
+                className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm mb-4"
                 autoFocus
               />
               <div className="flex justify-end gap-2">
@@ -1132,7 +1132,7 @@ export default function AIReportsPage() {
                     setShowEmailModal(false);
                     setEmailInput('');
                   }}
-                  className="px-4 py-1.5 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
@@ -1145,7 +1145,7 @@ export default function AIReportsPage() {
                     }
                   }}
                   disabled={!emailInput.trim()}
-                  className="px-4 py-1.5 text-sm font-medium text-white bg-slate-900 rounded-md hover:bg-slate-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Send
                 </button>

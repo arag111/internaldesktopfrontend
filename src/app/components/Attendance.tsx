@@ -1,17 +1,50 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts';
 import moment from 'moment';
-import DateRangePickerComponent from './DateRangePicker2';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Download, ChevronDown, Search, Check, X, Clock, TrendingUp, Calendar, BarChart3, Users } from 'lucide-react';
+import { subDays } from 'date-fns';
+import {
+    Button,
+    TextField,
+    InputAdornment,
+    Menu,
+    MenuItem,
+    Box,
+    Typography,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
+} from '@mui/material';
+import {
+    CalendarToday as CalendarIcon,
+    FileDownload as FileDownloadIcon,
+    Search as SearchIcon
+} from '@mui/icons-material';
+import { format as formatDate } from 'date-fns';
+
+type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days';
+
+interface FlatAttendanceRecord {
+    userId: number;
+    userName: string;
+    userEmail: string;
+    date: string;
+    punchInTime: string | null;
+    lastSeen: string | null;
+    workingTimeInSeconds: number;
+    breakTimeInSeconds: number;
+    idleTimeInSeconds: number;
+    rejectedIdleTimeInSeconds: number;
+}
 
 interface AttendanceProps {
     role: string | null;
@@ -42,26 +75,74 @@ const Attendance: React.FC<AttendanceProps> = ({
     setSearchTerm,
     mlValue,
 }) => {
-    const [showExportMenu, setShowExportMenu] = useState(false);
-    const [showUserDropdown, setShowUserDropdown] = useState(false);
+    const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
+    const [datePreset, setDatePreset] = useState<DatePreset | null>(null);
     const [localSearchTerm, setLocalSearchTerm] = useState('');
-    const exportRef = useRef<HTMLDivElement>(null);
-    const userDropdownRef = useRef<HTMLDivElement>(null);
+    const [showCustomDateDialog, setShowCustomDateDialog] = useState(false);
+    const [tempStartDate, setTempStartDate] = useState('');
+    const [tempEndDate, setTempEndDate] = useState('');
+    const exportMenuOpen = Boolean(exportAnchorEl);
 
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
-                setShowExportMenu(false);
-            }
-            if (userDropdownRef.current && !userDropdownRef.current.contains(event.target as Node)) {
-                setShowUserDropdown(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, []);
+
+    const handleDatePresetChange = (preset: DatePreset) => {
+        setDatePreset(preset);
+        const now = new Date();
+
+        switch (preset) {
+            case 'today':
+                setSelectedRange([now, now]);
+                break;
+            case 'yesterday':
+                const yesterday = subDays(now, 1);
+                setSelectedRange([yesterday, yesterday]);
+                break;
+            case 'last7days':
+                setSelectedRange([subDays(now, 6), now]);
+                break;
+            case 'last30days':
+                setSelectedRange([subDays(now, 29), now]);
+                break;
+        }
+    };
+
+    const handleCustomRangeChange = (range: [Date, Date]) => {
+        setDatePreset(null);
+        setSelectedRange(range);
+    };
+
+    const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
+        setExportAnchorEl(event.currentTarget);
+    };
+
+    const handleExportClose = () => {
+        setExportAnchorEl(null);
+    };
+
+    const handleExportOption = (exportFunction: () => void) => {
+        exportFunction();
+        handleExportClose();
+    };
+
+    const handleOpenCustomDate = () => {
+        // Initialize with current selected range
+        const [start, end] = selectedRange;
+        setTempStartDate(formatDate(start, 'yyyy-MM-dd'));
+        setTempEndDate(formatDate(end, 'yyyy-MM-dd'));
+        setShowCustomDateDialog(true);
+    };
+
+    const handleCloseCustomDate = () => {
+        setShowCustomDateDialog(false);
+    };
+
+    const handleApplyCustomDate = () => {
+        if (tempStartDate && tempEndDate) {
+            const startDate = new Date(tempStartDate);
+            const endDate = new Date(tempEndDate);
+            handleCustomRangeChange([startDate, endDate]);
+        }
+        setShowCustomDateDialog(false);
+    };
 
     const formatDuration = (seconds: number) => {
         const hrs = Math.floor(seconds / 3600);
@@ -69,21 +150,69 @@ const Attendance: React.FC<AttendanceProps> = ({
         return `${hrs}h:${mins}m`;
     };
 
+    // Flatten data structure - combine all users' data into single array
+    const flattenedData: FlatAttendanceRecord[] = useMemo(() => {
+        return allUserStats.flatMap(userStat =>
+            userStat.stats.map((stat: any) => ({
+                userId: userStat.user.id,
+                userName: userStat.user.name,
+                userEmail: userStat.user.email,
+                date: stat.date,
+                punchInTime: stat.punchInTime,
+                lastSeen: stat.lastSeen,
+                workingTimeInSeconds: stat.workingTimeInSeconds || 0,
+                breakTimeInSeconds: stat.breakTimeInSeconds || 0,
+                idleTimeInSeconds: stat.idleTimeInSeconds || 0,
+                rejectedIdleTimeInSeconds: stat.rejectedIdleTimeInSeconds || 0,
+            }))
+        );
+    }, [allUserStats]);
+
+    // Search and sort functionality
+    const sortedAndFilteredData = useMemo(() => {
+        if (!localSearchTerm) return flattenedData;
+
+        const lowercaseSearch = localSearchTerm.toLowerCase();
+
+        return [...flattenedData].sort((a, b) => {
+            const aMatches = a.userName.toLowerCase().includes(lowercaseSearch) ||
+                a.userEmail.toLowerCase().includes(lowercaseSearch);
+            const bMatches = b.userName.toLowerCase().includes(lowercaseSearch) ||
+                b.userEmail.toLowerCase().includes(lowercaseSearch);
+
+            // Matched users first
+            if (aMatches && !bMatches) return -1;
+            if (!aMatches && bMatches) return 1;
+
+            // Then alphabetically by name
+            const nameCompare = a.userName.localeCompare(b.userName);
+            if (nameCompare !== 0) return nameCompare;
+
+            // Then by date descending (latest first)
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+    }, [flattenedData, localSearchTerm]);
+
     const columns = [
+        {
+            label: 'Name',
+            tooltip: 'Employee name',
+            render: (s: FlatAttendanceRecord) => s.userName
+        },
         {
             label: 'Date',
             tooltip: 'The date of the record',
-            render: (s: any) => moment(s.date).format('DD-MM-YY')
+            render: (s: FlatAttendanceRecord) => moment(s.date).format('DD-MM-YY')
         },
         {
             label: 'Punching Time',
             tooltip: 'Employee First Login time',
-            render: (s: any) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-'
+            render: (s: FlatAttendanceRecord) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-'
         },
         {
             label: 'Last Seen',
             tooltip: 'Last active timestamp',
-            render: (s: any) => {
+            render: (s: FlatAttendanceRecord) => {
                 if (!s.lastSeen) return '-';
                 const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
                 const currentTime = moment().utcOffset('+05:30');
@@ -98,22 +227,22 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Working Hours',
             tooltip: 'Total punch In/Out time - Rejected idle time',
-            render: (s: any) => formatDuration((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0))
+            render: (s: FlatAttendanceRecord) => formatDuration((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0))
         },
         {
             label: 'Break Hours',
             tooltip: 'Total break time taken',
-            render: (s: any) => formatDuration(s.breakTimeInSeconds || 0)
+            render: (s: FlatAttendanceRecord) => formatDuration(s.breakTimeInSeconds || 0)
         },
         {
             label: 'Idle Hours',
             tooltip: 'Total idle time detected',
-            render: (s: any) => formatDuration(s.idleTimeInSeconds || 0)
+            render: (s: FlatAttendanceRecord) => formatDuration(s.idleTimeInSeconds || 0)
         },
         {
             label: 'Productive Hours',
             tooltip: 'Working hours - Break Time',
-            render: (s: any) => {
+            render: (s: FlatAttendanceRecord) => {
                 const working = s.workingTimeInSeconds || 0;
                 const idle = s.idleTimeInSeconds || 0;
                 const totalBreak = s.breakTimeInSeconds || 0;
@@ -126,10 +255,10 @@ const Attendance: React.FC<AttendanceProps> = ({
 
     const exportToExcel = async () => {
         const workbook = new ExcelJS.Workbook();
-        const worksheet = workbook.addWorksheet('Attendance');
+        const worksheet = workbook.addWorksheet('Attendance - All Users');
 
         worksheet.addRow(columns.map(col => col.label));
-        currentStats.forEach(s => {
+        sortedAndFilteredData.forEach(s => {
             const row = columns.map(col => col.render(s));
             worksheet.addRow(row);
         });
@@ -138,28 +267,14 @@ const Attendance: React.FC<AttendanceProps> = ({
         const blob = new Blob([buffer], {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         });
-        saveAs(blob, 'Attendance_Report.xlsx');
+        saveAs(blob, 'Attendance_All_Users_Report.xlsx');
     };
 
     const exportToPDF = () => {
         const doc = new jsPDF();
         const tableColumn = columns.map((col) => col.label);
-        const tableRows = currentStats.map((s) => {
-            const working = s.workingTimeInSeconds || 0;
-            const totalBreak = s.breakTimeInSeconds || 0;
-            const idle = s.idleTimeInSeconds || 0;
-            const displayWorking = working - idle;
-            const productive = Math.max(displayWorking - totalBreak, 0);
-
-            return [
-                moment(s.date).format('DD-MM-YY'),
-                s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
-                s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
-                formatDuration(displayWorking),
-                formatDuration(totalBreak),
-                formatDuration(idle),
-                formatDuration(productive),
-            ];
+        const tableRows = sortedAndFilteredData.map((s) => {
+            return columns.map(col => col.render(s));
         });
 
         autoTable(doc, {
@@ -167,250 +282,245 @@ const Attendance: React.FC<AttendanceProps> = ({
             body: tableRows,
         });
 
-        doc.save('attendance.pdf');
+        doc.save('Attendance_All_Users_Report.pdf');
     };
 
     const exportToCSV = () => {
         const headers = columns.map(col => col.label).join(',');
-        const rows = currentStats.map(s => columns.map(col => col.render(s)).join(',')).join('\n');
+        const rows = sortedAndFilteredData.map(s => columns.map(col => col.render(s)).join(',')).join('\n');
         const csv = `${headers}\n${rows}`;
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        saveAs(blob, 'Attendance_Report.csv');
+        saveAs(blob, 'Attendance_All_Users_Report.csv');
     };
-
-    // Helper function to format seconds into "Xh Ym" format
-    const formatSecondsToTime = (seconds: number): string => {
-        const hours = Math.floor(seconds / 3600);
-        const minutes = Math.floor((seconds % 3600) / 60);
-
-        if (hours > 0 && minutes > 0) {
-            return `${hours}h ${minutes}m`;
-        } else if (hours > 0) {
-            return `${hours}h`;
-        } else if (minutes > 0) {
-            return `${minutes}m`;
-        } else {
-            return '0m';
-        }
-    };
-
-    // Calculate summary stats
-    const calculateSummary = () => {
-        if (!currentStats || currentStats.length === 0) {
-            return { totalHours: 0, totalSeconds: 0, avgHours: 0, avgSeconds: 0, attendanceDays: 0 };
-        }
-        const totalSeconds = currentStats.reduce((sum: number, s: any) => {
-            return sum + ((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0));
-        }, 0);
-        const totalHours = Math.round((totalSeconds / 3600) * 10) / 10;
-        const avgSeconds = currentStats.length > 0 ? totalSeconds / currentStats.length : 0;
-        const avgHours = currentStats.length > 0 ? Math.round((totalHours / currentStats.length) * 10) / 10 : 0;
-        const attendanceDays = currentStats.filter((s: any) => (s.workingTimeInSeconds || 0) > 0).length;
-        return { totalHours, totalSeconds, avgHours, avgSeconds, attendanceDays };
-    };
-
-    const summary = calculateSummary();
 
     return (
         <main
             className={`mt-16 p-8 bg-gradient-to-br from-gray-50 via-white to-gray-50 overflow-y-auto w-full`}
             style={{ marginLeft: mlValue }}
         >
-            {/* Hero Banner Section */}
-            <div className="mb-8 bg-white rounded-lg p-6 border border-slate-200">
-                <div className="flex items-start justify-between mb-5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
-                            <Calendar className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-semibold text-slate-900 mb-0.5">
+            {/* Header Section */}
+            <Box sx={{ mb: 4, bgcolor: 'white', borderRadius: 2, p: 3, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+                {/* Title and Action Buttons */}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 2,
+                            bgcolor: '#e3f2fd',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}>
+                            <CalendarIcon sx={{ fontSize: 20, color: '#1976d2' }} />
+                        </Box>
+                        <Box>
+                            <Typography variant="h5" sx={{ fontWeight: 600, color: '#1a1a1a' }}>
                                 Attendance Records
-                            </h1>
-                            <p className="text-sm text-slate-500">Detailed attendance tracking and productivity analysis</p>
-                        </div>
-                        </div>
-                        <div className="flex items-center gap-3 mt-4 md:mt-0">
-                            {/* User Selection */}
-                            {(role === 'admin' || role === 'manager') && setSelectedUserId && allUserStats.length > 0 && (
-                                <div className="relative" ref={userDropdownRef}>
-                                    <button
-                                        onClick={() => setShowUserDropdown(!showUserDropdown)}
-                                        className="group relative flex items-center justify-between px-3 py-1.5 h-[38px] w-80 bg-white text-black rounded-md text-sm font-medium hover:bg-white border border-slate-200 hover:border-slate-300 transition-colors duration-200"
-                                    >
-                                        <span className="truncate">
-                                            {selectedUserId 
-                                                ? allUserStats.find(({ user }) => user.id === selectedUserId)?.user.name || 'Select User'
-                                                : 'Select User'
-                                            }
-                                        </span>
-                                        <ChevronDown className={`w-4 h-4 text-black transition-transform duration-200 flex-shrink-0 ${showUserDropdown ? 'transform rotate-180' : ''}`} />
-                                    </button>
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#666' }}>
+                                Detailed attendance tracking and productivity analysis
+                            </Typography>
+                        </Box>
+                    </Box>
 
-                                    {/* User Selector Dropdown */}
-                                    {showUserDropdown && (
-                                        <div className="absolute top-full right-0 mt-1.5 bg-white rounded-lg border border-slate-200 shadow-xl overflow-hidden w-80 z-50">
-                                            {/* Search Input */}
-                                            <div className="p-2.5 border-b border-slate-200 bg-white">
-                                                <input
-                                                    type="text"
-                                                    placeholder="Search users..."
-                                                    value={localSearchTerm}
-                                                    onChange={(e) => setLocalSearchTerm(e.target.value)}
-                                                    className="w-full px-2.5 py-1.5 text-sm bg-white border border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-slate-400 transition-all duration-200"
-                                                    autoFocus
-                                                />
-                                            </div>
+                    {/* Action Buttons */}
+                    <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Button
+                            variant={datePreset === 'today' ? 'contained' : 'outlined'}
+                            onClick={() => handleDatePresetChange('today')}
+                            sx={{
+                                borderRadius: 10,
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                px: 3
+                            }}
+                        >
+                            Today
+                        </Button>
+                        <Button
+                            variant={datePreset === 'yesterday' ? 'contained' : 'outlined'}
+                            onClick={() => handleDatePresetChange('yesterday')}
+                            sx={{
+                                borderRadius: 10,
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                px: 3
+                            }}
+                        >
+                            Yesterday
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            startIcon={<CalendarIcon />}
+                            onClick={handleOpenCustomDate}
+                            sx={{
+                                borderRadius: 10,
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                px: 3,
+                                color: '#666',
+                                borderColor: '#ddd',
+                                '&:hover': {
+                                    borderColor: '#999',
+                                    bgcolor: '#fafafa'
+                                }
+                            }}
+                        >
+                            Custom Date
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            startIcon={<FileDownloadIcon />}
+                            onClick={handleExportClick}
+                            sx={{
+                                borderRadius: 10,
+                                textTransform: 'none',
+                                fontWeight: 500,
+                                px: 3,
+                                color: '#666',
+                                borderColor: '#ddd',
+                                '&:hover': {
+                                    borderColor: '#999',
+                                    bgcolor: '#fafafa'
+                                }
+                            }}
+                        >
+                            Export
+                        </Button>
+                    </Box>
+                </Box>
 
-                                            {/* "All" Category Bar */}
-                                            <div className="bg-white border-b border-slate-200 px-2.5 py-2">
-                                                <span className="text-sm font-semibold text-black">All</span>
-                                            </div>
+                {/* Search Bar */}
+                <Box>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Search by name or email..."
+                        value={localSearchTerm}
+                        onChange={(e) => setLocalSearchTerm(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <SearchIcon sx={{ color: '#999' }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                borderRadius: 2,
+                                bgcolor: '#fafafa'
+                            }
+                        }}
+                    />
+                </Box>
+            </Box>
 
-                                            {/* User List */}
-                                            <div className="max-h-[400px] overflow-y-auto bg-white">
-                                                {(() => {
-                                                    const filteredUsers = allUserStats.filter(({ user }) =>
-                                                        !localSearchTerm || user.name.toLowerCase().includes(localSearchTerm.toLowerCase())
-                                                    );
+            {/* Export Menu */}
+            <Menu
+                anchorEl={exportAnchorEl}
+                open={exportMenuOpen}
+                onClose={handleExportClose}
+                anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                }}
+                transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                }}
+            >
+                <MenuItem onClick={() => handleExportOption(exportToExcel)}>Export to Excel</MenuItem>
+                <MenuItem onClick={() => handleExportOption(exportToPDF)}>Export to PDF</MenuItem>
+                <MenuItem onClick={() => handleExportOption(exportToCSV)}>Export to CSV</MenuItem>
+            </Menu>
 
-                                                    if (filteredUsers.length === 0) {
-                                                        return (
-                                                            <div className="p-8 text-center bg-white">
-                                                                <p className="text-sm text-slate-500">No users found</p>
-                                                            </div>
-                                                        );
-                                                    }
-
-                                                    return (
-                                                        <div className="bg-white">
-                                                            {filteredUsers.map(({ user }) => {
-                                                                const isSelected = user.id === selectedUserId;
-                                                                return (
-                                                                    <button
-                                                                        key={user.id}
-                                                                        onClick={() => {
-                                                                            setSelectedUserId(user.id);
-                                                                            setShowUserDropdown(false);
-                                                                            setLocalSearchTerm('');
-                                                                        }}
-                                                                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-white active:bg-white focus:bg-white border-b border-slate-100 last:border-b-0"
-                                                                        style={{ backgroundColor: 'white' }}
-                                                                    >
-                                                                        {/* Avatar Icon */}
-                                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border bg-white border-slate-200">
-                                                                            <Users className="w-4 h-4 text-black" />
-                                                                        </div>
-                                                                        
-                                                                        {/* User Name */}
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <p className="text-sm font-medium truncate text-black">
-                                                                                {user.name}
-                                                                            </p>
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                            {/* Date Range Picker */}
-                            <DateRangePickerComponent
-                                selectedRange={selectedRange}
-                                setSelectedRange={setSelectedRange}
-                                rangePresets={rangePresets}
-                            />
-                            {/* Export Dropdown Button */}
-                            <div className="relative" ref={exportRef}>
-                                <button
-                                    onClick={() => setShowExportMenu(prev => !prev)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-white border border-slate-200 hover:border-slate-300 transition-colors duration-200"
-                                >
-                                    <Download className="w-4 h-4 text-black" />
-                                    <span>Export</span>
-                                </button>
-                                {showExportMenu && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
-                                        <button
-                                            onClick={() => {
-                                                exportToExcel();
-                                                setShowExportMenu(false);
-                                            }}
-                                            className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors duration-200 border-b border-slate-100"
-                                        >
-                                            Export to Excel
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                exportToPDF();
-                                                setShowExportMenu(false);
-                                            }}
-                                            className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors duration-200 border-b border-slate-100"
-                                        >
-                                            Export to PDF
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                exportToCSV();
-                                                setShowExportMenu(false);
-                                            }}
-                                            className="w-full text-left px-4 py-2.5 hover:bg-slate-50 text-sm font-medium text-slate-700 transition-colors duration-200"
-                                        >
-                                            Export to CSV
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    {/* Quick Stats in Hero */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-5">
-                        <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                            <div className="w-8 h-8 rounded-md bg-blue-100 flex items-center justify-center">
-                                <Clock className="w-4 h-4 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-medium text-slate-600 mb-0.5">Total Hours</p>
-                                <p className="text-lg font-semibold text-slate-900">
-                                    {formatSecondsToTime(summary.totalSeconds)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                            <div className="w-8 h-8 rounded-md bg-emerald-100 flex items-center justify-center">
-                                <TrendingUp className="w-4 h-4 text-emerald-600" />
-                            </div>
-                            <div>
-                                <p className="text-xs font-medium text-slate-600 mb-0.5">Average Hours/Day</p>
-                                <p className="text-lg font-semibold text-slate-900">
-                                    {formatSecondsToTime(summary.avgSeconds)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
-                            <div className="w-8 h-8 rounded-md bg-purple-100 flex items-center justify-center">
-                                <Calendar className="w-4 h-4 text-purple-600" />
-                    </div>
-                            <div>
-                                <p className="text-xs font-medium text-slate-600 mb-0.5">Attendance Days</p>
-                                <p className="text-lg font-semibold text-slate-900">
-                                    {summary.attendanceDays}/{currentStats.length}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            {/* Custom Date Dialog */}
+            <Dialog
+                open={showCustomDateDialog}
+                onClose={handleCloseCustomDate}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3 }
+                }}
+            >
+                <DialogTitle sx={{ pb: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <CalendarIcon sx={{ color: '#1976d2' }} />
+                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                            Select Custom Date Range
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                        <TextField
+                            fullWidth
+                            label="Start Date"
+                            type="date"
+                            value={tempStartDate}
+                            onChange={(e) => setTempStartDate(e.target.value)}
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 2
+                                }
+                            }}
+                        />
+                        <TextField
+                            fullWidth
+                            label="End Date"
+                            type="date"
+                            value={tempEndDate}
+                            onChange={(e) => setTempEndDate(e.target.value)}
+                            inputProps={{
+                                min: tempStartDate
+                            }}
+                            InputLabelProps={{
+                                shrink: true,
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 2
+                                }
+                            }}
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button
+                        onClick={handleCloseCustomDate}
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            borderRadius: 2
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleApplyCustomDate}
+                        variant="contained"
+                        disabled={!tempStartDate || !tempEndDate}
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 500,
+                            borderRadius: 2,
+                            px: 3
+                        }}
+                    >
+                        Apply
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Enhanced Data Table */}
             <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
             <div className="overflow-x-auto">
-                    <table className="w-full min-w-[800px] border-collapse">
+                    <table className="w-full min-w-[900px] border-collapse">
                         <thead className="bg-slate-50 border-b border-slate-200">
                         <tr>
                             {columns.map(({ label, tooltip }) => (
@@ -428,109 +538,37 @@ const Attendance: React.FC<AttendanceProps> = ({
                         </tr>
                     </thead>
                     <tbody className="bg-white text-slate-700 text-sm">
-                        {currentStats.map((s, i) => (
-                                <tr 
-                                    key={i} 
+                        {sortedAndFilteredData.length === 0 ? (
+                            <tr>
+                                <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
+                                    No attendance records found
+                                </td>
+                            </tr>
+                        ) : (
+                            sortedAndFilteredData.map((s, i) => (
+                                <tr
+                                    key={`${s.userId}-${s.date}-${i}`}
                                     className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200"
                                 >
-                                {columns.map(({ label, render }) => (
-                                        <td 
-                                            key={label} 
+                                    {columns.map(({ label, render }) => (
+                                        <td
+                                            key={label}
                                             className={`px-4 py-3 ${
-                                                render(s) === 'Active Now' 
-                                                    ? 'text-green-600 font-semibold' 
+                                                render(s) === 'Active Now'
+                                                    ? 'text-green-600 font-semibold'
                                                     : 'text-slate-700'
                                             }`}
                                         >
                                             {render(s)}
                                         </td>
-                                ))}
-                            </tr>
-                        ))}
+                                    ))}
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
                 </div>
             </div>
-            {currentStats.length > 0 && (
-                <div className="bg-white rounded-lg p-5 border border-slate-200">
-                    <div className="flex items-center gap-2.5 mb-6">
-                        <div className="w-8 h-8 rounded-md bg-slate-50 flex items-center justify-center">
-                            <BarChart3 className="w-4 h-4 text-slate-600" />
-                            </div>
-                            <div>
-                            <h2 className="text-base font-semibold text-slate-900">Productivity Overview</h2>
-                            <p className="text-xs text-slate-500 mt-0.5">Visual breakdown of working hours, breaks, and idle time</p>
-                        </div>
-                    </div>
-                    <div className="w-full h-[400px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                data={currentStats.map((s) => ({
-                                    date: moment(s.date).format('MMM DD'),
-                                    working: parseFloat((
-                                        ((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0)) /
-                                        3600
-                                    ).toFixed(2)),
-                                    break: parseFloat(((s.breakTimeInSeconds || 0) / 3600).toFixed(2)),
-                                    idle: parseFloat(((s.idleTimeInSeconds || 0) / 3600).toFixed(2)),
-                                }))}
-                                margin={{ top: 5, right: 5, left: -20, bottom: 5 }}
-                            >
-                                <defs>
-                                    <linearGradient id="workingGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                                    </linearGradient>
-                                    <linearGradient id="breakGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#eab308" stopOpacity={0.8}/>
-                                        <stop offset="100%" stopColor="#eab308" stopOpacity={0.4}/>
-                                    </linearGradient>
-                                    <linearGradient id="idleGradient" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#ef4444" stopOpacity={0.8}/>
-                                        <stop offset="100%" stopColor="#ef4444" stopOpacity={0.4}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                                <XAxis 
-                                    dataKey="date" 
-                                    stroke="#94a3b8"
-                                    fontSize={11}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                />
-                                <YAxis 
-                                    unit="h" 
-                                    stroke="#94a3b8"
-                                    fontSize={11}
-                                    tickLine={false}
-                                    axisLine={false}
-                                    tickMargin={8}
-                                    width={40}
-                                />
-                                <Tooltip 
-                                    contentStyle={{
-                                        backgroundColor: '#ffffff',
-                                        border: '1px solid #e2e8f0',
-                                        borderRadius: 8,
-                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                        fontSize: '12px',
-                                        padding: '8px 12px'
-                                    }}
-                                    cursor={{ fill: 'rgba(239, 68, 68, 0.1)' }}
-                                />
-                                <Legend 
-                                    wrapperStyle={{ paddingTop: '20px', fontSize: '12px', fontWeight: 500 }}
-                                    iconType="circle"
-                                />
-                                <Bar dataKey="working" name="Working Hours" fill="url(#workingGradient)" radius={[6, 6, 0, 0]} />
-                                <Bar dataKey="break" name="Break Hours" fill="url(#breakGradient)" radius={[6, 6, 0, 0]} />
-                                <Bar dataKey="idle" name="Idle Hours" fill="url(#idleGradient)" radius={[6, 6, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            )}
         </main>
     );
 };
