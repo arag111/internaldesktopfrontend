@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
-import { Users, UserPlus, Edit, Trash2, Search, Save, X, CheckCircle, XCircle, AlertCircle, Shield, Clock, Brain, Mail, User, Lock, Building2, Sparkles, Eye, EyeOff, ChevronDown } from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2, Search, Save, X, CheckCircle, XCircle, AlertCircle, Shield, Clock, Brain, Mail, User, Lock, Building2, Sparkles, ChevronDown } from 'lucide-react';
 
 interface User {
   id: number;
@@ -41,7 +41,6 @@ export default function UserManagementPage() {
     name: '',
     username: '',
     email: '',
-    password: '',
     role: '',
     jobRole: '',
     productiveActivities: [],
@@ -59,7 +58,6 @@ export default function UserManagementPage() {
   const [generatingActivities, setGeneratingActivities] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('all');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ show: boolean; userId: number | null; userName: string }>({ show: false, userId: null, userName: '' });
   const formSectionRef = useRef<HTMLDivElement>(null);
 
@@ -169,10 +167,6 @@ export default function UserManagementPage() {
     if (!formData.role) {
       errors.role = 'Role is required';
     }
-    // ✅ FIX: Password only required when creating new user (not when editing)
-    if (!selectedUser && !formData.password) {
-      errors.password = 'Password is required';
-    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -186,11 +180,8 @@ export default function UserManagementPage() {
         teams: formData.teams ? formData.teams.split(',').map((t: string) => t.trim()).filter((t: string) => t) : [],
       };
 
-      // Log payload for debugging (remove sensitive data)
-      console.log('Payload being sent:', {
-        ...payload,
-        password: payload.password ? '***' : undefined,
-      });
+      // Log payload for debugging
+      console.log('Payload being sent:', payload);
 
       if (selectedUser) {
         // Update user
@@ -209,7 +200,6 @@ export default function UserManagementPage() {
         name: '',
         username: '',
         email: '',
-        password: '',
         role: '',
         jobRole: '',
         productiveActivities: [],
@@ -650,7 +640,6 @@ export default function UserManagementPage() {
                         name: '',
                         username: '',
                         email: '',
-                        password: '',
                         role: '',
                         jobRole: '',
                         productiveActivities: [],
