@@ -1,4 +1,5 @@
 import '@/app/globals.css';
+import AuthProvider from '@/app/components/AuthProvider';
 
 export const metadata = {
   title: 'Track Nexus',
@@ -15,7 +16,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="bg-gray-50 text-gray-900">{children}</body>
+      <body className="bg-gray-50 text-gray-900">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
