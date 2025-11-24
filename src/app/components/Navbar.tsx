@@ -39,6 +39,7 @@ export default function Navbar() {
       await logout(token);
       // Clear all auth-related items from localStorage
       localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken'); // Clear refresh token
       localStorage.removeItem('userName');
       localStorage.removeItem('role');
       localStorage.removeItem('companyId');

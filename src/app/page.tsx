@@ -142,6 +142,7 @@ export default function SignInPage() {
     try {
       const data = await verifyOTP(email, otp);
       localStorage.setItem('token', data.token);
+      localStorage.setItem('refreshToken', data.refreshToken); // Store refresh token
       localStorage.setItem('role', data.user.role);
       localStorage.setItem('userName', data.user.name);
 

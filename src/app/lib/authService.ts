@@ -22,3 +22,17 @@ export const logout = async (token: string) => {
     headers: { Authorization: `Bearer ${token}` }
   });
 };
+
+export const refreshAccessToken = async () => {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  const res = await axios.post(`${baseUrl}/api/users/auth/refresh-token`, { refreshToken });
+
+  // Store new access token
+  localStorage.setItem('token', res.data.token);
+
+  return res.data.token;
+};
