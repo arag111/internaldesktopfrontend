@@ -151,36 +151,6 @@ const Attendance: React.FC<AttendanceProps> = ({
         return `${hrs}h:${mins}m`;
     };
 
-    const getStatusRowColor = (status: string) => {
-        switch (status) {
-            case 'Absent':
-                return 'bg-red-50 hover:bg-red-100';
-            case 'Half Day':
-                return 'bg-yellow-50 hover:bg-yellow-100';
-            case 'Present':
-                return 'bg-green-50 hover:bg-green-100';
-            case 'Weekend':
-                return 'bg-blue-50 hover:bg-blue-100';
-            default:
-                return 'bg-white hover:bg-slate-50';
-        }
-    };
-
-    const getStatusTextColor = (status: string) => {
-        switch (status) {
-            case 'Absent':
-                return 'text-red-900';
-            case 'Half Day':
-                return 'text-yellow-900';
-            case 'Present':
-                return 'text-green-900';
-            case 'Weekend':
-                return 'text-blue-900';
-            default:
-                return 'text-slate-700';
-        }
-    };
-
     // Flatten data structure - combine all users' data into single array
     const flattenedData: FlatAttendanceRecord[] = useMemo(() => {
         return allUserStats.flatMap(userStat =>
@@ -239,13 +209,13 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Punching Time',
             tooltip: 'Employee First Login time',
-            render: (s: FlatAttendanceRecord) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : 'null'
+            render: (s: FlatAttendanceRecord) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-'
         },
         {
             label: 'Last Seen',
             tooltip: 'Last active timestamp',
             render: (s: FlatAttendanceRecord) => {
-                if (!s.lastSeen) return 'null';
+                if (!s.lastSeen) return '-';
                 const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
                 const currentTime = moment().utcOffset('+05:30');
                 // FIXED: Check if within last 5 minutes, not just same time
@@ -282,11 +252,6 @@ const Attendance: React.FC<AttendanceProps> = ({
                 const productive = displayWorking - totalBreak > 0 ? displayWorking - totalBreak : 0;
                 return formatDuration(productive);
             }
-        },
-        {
-            label: 'Status',
-            tooltip: 'Attendance status based on working hours',
-            render: (s: FlatAttendanceRecord) => s.status
         }
     ];
 
@@ -294,8 +259,22 @@ const Attendance: React.FC<AttendanceProps> = ({
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance - All Users');
 
-        // Add header row
-        const headerRow = worksheet.addRow(columns.map(col => col.label));
+        // Define export columns (different from table columns - includes Status)
+        const exportColumns = [
+            { header: 'Punch In', key: 'punchIn' },
+            { header: 'Punch Out', key: 'punchOut' },
+            { header: 'Working Hours', key: 'workingHours' },
+            { header: 'Productive Hours', key: 'productiveHours' },
+            { header: 'Idle Hours', key: 'idleHours' },
+            { header: 'Break Hours', key: 'breakHours' },
+            { header: 'Status', key: 'status' }
+        ];
+
+        // Set columns
+        worksheet.columns = exportColumns;
+
+        // Style header row
+        const headerRow = worksheet.getRow(1);
         headerRow.font = { bold: true };
         headerRow.fill = {
             type: 'pattern',
@@ -304,8 +283,22 @@ const Attendance: React.FC<AttendanceProps> = ({
         };
 
         // Add data rows
-        sortedAndFilteredData.forEach((s, index) => {
-            const rowData = columns.map(col => col.render(s));
+        sortedAndFilteredData.forEach((s) => {
+            const working = s.workingTimeInSeconds || 0;
+            const totalBreak = s.breakTimeInSeconds || 0;
+            const displayWorking = working - s.rejectedIdleTimeInSeconds;
+            const productive = displayWorking - totalBreak > 0 ? displayWorking - totalBreak : 0;
+
+            const rowData = {
+                punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : 'null',
+                punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : 'null',
+                workingHours: formatDuration(displayWorking),
+                productiveHours: formatDuration(productive),
+                idleHours: formatDuration(s.idleTimeInSeconds || 0),
+                breakHours: formatDuration(s.breakTimeInSeconds || 0),
+                status: s.status
+            };
+
             const row = worksheet.addRow(rowData);
 
             const status = s.status;
@@ -629,15 +622,15 @@ const Attendance: React.FC<AttendanceProps> = ({
                             sortedAndFilteredData.map((s, i) => (
                                 <tr
                                     key={`${s.userId}-${s.date}-${i}`}
-                                    className={`border-b border-slate-200 transition-colors duration-200 ${getStatusRowColor(s.status)}`}
+                                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200"
                                 >
                                     {columns.map(({ label, render }) => (
                                         <td
                                             key={label}
-                                            className={`px-4 py-3 font-medium ${
+                                            className={`px-4 py-3 ${
                                                 render(s) === 'Active Now'
                                                     ? 'text-green-600 font-semibold'
-                                                    : getStatusTextColor(s.status)
+                                                    : 'text-slate-700'
                                             }`}
                                         >
                                             {render(s)}
