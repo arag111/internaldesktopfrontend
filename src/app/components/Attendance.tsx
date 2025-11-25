@@ -44,6 +44,7 @@ interface FlatAttendanceRecord {
     breakTimeInSeconds: number;
     idleTimeInSeconds: number;
     rejectedIdleTimeInSeconds: number;
+    status: 'Absent' | 'Half Day' | 'Present' | 'Weekend';
 }
 
 interface AttendanceProps {
@@ -150,6 +151,36 @@ const Attendance: React.FC<AttendanceProps> = ({
         return `${hrs}h:${mins}m`;
     };
 
+    const getStatusRowColor = (status: string) => {
+        switch (status) {
+            case 'Absent':
+                return 'bg-red-50 hover:bg-red-100';
+            case 'Half Day':
+                return 'bg-yellow-50 hover:bg-yellow-100';
+            case 'Present':
+                return 'bg-green-50 hover:bg-green-100';
+            case 'Weekend':
+                return 'bg-blue-50 hover:bg-blue-100';
+            default:
+                return 'bg-white hover:bg-slate-50';
+        }
+    };
+
+    const getStatusTextColor = (status: string) => {
+        switch (status) {
+            case 'Absent':
+                return 'text-red-900';
+            case 'Half Day':
+                return 'text-yellow-900';
+            case 'Present':
+                return 'text-green-900';
+            case 'Weekend':
+                return 'text-blue-900';
+            default:
+                return 'text-slate-700';
+        }
+    };
+
     // Flatten data structure - combine all users' data into single array
     const flattenedData: FlatAttendanceRecord[] = useMemo(() => {
         return allUserStats.flatMap(userStat =>
@@ -164,6 +195,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                 breakTimeInSeconds: stat.breakTimeInSeconds || 0,
                 idleTimeInSeconds: stat.idleTimeInSeconds || 0,
                 rejectedIdleTimeInSeconds: stat.rejectedIdleTimeInSeconds || 0,
+                status: stat.status || 'Absent',
             }))
         );
     }, [allUserStats]);
@@ -207,13 +239,13 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Punching Time',
             tooltip: 'Employee First Login time',
-            render: (s: FlatAttendanceRecord) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-'
+            render: (s: FlatAttendanceRecord) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : 'null'
         },
         {
             label: 'Last Seen',
             tooltip: 'Last active timestamp',
             render: (s: FlatAttendanceRecord) => {
-                if (!s.lastSeen) return '-';
+                if (!s.lastSeen) return 'null';
                 const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
                 const currentTime = moment().utcOffset('+05:30');
                 // FIXED: Check if within last 5 minutes, not just same time
@@ -250,6 +282,11 @@ const Attendance: React.FC<AttendanceProps> = ({
                 const productive = displayWorking - totalBreak > 0 ? displayWorking - totalBreak : 0;
                 return formatDuration(productive);
             }
+        },
+        {
+            label: 'Status',
+            tooltip: 'Attendance status based on working hours',
+            render: (s: FlatAttendanceRecord) => s.status
         }
     ];
 
@@ -257,10 +294,54 @@ const Attendance: React.FC<AttendanceProps> = ({
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance - All Users');
 
-        worksheet.addRow(columns.map(col => col.label));
-        sortedAndFilteredData.forEach(s => {
-            const row = columns.map(col => col.render(s));
-            worksheet.addRow(row);
+        // Add header row
+        const headerRow = worksheet.addRow(columns.map(col => col.label));
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFE0E0E0' }
+        };
+
+        // Add data rows
+        sortedAndFilteredData.forEach((s, index) => {
+            const rowData = columns.map(col => col.render(s));
+            const row = worksheet.addRow(rowData);
+
+            const status = s.status;
+            let fillColor, fontColor;
+
+            // Determine colors based on status
+            if (status === 'Absent') {
+                fillColor = 'FFFEE2E2'; // Red
+                fontColor = 'FF991B1B';
+            } else if (status === 'Half Day') {
+                fillColor = 'FFFEF3C7'; // Yellow
+                fontColor = 'FF92400E';
+            } else if (status === 'Present') {
+                fillColor = 'FFD1FAE5'; // Green
+                fontColor = 'FF065F46';
+            } else if (status === 'Weekend') {
+                fillColor = 'FFDBEAFE'; // Blue
+                fontColor = 'FF1E3A8A';
+            }
+
+            // Apply color to entire row if status exists
+            if (fillColor && fontColor) {
+                row.eachCell({ includeEmpty: true }, (cell) => {
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: fillColor }
+                    };
+                    cell.font = { color: { argb: fontColor }, bold: true };
+                });
+            }
+        });
+
+        // Auto-fit columns
+        worksheet.columns.forEach(column => {
+            column.width = 15;
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
@@ -548,15 +629,15 @@ const Attendance: React.FC<AttendanceProps> = ({
                             sortedAndFilteredData.map((s, i) => (
                                 <tr
                                     key={`${s.userId}-${s.date}-${i}`}
-                                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200"
+                                    className={`border-b border-slate-200 transition-colors duration-200 ${getStatusRowColor(s.status)}`}
                                 >
                                     {columns.map(({ label, render }) => (
                                         <td
                                             key={label}
-                                            className={`px-4 py-3 ${
+                                            className={`px-4 py-3 font-medium ${
                                                 render(s) === 'Active Now'
                                                     ? 'text-green-600 font-semibold'
-                                                    : 'text-slate-700'
+                                                    : getStatusTextColor(s.status)
                                             }`}
                                         >
                                             {render(s)}

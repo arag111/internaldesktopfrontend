@@ -144,7 +144,14 @@ export default function SignInPage() {
       localStorage.setItem('token', data.token);
       localStorage.setItem('refreshToken', data.refreshToken); // Store refresh token
       localStorage.setItem('role', data.user.role);
-      localStorage.setItem('userName', data.user.name);
+      localStorage.setItem('userName', data.user.name || data.user.username);
+
+      // Store additional user info for profile dropdown
+      localStorage.setItem('userEmail', data.user.email);
+      localStorage.setItem('username', data.user.username);
+      if (data.user.jobRole) {
+        localStorage.setItem('jobRole', data.user.jobRole);
+      }
 
       // Store company ID if present
       if (data.user.companyId) {
