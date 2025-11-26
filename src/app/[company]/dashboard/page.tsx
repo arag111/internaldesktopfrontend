@@ -16,7 +16,7 @@ import { alpha } from '@mui/material/styles';
 import {
   Dashboard, TrendingUp, TrendingDown, AccessTime, Groups,
   CheckCircle, Cancel, Warning, CalendarToday, Timer,
-  PersonOutline, Computer, Smartphone, BarChart as BarChartIcon,
+  PersonOutline, Smartphone, BarChart as BarChartIcon,
   Refresh, DateRange, Assessment, WorkHistory, Speed,
   Visibility, Download, FilterList, Today, ViewWeek, CalendarMonth
 } from '@mui/icons-material';
@@ -122,6 +122,34 @@ const rangePresets = [
   { label: 'This Week', icon: <ViewWeek />, range: [startOfWeek(new Date()), endOfWeek(new Date())] },
   { label: 'This Month', icon: <CalendarMonth />, range: [startOfMonth(new Date()), endOfMonth(new Date())] }
 ];
+
+// Late login configuration
+const EXPECTED_LOGIN_HOUR = 10;    // 10:00 AM
+const EXPECTED_LOGIN_MINUTE = 0;
+
+// Check if user logged in late
+const isLateLogin = (punchInTime: string | null): boolean => {
+  if (!punchInTime) return false;
+
+  const loginTime = new Date(punchInTime);
+  const expectedTime = new Date(loginTime);
+  expectedTime.setHours(EXPECTED_LOGIN_HOUR, EXPECTED_LOGIN_MINUTE, 0, 0);
+
+  return loginTime > expectedTime;
+};
+
+// Calculate late duration in minutes
+const getLateDuration = (punchInTime: string): number => {
+  if (!punchInTime) return 0;
+
+  const loginTime = new Date(punchInTime);
+  const expectedTime = new Date(loginTime);
+  expectedTime.setHours(EXPECTED_LOGIN_HOUR, EXPECTED_LOGIN_MINUTE, 0, 0);
+
+  if (loginTime <= expectedTime) return 0;
+
+  return Math.floor((loginTime - expectedTime) / 60000); // minutes
+};
 
 interface UserStats {
   user: {
@@ -786,19 +814,45 @@ export default function DashboardPage() {
                                 }
                               />
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Computer sx={{ fontSize: 20, color: theme.palette.text.secondary }} />
-                                <Typography variant="body2" color="textSecondary">
-                                  {(() => {
-                                    const day = userStat.stats[0];
-                                    if (!day) return '0%';
-                                    const working = day.workingTimeInSeconds || 0;
-                                    const breaks = day.breakTimeInSeconds || 0;
-                                    const idle = day.idleTimeInSeconds || 0;
-                                    const totalTimeAtDesk = working + breaks + idle;
-                                    const productivity = totalTimeAtDesk > 0 ? Math.round((working / totalTimeAtDesk) * 100) : 0;
-                                    return `${Math.max(0, Math.min(100, productivity))}%`;
-                                  })()}
-                                </Typography>
+                                {(() => {
+                                  const punchInTime = userStat.stats[0]?.punchInTime;
+                                  if (!punchInTime) return null;
+
+                                  const isLate = isLateLogin(punchInTime);
+                                  const lateMinutes = getLateDuration(punchInTime);
+
+                                  if (!isLate) {
+                                    // Show "On Time" badge
+                                    return (
+                                      <Chip
+                                        label="On Time"
+                                        size="small"
+                                        sx={{
+                                          backgroundColor: '#d1fae5',
+                                          color: '#065f46',
+                                          fontSize: '0.75rem',
+                                          fontWeight: 500,
+                                          height: '24px'
+                                        }}
+                                      />
+                                    );
+                                  }
+
+                                  // Show "Late" badge with minutes
+                                  return (
+                                    <Chip
+                                      label={`Late ${lateMinutes}m`}
+                                      size="small"
+                                      sx={{
+                                        backgroundColor: '#fee2e2',
+                                        color: '#991b1b',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        height: '24px'
+                                      }}
+                                    />
+                                  );
+                                })()}
                               </Box>
                             </ListItem>
                           );
