@@ -806,7 +806,7 @@ export default function DashboardPage() {
                                     </span>
                                     <Typography variant="caption" color="textSecondary" component="span">
                                       {userStat.stats[0]?.workingTimeInSeconds
-                                        ? `${Math.round(userStat.stats[0].workingTimeInSeconds / 3600)}h today`
+                                        ? `${formatSecondsToTime(userStat.stats[0].workingTimeInSeconds)} today`
                                         : 'No activity today'
                                       }
                                     </Typography>
