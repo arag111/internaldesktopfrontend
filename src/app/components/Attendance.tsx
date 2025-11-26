@@ -586,16 +586,18 @@ const Attendance: React.FC<AttendanceProps> = ({
                                     {...params}
                                     size="small"
                                     placeholder="Filter by users (select multiple)"
-                                    InputProps={{
-                                        ...params.InputProps,
-                                        startAdornment: (
-                                            <>
-                                                <InputAdornment position="start">
-                                                    <FilterListIcon sx={{ color: '#999' }} />
-                                                </InputAdornment>
-                                                {params.InputProps.startAdornment}
-                                            </>
-                                        ),
+                                    slotProps={{
+                                        input: {
+                                            ...params.InputProps,
+                                            startAdornment: (
+                                                <>
+                                                    <InputAdornment position="start">
+                                                        <FilterListIcon sx={{ color: '#999' }} />
+                                                    </InputAdornment>
+                                                    {params.InputProps.startAdornment}
+                                                </>
+                                            ),
+                                        },
                                     }}
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
