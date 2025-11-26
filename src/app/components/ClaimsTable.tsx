@@ -333,6 +333,9 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                     <table className="w-full min-w-[800px] border-collapse">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
+                                {(role === 'admin' || role === 'manager') && (
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Employee</th>
+                                )}
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Date</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Started At</th>
                                 <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider">Ended At</th>
@@ -347,7 +350,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                         <tbody className="bg-white text-slate-700 text-sm divide-y divide-slate-200">
                             {filteredClaims.length === 0 ? (
                                 <tr>
-                                    <td colSpan={(role === 'admin' || role === 'manager') ? 7 : 6} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={(role === 'admin' || role === 'manager') ? 8 : 6} className="px-6 py-12 text-center text-slate-500">
                                         <div className="flex flex-col items-center gap-2">
                                             <AlertCircle className="w-8 h-8 text-slate-400" />
                                             <p className="text-sm font-medium">No claims found</p>
@@ -371,6 +374,18 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
 
                                         return (
                                             <tr key={`${claimIndex}-${eventIndex}`} className="hover:bg-slate-50 transition-colors duration-150">
+                                                {(role === 'admin' || role === 'manager') && (
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div>
+                                                            <div className="font-medium text-slate-900">
+                                                                {claim.user?.name || 'Unknown User'}
+                                                            </div>
+                                                            <div className="text-xs text-slate-500">
+                                                                {claim.user?.email || ''}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                )}
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {moment(event.startedAt).format('DD-MM-YYYY')}
                                                 </td>

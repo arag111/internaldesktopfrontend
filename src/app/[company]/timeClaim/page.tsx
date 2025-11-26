@@ -27,28 +27,12 @@ export default function ClaimsPage() {
     const userDropdownRef = useRef<HTMLDivElement>(null);
     const hasRestoredFromStorage = useRef(false);
 
-    // Initialize role and selectedUserId from localStorage on mount
+    // Initialize role from localStorage on mount
     useEffect(() => {
         const storedRole = localStorage.getItem('role');
         setRole(storedRole);
-
-        // Restore selected user from localStorage
-        const storedUserId = localStorage.getItem('selectedUserId');
-        if (storedUserId) {
-            setSelectedUserId(storedUserId);
-        }
         hasRestoredFromStorage.current = true;
     }, []);
-
-    // Save selectedUserId to localStorage whenever it changes
-    useEffect(() => {
-        if (selectedUserId !== null) {
-            localStorage.setItem('selectedUserId', selectedUserId);
-        } else {
-            // Remove from localStorage when "All Users" is selected
-            localStorage.removeItem('selectedUserId');
-        }
-    }, [selectedUserId]);
 
     // Fetch data when range changes (not when selectedUserId changes)
     useEffect(() => {
