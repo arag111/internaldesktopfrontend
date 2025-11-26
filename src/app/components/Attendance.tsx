@@ -22,12 +22,15 @@ import {
     Dialog,
     DialogTitle,
     DialogContent,
-    DialogActions
+    DialogActions,
+    Autocomplete,
+    Chip
 } from '@mui/material';
 import {
     CalendarToday as CalendarIcon,
     FileDownload as FileDownloadIcon,
-    Search as SearchIcon
+    Search as SearchIcon,
+    FilterList as FilterListIcon
 } from '@mui/icons-material';
 import { format as formatDate } from 'date-fns';
 
@@ -60,6 +63,9 @@ interface AttendanceProps {
     searchTerm?: string;
     setSearchTerm?: (term: string) => void;
     mlValue: string;
+    selectedUsers?: number[];
+    setSelectedUsers?: (users: number[]) => void;
+    availableUsers?: { id: number; name: string; email: string }[];
 }
 
 const Attendance: React.FC<AttendanceProps> = ({
@@ -75,6 +81,9 @@ const Attendance: React.FC<AttendanceProps> = ({
     searchTerm = '',
     setSearchTerm,
     mlValue,
+    selectedUsers = [],
+    setSelectedUsers,
+    availableUsers = [],
 }) => {
     const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
     const [datePreset, setDatePreset] = useState<DatePreset | null>(null);
@@ -172,28 +181,34 @@ const Attendance: React.FC<AttendanceProps> = ({
 
     // Search and sort functionality
     const sortedAndFilteredData = useMemo(() => {
-        if (!localSearchTerm) return flattenedData;
+        let filtered = flattenedData;
 
-        const lowercaseSearch = localSearchTerm.toLowerCase();
+        // Filter by selected users
+        if (selectedUsers && selectedUsers.length > 0) {
+            filtered = filtered.filter(record =>
+                selectedUsers.includes(record.userId)
+            );
+        }
 
-        return [...flattenedData].sort((a, b) => {
-            const aMatches = a.userName.toLowerCase().includes(lowercaseSearch) ||
-                a.userEmail.toLowerCase().includes(lowercaseSearch);
-            const bMatches = b.userName.toLowerCase().includes(lowercaseSearch) ||
-                b.userEmail.toLowerCase().includes(lowercaseSearch);
+        // Filter by search term
+        if (localSearchTerm) {
+            const lowercaseSearch = localSearchTerm.toLowerCase();
+            filtered = filtered.filter(record =>
+                record.userName.toLowerCase().includes(lowercaseSearch) ||
+                record.userEmail.toLowerCase().includes(lowercaseSearch)
+            );
+        }
 
-            // Matched users first
-            if (aMatches && !bMatches) return -1;
-            if (!aMatches && bMatches) return 1;
-
-            // Then alphabetically by name
+        // Sort the filtered data
+        return [...filtered].sort((a, b) => {
+            // Alphabetically by name
             const nameCompare = a.userName.localeCompare(b.userName);
             if (nameCompare !== 0) return nameCompare;
 
             // Then by date descending (latest first)
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
-    }, [flattenedData, localSearchTerm]);
+    }, [flattenedData, selectedUsers, localSearchTerm]);
 
     const columns = [
         {
@@ -551,6 +566,82 @@ const Attendance: React.FC<AttendanceProps> = ({
                         }}
                     />
                 </Box>
+
+                {/* User Filter - Multi-select */}
+                {availableUsers.length > 0 && (
+                    <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+                        <Autocomplete
+                            multiple
+                            id="user-filter"
+                            options={availableUsers}
+                            getOptionLabel={(option) => option.name}
+                            value={availableUsers.filter(user => selectedUsers.includes(user.id))}
+                            onChange={(event, newValue) => {
+                                if (setSelectedUsers) {
+                                    setSelectedUsers(newValue.map(user => user.id));
+                                }
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    size="small"
+                                    placeholder="Filter by users (select multiple)"
+                                    slotProps={{
+                                        input: {
+                                            ...params.InputProps,
+                                            startAdornment: (
+                                                <>
+                                                    <InputAdornment position="start">
+                                                        <FilterListIcon sx={{ color: '#999' }} />
+                                                    </InputAdornment>
+                                                    {params.InputProps.startAdornment}
+                                                </>
+                                            ),
+                                        },
+                                    }}
+                                    sx={{
+                                        '& .MuiOutlinedInput-root': {
+                                            borderRadius: 2,
+                                            bgcolor: '#fafafa'
+                                        }
+                                    }}
+                                />
+                            )}
+                            renderTags={(value, getTagProps) =>
+                                value.map((option, index) => (
+                                    <Chip
+                                        key={option.id}
+                                        label={option.name}
+                                        {...getTagProps({ index })}
+                                        size="small"
+                                        sx={{ borderRadius: 1 }}
+                                    />
+                                ))
+                            }
+                            sx={{ flex: 1 }}
+                        />
+                        {(selectedUsers.length > 0 || localSearchTerm) && (
+                            <Button
+                                variant="text"
+                                onClick={() => {
+                                    if (setSelectedUsers) setSelectedUsers([]);
+                                    setLocalSearchTerm('');
+                                }}
+                                sx={{
+                                    textTransform: 'none',
+                                    fontWeight: 500,
+                                    color: '#666',
+                                    whiteSpace: 'nowrap',
+                                    '&:hover': {
+                                        bgcolor: '#f5f5f5'
+                                    }
+                                }}
+                            >
+                                Clear Filters
+                            </Button>
+                        )}
+                    </Box>
+                )}
             </Box>
 
             {/* Export Menu */}
