@@ -41,12 +41,37 @@ export default function AttendancePage() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const isInitialMount = useRef(true);
   const prevRangeRef = useRef<string>('');
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<{ id: number; name: string; email: string }[]>([]);
 
   // Initialize role from localStorage on mount
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
     setRole(storedRole);
   }, []);
+
+  // Fetch available users for filtering (admin/manager only)
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const storedRole = localStorage.getItem('role');
+
+    if (!token) return;
+
+    if (storedRole === 'admin' || storedRole === 'manager') {
+      const fetchUsers = async () => {
+        try {
+          const { data } = await axios.get(
+            `${baseUrl}/api/users/company-users`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          setAvailableUsers(data);
+        } catch (error) {
+          console.error('Failed to fetch users for filtering:', error);
+        }
+      };
+      fetchUsers();
+    }
+  }, [role]);
 
   // Fetch data when range changes (not when selectedUserId changes)
   useEffect(() => {
@@ -144,6 +169,9 @@ export default function AttendancePage() {
       searchTerm={searchTerm}
       setSearchTerm={setSearchTerm}
       mlValue="16rem"
+      selectedUsers={selectedUsers}
+      setSelectedUsers={setSelectedUsers}
+      availableUsers={availableUsers}
     />
   );
 }
