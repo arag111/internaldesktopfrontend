@@ -243,13 +243,13 @@ const Attendance: React.FC<AttendanceProps> = ({
         },
         {
             label: 'Productive Hours',
-            tooltip: 'Working hours - Break Time',
+            tooltip: 'Working hours - Idle Time - Break Time',
             render: (s: FlatAttendanceRecord) => {
                 const working = s.workingTimeInSeconds || 0;
                 const idle = s.idleTimeInSeconds || 0;
                 const totalBreak = s.breakTimeInSeconds || 0;
                 const displayWorking = working - s.rejectedIdleTimeInSeconds;
-                const productive = displayWorking - totalBreak > 0 ? displayWorking - totalBreak : 0;
+                const productive = displayWorking - totalBreak - idle > 0 ? displayWorking - totalBreak - idle : 0;
                 return formatDuration(productive);
             }
         }
@@ -287,46 +287,112 @@ const Attendance: React.FC<AttendanceProps> = ({
         // Add data rows
         sortedAndFilteredData.forEach((s) => {
             const working = s.workingTimeInSeconds || 0;
+            const idle = s.idleTimeInSeconds || 0;
             const totalBreak = s.breakTimeInSeconds || 0;
             const displayWorking = working - s.rejectedIdleTimeInSeconds;
-            const productive = displayWorking - totalBreak > 0 ? displayWorking - totalBreak : 0;
+            const productive = displayWorking - totalBreak - idle > 0 ? displayWorking - totalBreak - idle : 0;
 
             // Format date with day name: "DD-MMM-YYYY (Day)"
             const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
 
-            const rowData = {
-                name: s.userName,
-                date: dateFormatted,
-                punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
-                punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
-                workingHours: formatDuration(displayWorking),
-                productiveHours: formatDuration(productive),
-                idleHours: formatDuration(s.idleTimeInSeconds || 0),
-                breakHours: formatDuration(s.breakTimeInSeconds || 0),
-                status: s.status
-            };
+            // Detect if this is a weekend
+            const isWeekend = s.status === 'Weekend';
+
+            // Prepare row data - show "Weekend" for all fields if it's a weekend
+            let rowData;
+
+            if (isWeekend) {
+                // For weekends: show "Weekend" in all columns except Name and Date
+                rowData = {
+                    name: s.userName,
+                    date: dateFormatted,
+                    punchIn: 'Weekend',
+                    punchOut: 'Weekend',
+                    workingHours: 'Weekend',
+                    productiveHours: 'Weekend',
+                    idleHours: 'Weekend',
+                    breakHours: 'Weekend',
+                    status: 'Weekend'
+                };
+            } else {
+                // For weekdays: show normal data
+                rowData = {
+                    name: s.userName,
+                    date: dateFormatted,
+                    punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
+                    punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
+                    workingHours: formatDuration(displayWorking),
+                    productiveHours: formatDuration(productive),
+                    idleHours: formatDuration(s.idleTimeInSeconds || 0),
+                    breakHours: formatDuration(s.breakTimeInSeconds || 0),
+                    status: s.status
+                };
+            }
 
             const row = worksheet.addRow(rowData);
 
-            // Calculate working hours in hours (not seconds)
-            const workingHours = displayWorking / 3600;
-            let fontColor;
+            // Apply row styling
+            if (isWeekend) {
+                // ============================================
+                // WEEKEND ROW STYLING
+                // ============================================
 
-            // Determine color based on working hours
-            if (workingHours < 4) {
-                fontColor = 'FFDC2626'; // Red for < 4 hours
-            } else if (workingHours >= 4 && workingHours <= 8) {
-                fontColor = 'FFCA8A04'; // Yellow for 4-8 hours
+                // Apply styling to entire row
+                row.eachCell((cell) => {
+                    // Background color for entire row (light blue)
+                    cell.fill = {
+                        type: 'pattern',
+                        pattern: 'solid',
+                        fgColor: { argb: 'FFE0F2FE' } // Light blue background
+                    };
+
+                    // Text styling - centered, bold, italic
+                    cell.font = {
+                        color: { argb: 'FF1E40AF' }, // Blue text
+                        bold: true,
+                        italic: true,
+                        size: 11
+                    };
+
+                    // Center align all cells
+                    cell.alignment = {
+                        horizontal: 'center',
+                        vertical: 'middle'
+                    };
+                });
+
             } else {
-                fontColor = 'FF16A34A'; // Green for > 8 hours
-            }
+                // ============================================
+                // WEEKDAY ROW STYLING (Working Hours Color)
+                // ============================================
 
-            // Apply color only to Working Hours cell text (no background)
-            const workingHoursCell = row.getCell('workingHours');
-            workingHoursCell.font = {
-                color: { argb: fontColor },
-                bold: true
-            };
+                // Calculate working hours in hours (not seconds)
+                const workingHours = displayWorking / 3600;
+                let fontColor;
+
+                // Determine color based on working hours
+                if (workingHours < 4) {
+                    fontColor = 'FFDC2626'; // Red for < 4 hours
+                } else if (workingHours >= 4 && workingHours <= 8) {
+                    fontColor = 'FFCA8A04'; // Yellow for 4-8 hours
+                } else {
+                    fontColor = 'FF16A34A'; // Green for > 8 hours
+                }
+
+                // Apply color to ALL cells in the row
+                row.eachCell((cell) => {
+                    cell.font = {
+                        color: { argb: fontColor }
+                    };
+                });
+
+                // Make Working Hours cell bold (in addition to the color)
+                const workingHoursCell = row.getCell('workingHours');
+                workingHoursCell.font = {
+                    color: { argb: fontColor },
+                    bold: true
+                };
+            }
         });
 
         // Auto-fit columns
