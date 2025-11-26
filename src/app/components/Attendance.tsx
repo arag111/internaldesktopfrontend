@@ -259,8 +259,9 @@ const Attendance: React.FC<AttendanceProps> = ({
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance - All Users');
 
-        // Define export columns (different from table columns - includes Status)
+        // Define export columns (includes Date as first column)
         const exportColumns = [
+            { header: 'Date', key: 'date' },
             { header: 'Punch In', key: 'punchIn' },
             { header: 'Punch Out', key: 'punchOut' },
             { header: 'Working Hours', key: 'workingHours' },
@@ -275,11 +276,11 @@ const Attendance: React.FC<AttendanceProps> = ({
 
         // Style header row
         const headerRow = worksheet.getRow(1);
-        headerRow.font = { bold: true };
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
         headerRow.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FFE0E0E0' }
+            fgColor: { argb: 'FF1F4788' }
         };
 
         // Add data rows
@@ -289,9 +290,13 @@ const Attendance: React.FC<AttendanceProps> = ({
             const displayWorking = working - s.rejectedIdleTimeInSeconds;
             const productive = displayWorking - totalBreak > 0 ? displayWorking - totalBreak : 0;
 
+            // Format date with day name: "DD-MMM-YYYY (Day)"
+            const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
+
             const rowData = {
-                punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : 'null',
-                punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : 'null',
+                date: dateFormatted,
+                punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
+                punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
                 workingHours: formatDuration(displayWorking),
                 productiveHours: formatDuration(productive),
                 idleHours: formatDuration(s.idleTimeInSeconds || 0),
@@ -334,7 +339,7 @@ const Attendance: React.FC<AttendanceProps> = ({
 
         // Auto-fit columns
         worksheet.columns.forEach(column => {
-            column.width = 15;
+            column.width = 20;
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
