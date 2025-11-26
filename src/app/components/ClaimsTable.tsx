@@ -167,7 +167,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                     <span className="truncate">
                                         {selectedUserId
                                             ? allUserStats.find(({ user }) => String(user.id) === selectedUserId)?.user.name || 'Select User'
-                                            : 'Select User'
+                                            : 'All Users'
                                         }
                                     </span>
                                     <ChevronDown className={`w-4 h-4 text-black transition-transform duration-200 flex-shrink-0 ${showUserDropdown ? 'transform rotate-180' : ''}`} />
@@ -188,9 +188,43 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                             />
                                         </div>
 
-                                        {/* "All" Category Bar */}
-                                        <div className="bg-white border-b border-slate-200 px-2.5 py-2">
-                                            <span className="text-sm font-semibold text-black">All</span>
+                                        {/* "All Users" Option - Clickable */}
+                                        <div className="bg-white border-b border-slate-200">
+                                            <button
+                                                onClick={() => {
+                                                    if (setSelectedUserId) {
+                                                        setSelectedUserId(null);
+                                                    }
+                                                    setShowUserDropdown(false);
+                                                    setLocalSearchTerm('');
+                                                }}
+                                                className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-slate-50 transition-colors duration-150"
+                                            >
+                                                {/* Icon for "All Users" */}
+                                                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border bg-blue-50 border-blue-200">
+                                                    <Users className="w-4 h-4 text-blue-600" />
+                                                </div>
+
+                                                {/* "All Users" Label */}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-semibold text-slate-900">
+                                                        All Users
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">
+                                                        View claims from all users
+                                                    </p>
+                                                </div>
+
+                                                {/* Checkmark if currently selected */}
+                                                {selectedUserId === null && (
+                                                    <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {/* Individual Users Section Header */}
+                                        <div className="bg-slate-50 border-b border-slate-200 px-2.5 py-1.5">
+                                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Individual Users</span>
                                         </div>
 
                                         {/* User List */}
@@ -220,20 +254,24 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                                                         setShowUserDropdown(false);
                                                                         setLocalSearchTerm('');
                                                                     }}
-                                                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-white active:bg-white focus:bg-white border-b border-slate-100 last:border-b-0"
-                                                                    style={{ backgroundColor: 'white' }}
+                                                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left bg-white hover:bg-slate-50 transition-colors duration-150 border-b border-slate-100 last:border-b-0"
                                                                 >
                                                                     {/* Avatar Icon */}
                                                                     <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border bg-white border-slate-200">
                                                                         <Users className="w-4 h-4 text-black" />
                                                                     </div>
-                                                                    
+
                                                                     {/* User Name */}
                                                                     <div className="flex-1 min-w-0">
                                                                         <p className="text-sm font-medium truncate text-black">
                                                                             {user.name}
                                                                         </p>
                                                                     </div>
+
+                                                                    {/* Checkmark for selected user */}
+                                                                    {isSelected && (
+                                                                        <Check className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                                                                    )}
                                                                 </button>
                                                             );
                                                         })}

@@ -259,8 +259,9 @@ const Attendance: React.FC<AttendanceProps> = ({
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance - All Users');
 
-        // Define export columns (includes Date as first column)
+        // Define export columns (includes Name and Date as first columns)
         const exportColumns = [
+            { header: 'Name', key: 'name' },
             { header: 'Date', key: 'date' },
             { header: 'Punch In', key: 'punchIn' },
             { header: 'Punch Out', key: 'punchOut' },
@@ -294,6 +295,7 @@ const Attendance: React.FC<AttendanceProps> = ({
             const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
 
             const rowData = {
+                name: s.userName,
                 date: dateFormatted,
                 punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
                 punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
@@ -306,35 +308,25 @@ const Attendance: React.FC<AttendanceProps> = ({
 
             const row = worksheet.addRow(rowData);
 
-            const status = s.status;
-            let fillColor, fontColor;
+            // Calculate working hours in hours (not seconds)
+            const workingHours = displayWorking / 3600;
+            let fontColor;
 
-            // Determine colors based on status
-            if (status === 'Absent') {
-                fillColor = 'FFFEE2E2'; // Red
-                fontColor = 'FF991B1B';
-            } else if (status === 'Half Day') {
-                fillColor = 'FFFEF3C7'; // Yellow
-                fontColor = 'FF92400E';
-            } else if (status === 'Present') {
-                fillColor = 'FFD1FAE5'; // Green
-                fontColor = 'FF065F46';
-            } else if (status === 'Weekend') {
-                fillColor = 'FFDBEAFE'; // Blue
-                fontColor = 'FF1E3A8A';
+            // Determine color based on working hours
+            if (workingHours < 4) {
+                fontColor = 'FFDC2626'; // Red for < 4 hours
+            } else if (workingHours >= 4 && workingHours <= 8) {
+                fontColor = 'FFCA8A04'; // Yellow for 4-8 hours
+            } else {
+                fontColor = 'FF16A34A'; // Green for > 8 hours
             }
 
-            // Apply color to entire row if status exists
-            if (fillColor && fontColor) {
-                row.eachCell({ includeEmpty: true }, (cell) => {
-                    cell.fill = {
-                        type: 'pattern',
-                        pattern: 'solid',
-                        fgColor: { argb: fillColor }
-                    };
-                    cell.font = { color: { argb: fontColor }, bold: true };
-                });
-            }
+            // Apply color only to Working Hours cell text (no background)
+            const workingHoursCell = row.getCell('workingHours');
+            workingHoursCell.font = {
+                color: { argb: fontColor },
+                bold: true
+            };
         });
 
         // Auto-fit columns

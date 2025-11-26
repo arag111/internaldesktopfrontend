@@ -44,6 +44,9 @@ export default function ClaimsPage() {
     useEffect(() => {
         if (selectedUserId !== null) {
             localStorage.setItem('selectedUserId', selectedUserId);
+        } else {
+            // Remove from localStorage when "All Users" is selected
+            localStorage.removeItem('selectedUserId');
         }
     }, [selectedUserId]);
 
@@ -96,13 +99,6 @@ export default function ClaimsPage() {
 
         return () => clearInterval(intervalId);
     }, [router, selectedRange]);
-
-    // Initialize selectedUserId from allUserStats if needed (only if not restored from localStorage)
-    useEffect(() => {
-        if ((role === 'admin' || role === 'manager') && selectedUserId === null && allUserStats.length > 0 && hasRestoredFromStorage.current) {
-            setSelectedUserId(String(allUserStats[0].user.id));
-        }
-    }, [allUserStats, role, selectedUserId]);
 
     // Socket connection management
     useEffect(() => {
