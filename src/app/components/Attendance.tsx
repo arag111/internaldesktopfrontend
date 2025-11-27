@@ -265,6 +265,7 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Current Status',
             tooltip: 'Current working status - "Working" if active today',
+            includeInExport: false,  // Exclude from exports (time-sensitive data)
             render: (s: FlatAttendanceRecord) => {
                 // Check if this record is from today
                 const recordIsToday = moment(s.date).format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
@@ -292,6 +293,11 @@ const Attendance: React.FC<AttendanceProps> = ({
 
                 return 'Inactive';  // Not active
             }
+        },
+        {
+            label: 'Attendance Status',
+            tooltip: 'Overall attendance status: Present (8+ hrs), Half Day (4-8 hrs), Absent (<4 hrs)',
+            render: (s: FlatAttendanceRecord) => s.status
         },
         {
             label: 'Punching Time',
@@ -356,22 +362,26 @@ const Attendance: React.FC<AttendanceProps> = ({
         }
     ];
 
+    // Helper: Get columns for export (excludes columns with includeInExport: false)
+    const getExportColumns = () => {
+        return columns.filter(col => (col as any).includeInExport !== false);
+    };
+
     const exportToExcel = async () => {
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Attendance - All Users');
 
-        // Define export columns (includes Name and Date as first columns)
+        // Define export columns (excludes Current Status - time-sensitive data)
         const exportColumns = [
             { header: 'Name', key: 'name' },
             { header: 'Date', key: 'date' },
-            { header: 'Current Status', key: 'currentStatus' },
+            { header: 'Attendance Status', key: 'status' },
             { header: 'Punch In', key: 'punchIn' },
             { header: 'Punch Out', key: 'punchOut' },
             { header: 'Working Hours', key: 'workingHours' },
             { header: 'Productive Hours', key: 'productiveHours' },
             { header: 'Idle Hours', key: 'idleHours' },
-            { header: 'Break Hours', key: 'breakHours' },
-            { header: 'Attendance Status', key: 'status' }
+            { header: 'Break Hours', key: 'breakHours' }
         ];
 
         // Set columns
@@ -397,28 +407,6 @@ const Attendance: React.FC<AttendanceProps> = ({
             // Format date with day name: "DD-MMM-YYYY (Day)"
             const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
 
-            // Calculate Current Status
-            const recordIsToday = moment(s.date).format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
-            let currentStatus = '-';
-
-            if (recordIsToday) {
-                if (s.status === 'Weekend') {
-                    currentStatus = 'Weekend';
-                } else if (!s.lastSeen) {
-                    currentStatus = 'Not Started';
-                } else {
-                    const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
-                    const currentTime = moment().utcOffset('+05:30');
-                    const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
-
-                    if (minutesDiff >= 0 && minutesDiff <= 5) {
-                        currentStatus = 'Working';
-                    } else {
-                        currentStatus = 'Inactive';
-                    }
-                }
-            }
-
             // Detect if this is a weekend
             const isWeekend = s.status === 'Weekend';
 
@@ -430,51 +418,30 @@ const Attendance: React.FC<AttendanceProps> = ({
                 rowData = {
                     name: s.userName,
                     date: dateFormatted,
-                    currentStatus: 'Weekend',
+                    status: 'Weekend',
                     punchIn: 'Weekend',
                     punchOut: 'Weekend',
                     workingHours: 'Weekend',
                     productiveHours: 'Weekend',
                     idleHours: 'Weekend',
-                    breakHours: 'Weekend',
-                    status: 'Weekend'
+                    breakHours: 'Weekend'
                 };
             } else {
                 // For weekdays: show normal data
                 rowData = {
                     name: s.userName,
                     date: dateFormatted,
-                    currentStatus: currentStatus,
+                    status: s.status,
                     punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
                     punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
                     workingHours: formatDuration(displayWorking),
                     productiveHours: formatDuration(productive),
                     idleHours: formatDuration(s.idleTimeInSeconds || 0),
-                    breakHours: formatDuration(s.breakTimeInSeconds || 0),
-                    status: s.status
+                    breakHours: formatDuration(s.breakTimeInSeconds || 0)
                 };
             }
 
             const row = worksheet.addRow(rowData);
-
-            // Apply styling to Current Status cell
-            const currentStatusCell = row.getCell('currentStatus');
-            if (currentStatus === 'Working') {
-                currentStatusCell.font = {
-                    color: { argb: 'FF16A34A' },  // Green
-                    bold: true
-                };
-            } else if (currentStatus === 'Inactive') {
-                currentStatusCell.font = {
-                    color: { argb: 'FFDC2626' },  // Red
-                    bold: true
-                };
-            } else if (currentStatus === 'Not Started') {
-                currentStatusCell.font = {
-                    color: { argb: 'FFCA8A04' },  // Yellow/Orange
-                    bold: true
-                };
-            }
 
             // Apply row styling
             if (isWeekend) {
@@ -554,9 +521,10 @@ const Attendance: React.FC<AttendanceProps> = ({
 
     const exportToPDF = () => {
         const doc = new jsPDF();
-        const tableColumn = columns.map((col) => col.label);
+        const exportColumns = getExportColumns();
+        const tableColumn = exportColumns.map((col) => col.label);
         const tableRows = sortedAndFilteredData.map((s) => {
-            return columns.map(col => col.render(s));
+            return exportColumns.map(col => col.render(s));
         });
 
         autoTable(doc, {
@@ -568,8 +536,9 @@ const Attendance: React.FC<AttendanceProps> = ({
     };
 
     const exportToCSV = () => {
-        const headers = columns.map(col => col.label).join(',');
-        const rows = sortedAndFilteredData.map(s => columns.map(col => col.render(s)).join(',')).join('\n');
+        const exportColumns = getExportColumns();
+        const headers = exportColumns.map(col => col.label).join(',');
+        const rows = sortedAndFilteredData.map(s => exportColumns.map(col => col.render(s)).join(',')).join('\n');
         const csv = `${headers}\n${rows}`;
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         saveAs(blob, 'Attendance_All_Users_Report.csv');
@@ -911,6 +880,16 @@ const Attendance: React.FC<AttendanceProps> = ({
                                                                 ? 'text-red-600 font-semibold'
                                                                 : cellValue === 'Not Started'
                                                                 ? 'text-yellow-600 font-medium'
+                                                                : 'text-slate-500'
+                                                            : label === 'Attendance Status'
+                                                            ? cellValue === 'Present'
+                                                                ? 'text-green-600 font-bold'
+                                                                : cellValue === 'Half Day'
+                                                                ? 'text-yellow-600 font-semibold'
+                                                                : cellValue === 'Absent'
+                                                                ? 'text-red-600 font-semibold'
+                                                                : cellValue === 'Weekend'
+                                                                ? 'text-blue-600 font-semibold'
                                                                 : 'text-slate-500'
                                                             : cellValue === 'Active Now'
                                                             ? 'text-green-600 font-semibold'
