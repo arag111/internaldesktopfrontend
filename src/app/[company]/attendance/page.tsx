@@ -151,9 +151,17 @@ export default function AttendancePage() {
 
   const mlValue = role === 'admin' || role === 'manager' ? '32rem' : '16rem';
 
-  // Memoize handlers
+  // Memoize handlers to prevent re-renders
   const handleSetSelectedRange = useCallback((range: [Date, Date]) => {
     setSelectedRange(range);
+  }, []);
+
+  const handleSetSelectedUsers = useCallback((users: number[]) => {
+    setSelectedUsers(users);
+  }, []);
+
+  const handleSetSearchTerm = useCallback((term: string) => {
+    setSearchTerm(term);
   }, []);
 
   return (
@@ -167,10 +175,10 @@ export default function AttendancePage() {
       rangePresets={rangePresets}
       userStatuses={userStatuses}
       searchTerm={searchTerm}
-      setSearchTerm={setSearchTerm}
+      setSearchTerm={handleSetSearchTerm}
       mlValue="16rem"
       selectedUsers={selectedUsers}
-      setSelectedUsers={setSelectedUsers}
+      setSelectedUsers={handleSetSelectedUsers}
       availableUsers={availableUsers}
     />
   );

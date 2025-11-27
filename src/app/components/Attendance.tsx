@@ -177,6 +177,12 @@ const Attendance: React.FC<AttendanceProps> = ({
         );
     }, [allUserStats]);
 
+    // Memoize selected user objects to prevent Autocomplete input reset
+    const selectedUserObjects = useMemo(() =>
+        availableUsers.filter(user => selectedUsers.includes(user.id)),
+        [availableUsers, selectedUsers]
+    );
+
     // Filter and sort functionality
     const sortedAndFilteredData = useMemo(() => {
         let filtered = flattenedData;
@@ -554,12 +560,15 @@ const Attendance: React.FC<AttendanceProps> = ({
                             id="user-filter"
                             options={availableUsers}
                             getOptionLabel={(option) => option.name}
-                            value={availableUsers.filter(user => selectedUsers.includes(user.id))}
+                            value={selectedUserObjects}
                             onChange={(event, newValue) => {
                                 if (setSelectedUsers) {
                                     setSelectedUsers(newValue.map(user => user.id));
                                 }
                             }}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                            filterSelectedOptions={false}
+                            disableCloseOnSelect
                             renderInput={(params) => {
                                 const { InputProps, ...restParams } = params;
                                 return (
@@ -792,4 +801,18 @@ const Attendance: React.FC<AttendanceProps> = ({
     );
 };
 
-export default Attendance;
+// Wrap with React.memo to prevent re-renders from socket updates
+export default React.memo(Attendance, (prevProps, nextProps) => {
+    // Return true if props are equal (skip re-render)
+    // Return false if props changed (re-render)
+    return (
+        prevProps.allUserStats === nextProps.allUserStats &&
+        prevProps.selectedUsers === nextProps.selectedUsers &&
+        prevProps.availableUsers === nextProps.availableUsers &&
+        prevProps.selectedRange === nextProps.selectedRange &&
+        prevProps.role === nextProps.role &&
+        prevProps.currentStats === nextProps.currentStats &&
+        prevProps.setSelectedUsers === nextProps.setSelectedUsers &&
+        prevProps.setSelectedRange === nextProps.setSelectedRange
+    );
+});
