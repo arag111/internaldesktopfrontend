@@ -64,7 +64,7 @@ export default function AttendancePage() {
             `${baseUrl}/api/users/company-users`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          setAvailableUsers(data);
+          setAvailableUsers(data.users || []);
         } catch (error) {
           console.error('Failed to fetch users for filtering:', error);
         }
