@@ -608,15 +608,18 @@ const Attendance: React.FC<AttendanceProps> = ({
                                 />
                             )}
                             renderTags={(value, getTagProps) =>
-                                value.map((option, index) => (
-                                    <Chip
-                                        key={option.id}
-                                        label={option.name}
-                                        {...getTagProps({ index })}
-                                        size="small"
-                                        sx={{ borderRadius: 1 }}
-                                    />
-                                ))
+                                value.map((option, index) => {
+                                    const { key, ...tagProps } = getTagProps({ index });
+                                    return (
+                                        <Chip
+                                            key={option.id}
+                                            label={option.name}
+                                            {...tagProps}
+                                            size="small"
+                                            sx={{ borderRadius: 1 }}
+                                        />
+                                    );
+                                })
                             }
                             sx={{ flex: 1 }}
                         />
