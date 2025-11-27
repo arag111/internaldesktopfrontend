@@ -801,4 +801,18 @@ const Attendance: React.FC<AttendanceProps> = ({
     );
 };
 
-export default Attendance;
+// Wrap with React.memo to prevent re-renders from socket updates
+export default React.memo(Attendance, (prevProps, nextProps) => {
+    // Return true if props are equal (skip re-render)
+    // Return false if props changed (re-render)
+    return (
+        prevProps.allUserStats === nextProps.allUserStats &&
+        prevProps.selectedUsers === nextProps.selectedUsers &&
+        prevProps.availableUsers === nextProps.availableUsers &&
+        prevProps.selectedRange === nextProps.selectedRange &&
+        prevProps.role === nextProps.role &&
+        prevProps.currentStats === nextProps.currentStats &&
+        prevProps.setSelectedUsers === nextProps.setSelectedUsers &&
+        prevProps.setSelectedRange === nextProps.setSelectedRange
+    );
+});
