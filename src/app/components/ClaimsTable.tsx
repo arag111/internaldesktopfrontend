@@ -387,7 +387,7 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                                     </td>
                                                 )}
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {moment(event.startedAt).format('DD-MM-YYYY')}
+                                                    {moment(event.startedAt).format('DD-MMM-YYYY')}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     {moment(event.startedAt).format('hh:mm A')}
