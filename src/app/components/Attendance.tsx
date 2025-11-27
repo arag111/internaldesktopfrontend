@@ -29,7 +29,6 @@ import {
 import {
     CalendarToday as CalendarIcon,
     FileDownload as FileDownloadIcon,
-    Search as SearchIcon,
     FilterList as FilterListIcon
 } from '@mui/icons-material';
 import { format as formatDate } from 'date-fns';
@@ -87,7 +86,6 @@ const Attendance: React.FC<AttendanceProps> = ({
 }) => {
     const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(null);
     const [datePreset, setDatePreset] = useState<DatePreset | null>(null);
-    const [localSearchTerm, setLocalSearchTerm] = useState('');
     const [showCustomDateDialog, setShowCustomDateDialog] = useState(false);
     const [tempStartDate, setTempStartDate] = useState('');
     const [tempEndDate, setTempEndDate] = useState('');
@@ -179,7 +177,7 @@ const Attendance: React.FC<AttendanceProps> = ({
         );
     }, [allUserStats]);
 
-    // Search and sort functionality
+    // Filter and sort functionality
     const sortedAndFilteredData = useMemo(() => {
         let filtered = flattenedData;
 
@@ -187,15 +185,6 @@ const Attendance: React.FC<AttendanceProps> = ({
         if (selectedUsers && selectedUsers.length > 0) {
             filtered = filtered.filter(record =>
                 selectedUsers.includes(record.userId)
-            );
-        }
-
-        // Filter by search term
-        if (localSearchTerm) {
-            const lowercaseSearch = localSearchTerm.toLowerCase();
-            filtered = filtered.filter(record =>
-                record.userName.toLowerCase().includes(lowercaseSearch) ||
-                record.userEmail.toLowerCase().includes(lowercaseSearch)
             );
         }
 
@@ -208,7 +197,7 @@ const Attendance: React.FC<AttendanceProps> = ({
             // Then by date descending (latest first)
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
-    }, [flattenedData, selectedUsers, localSearchTerm]);
+    }, [flattenedData, selectedUsers]);
 
     const columns = [
         {
@@ -557,31 +546,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                     </Box>
                 </Box>
 
-                {/* Search Bar */}
-                <Box>
-                    <TextField
-                        fullWidth
-                        size="small"
-                        placeholder="Search by name or email..."
-                        value={localSearchTerm}
-                        onChange={(e) => setLocalSearchTerm(e.target.value)}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    <SearchIcon sx={{ color: '#999' }} />
-                                </InputAdornment>
-                            ),
-                        }}
-                        sx={{
-                            '& .MuiOutlinedInput-root': {
-                                borderRadius: 2,
-                                bgcolor: '#fafafa'
-                            }
-                        }}
-                    />
-                </Box>
-
-                {/* User Filter - Multi-select */}
+                {/* User Filter - Multi-select with Search */}
                 {availableUsers.length > 0 && (
                     <Box sx={{ mt: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
                         <Autocomplete
@@ -599,19 +564,17 @@ const Attendance: React.FC<AttendanceProps> = ({
                                 <TextField
                                     {...params}
                                     size="small"
-                                    placeholder="Filter by users (select multiple)"
-                                    slotProps={{
-                                        input: {
-                                            ...params.InputProps,
-                                            startAdornment: (
-                                                <>
-                                                    <InputAdornment position="start">
-                                                        <FilterListIcon sx={{ color: '#999' }} />
-                                                    </InputAdornment>
-                                                    {params.InputProps.startAdornment}
-                                                </>
-                                            ),
-                                        },
+                                    placeholder="Filter by users (type to search, select multiple)"
+                                    InputProps={{
+                                        ...params.InputProps,
+                                        startAdornment: (
+                                            <>
+                                                <InputAdornment position="start">
+                                                    <FilterListIcon sx={{ color: '#999' }} />
+                                                </InputAdornment>
+                                                {params.InputProps.startAdornment}
+                                            </>
+                                        ),
                                     }}
                                     sx={{
                                         '& .MuiOutlinedInput-root': {
@@ -637,12 +600,11 @@ const Attendance: React.FC<AttendanceProps> = ({
                             }
                             sx={{ flex: 1 }}
                         />
-                        {(selectedUsers.length > 0 || localSearchTerm) && (
+                        {selectedUsers.length > 0 && (
                             <Button
                                 variant="text"
                                 onClick={() => {
                                     if (setSelectedUsers) setSelectedUsers([]);
-                                    setLocalSearchTerm('');
                                 }}
                                 sx={{
                                     textTransform: 'none',
