@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, XCircle, Clock, Play, X } from 'lucide-react';
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
 import { formatInUserTimezone, toUserTimezone } from '@/app/utils/timezone';
@@ -291,22 +291,25 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
           <div className="relative max-w-5xl w-full mx-6 flex flex-col items-center justify-center">
             {/* Close Button */}
             <button
-              className="absolute top-4 right-4 text-red-500 text-3xl font-bold hover:text-red-600 transition"
+              className="absolute top-4 right-4 bg-red-500 text-white p-2 rounded-lg border-2 border-white/30 hover:bg-red-600 transition-all shadow-lg"
               onClick={() => setSelectedImageIndex(null)}
               style={{ zIndex: 10 }}
             >
-              &times;
+              <X size={24} />
             </button>
 
-            {/* Left Arrow */}
-            {selectedImageIndex > 0 && (
-              <button
-                className="absolute left-4 text-white bg-black/60 p-3 rounded-full hover:bg-black"
-                onClick={() => navigate('left')}
-              >
-                <ChevronLeft size={28} />
-              </button>
-            )}
+            {/* Left Arrow - Previous */}
+            <button
+              className={`absolute left-4 text-white p-3 rounded-full transition-all shadow-lg ${
+                selectedImageIndex === 0
+                  ? 'bg-black/30 cursor-not-allowed opacity-50'
+                  : 'bg-black/60 hover:bg-black'
+              }`}
+              onClick={() => selectedImageIndex > 0 && navigate('left')}
+              disabled={selectedImageIndex === 0}
+            >
+              <ChevronLeft size={28} />
+            </button>
 
             {/* Image */}
             <LazyLoadImage
@@ -328,15 +331,18 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
               />
             </div>
 
-            {/* Right Arrow */}
-            {selectedImageIndex < flat.length - 1 && (
-              <button
-                className="absolute right-4 text-white bg-black/60 p-3 rounded-full hover:bg-black"
-                onClick={() => navigate('right')}
-              >
-                <ChevronRight size={28} />
-              </button>
-            )}
+            {/* Right Arrow - Next */}
+            <button
+              className={`absolute right-4 text-white p-3 rounded-full transition-all shadow-lg ${
+                selectedImageIndex === flat.length - 1
+                  ? 'bg-black/30 cursor-not-allowed opacity-50'
+                  : 'bg-black/60 hover:bg-black'
+              }`}
+              onClick={() => selectedImageIndex < flat.length - 1 && navigate('right')}
+              disabled={selectedImageIndex === flat.length - 1}
+            >
+              <ChevronRight size={28} />
+            </button>
           </div>
         </div>
       )}

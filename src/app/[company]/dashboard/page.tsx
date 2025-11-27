@@ -151,6 +151,25 @@ const getLateDuration = (punchInTime: string): number => {
   return Math.floor((loginTime - expectedTime) / 60000); // minutes
 };
 
+// Format late duration for display (hours and minutes)
+const formatLateDuration = (minutes: number): string => {
+  if (minutes < 60) {
+    // Less than 1 hour: show minutes only
+    return `${minutes}m`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    // Exactly on the hour: show hours only
+    return `${hours}h`;
+  }
+
+  // 1 hour or more: show hours and minutes
+  return `${hours}h ${remainingMinutes}m`;
+};
+
 interface UserStats {
   user: {
     id: number;
@@ -838,10 +857,10 @@ export default function DashboardPage() {
                                     );
                                   }
 
-                                  // Show "Late" badge with minutes
+                                  // Show "Late" badge with formatted duration
                                   return (
                                     <Chip
-                                      label={`Late ${lateMinutes}m`}
+                                      label={`Late ${formatLateDuration(lateMinutes)}`}
                                       size="small"
                                       sx={{
                                         backgroundColor: '#fee2e2',

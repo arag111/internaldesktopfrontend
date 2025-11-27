@@ -183,6 +183,25 @@ const Attendance: React.FC<AttendanceProps> = ({
         [availableUsers, selectedUsers]
     );
 
+    // Helper: Check if user is currently active
+    const isUserActive = (record: FlatAttendanceRecord): boolean => {
+        if (!record.lastSeen || record.status === 'Weekend') return false;
+        const lastSeenTime = moment(record.lastSeen).utcOffset('+05:30');
+        const currentTime = moment().utcOffset('+05:30');
+        const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
+        return minutesDiff >= 0 && minutesDiff <= 5;
+    };
+
+    // Helper: Check if record is from today
+    const isToday = (dateString: string): boolean => {
+        return moment(dateString).format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
+    };
+
+    // Helper: Get effective working time (working time - rejected idle)
+    const getEffectiveWorkingTime = (record: FlatAttendanceRecord): number => {
+        return (record.workingTimeInSeconds || 0) - (record.rejectedIdleTimeInSeconds || 0);
+    };
+
     // Filter and sort functionality
     const sortedAndFilteredData = useMemo(() => {
         let filtered = flattenedData;
@@ -194,13 +213,40 @@ const Attendance: React.FC<AttendanceProps> = ({
             );
         }
 
-        // Sort the filtered data
+        // Sort the filtered data with priority-based sorting
         return [...filtered].sort((a, b) => {
-            // Alphabetically by name
+            // Priority 1: Show today's records first
+            const aIsToday = isToday(a.date);
+            const bIsToday = isToday(b.date);
+
+            if (aIsToday && !bIsToday) return -1;  // a (today) comes first
+            if (!aIsToday && bIsToday) return 1;   // b (today) comes first
+
+            // Priority 2: For today's records, inactive users first
+            if (aIsToday && bIsToday) {
+                const aIsActive = isUserActive(a);
+                const bIsActive = isUserActive(b);
+
+                if (!aIsActive && bIsActive) return -1;  // Inactive (a) comes first
+                if (aIsActive && !bIsActive) return 1;   // Inactive (b) comes first
+
+                // Priority 3: For today's records with same activity status,
+                // sort by working time (less working time first)
+                if (aIsActive === bIsActive) {
+                    const aWorkingTime = getEffectiveWorkingTime(a);
+                    const bWorkingTime = getEffectiveWorkingTime(b);
+
+                    if (aWorkingTime !== bWorkingTime) {
+                        return aWorkingTime - bWorkingTime;  // Less working time first
+                    }
+                }
+            }
+
+            // Priority 4: Alphabetically by name
             const nameCompare = a.userName.localeCompare(b.userName);
             if (nameCompare !== 0) return nameCompare;
 
-            // Then by date descending (latest first)
+            // Priority 5: By date descending (latest first)
             return new Date(b.date).getTime() - new Date(a.date).getTime();
         });
     }, [flattenedData, selectedUsers]);
@@ -214,7 +260,38 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Date',
             tooltip: 'The date of the record',
-            render: (s: FlatAttendanceRecord) => moment(s.date).format('DD-MM-YY')
+            render: (s: FlatAttendanceRecord) => moment(s.date).format('DD-MMM-YYYY')
+        },
+        {
+            label: 'Current Status',
+            tooltip: 'Current working status - "Working" if active today',
+            render: (s: FlatAttendanceRecord) => {
+                // Check if this record is from today
+                const recordIsToday = moment(s.date).format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
+
+                if (!recordIsToday) {
+                    return '-';  // Not today, no current status
+                }
+
+                if (s.status === 'Weekend') {
+                    return 'Weekend';
+                }
+
+                // Check if user is currently active
+                if (!s.lastSeen) {
+                    return 'Not Started';
+                }
+
+                const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
+                const currentTime = moment().utcOffset('+05:30');
+                const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
+
+                if (minutesDiff >= 0 && minutesDiff <= 5) {
+                    return 'Working';  // Active now
+                }
+
+                return 'Inactive';  // Not active
+            }
         },
         {
             label: 'Punching Time',
@@ -287,13 +364,14 @@ const Attendance: React.FC<AttendanceProps> = ({
         const exportColumns = [
             { header: 'Name', key: 'name' },
             { header: 'Date', key: 'date' },
+            { header: 'Current Status', key: 'currentStatus' },
             { header: 'Punch In', key: 'punchIn' },
             { header: 'Punch Out', key: 'punchOut' },
             { header: 'Working Hours', key: 'workingHours' },
             { header: 'Productive Hours', key: 'productiveHours' },
             { header: 'Idle Hours', key: 'idleHours' },
             { header: 'Break Hours', key: 'breakHours' },
-            { header: 'Status', key: 'status' }
+            { header: 'Attendance Status', key: 'status' }
         ];
 
         // Set columns
@@ -319,6 +397,28 @@ const Attendance: React.FC<AttendanceProps> = ({
             // Format date with day name: "DD-MMM-YYYY (Day)"
             const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
 
+            // Calculate Current Status
+            const recordIsToday = moment(s.date).format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
+            let currentStatus = '-';
+
+            if (recordIsToday) {
+                if (s.status === 'Weekend') {
+                    currentStatus = 'Weekend';
+                } else if (!s.lastSeen) {
+                    currentStatus = 'Not Started';
+                } else {
+                    const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
+                    const currentTime = moment().utcOffset('+05:30');
+                    const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
+
+                    if (minutesDiff >= 0 && minutesDiff <= 5) {
+                        currentStatus = 'Working';
+                    } else {
+                        currentStatus = 'Inactive';
+                    }
+                }
+            }
+
             // Detect if this is a weekend
             const isWeekend = s.status === 'Weekend';
 
@@ -330,6 +430,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                 rowData = {
                     name: s.userName,
                     date: dateFormatted,
+                    currentStatus: 'Weekend',
                     punchIn: 'Weekend',
                     punchOut: 'Weekend',
                     workingHours: 'Weekend',
@@ -343,6 +444,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                 rowData = {
                     name: s.userName,
                     date: dateFormatted,
+                    currentStatus: currentStatus,
                     punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
                     punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
                     workingHours: formatDuration(displayWorking),
@@ -354,6 +456,25 @@ const Attendance: React.FC<AttendanceProps> = ({
             }
 
             const row = worksheet.addRow(rowData);
+
+            // Apply styling to Current Status cell
+            const currentStatusCell = row.getCell('currentStatus');
+            if (currentStatus === 'Working') {
+                currentStatusCell.font = {
+                    color: { argb: 'FF16A34A' },  // Green
+                    bold: true
+                };
+            } else if (currentStatus === 'Inactive') {
+                currentStatusCell.font = {
+                    color: { argb: 'FFDC2626' },  // Red
+                    bold: true
+                };
+            } else if (currentStatus === 'Not Started') {
+                currentStatusCell.font = {
+                    color: { argb: 'FFCA8A04' },  // Yellow/Orange
+                    bold: true
+                };
+            }
 
             // Apply row styling
             if (isWeekend) {
@@ -775,20 +896,31 @@ const Attendance: React.FC<AttendanceProps> = ({
                                                 : 'hover:bg-slate-50'
                                         }`}
                                     >
-                                        {columns.map(({ label, render }) => (
-                                            <td
-                                                key={label}
-                                                className={`px-4 py-3 ${
-                                                    isWeekend
-                                                        ? 'text-blue-700 font-semibold italic text-center'
-                                                        : render(s) === 'Active Now'
-                                                        ? 'text-green-600 font-semibold'
-                                                        : 'text-slate-700'
-                                                }`}
-                                            >
-                                                {render(s)}
-                                            </td>
-                                        ))}
+                                        {columns.map(({ label, render }) => {
+                                            const cellValue = render(s);
+                                            return (
+                                                <td
+                                                    key={label}
+                                                    className={`px-4 py-3 ${
+                                                        isWeekend
+                                                            ? 'text-blue-700 font-semibold italic text-center'
+                                                            : label === 'Current Status'
+                                                            ? cellValue === 'Working'
+                                                                ? 'text-green-600 font-bold'
+                                                                : cellValue === 'Inactive'
+                                                                ? 'text-red-600 font-semibold'
+                                                                : cellValue === 'Not Started'
+                                                                ? 'text-yellow-600 font-medium'
+                                                                : 'text-slate-500'
+                                                            : cellValue === 'Active Now'
+                                                            ? 'text-green-600 font-semibold'
+                                                            : 'text-slate-700'
+                                                    }`}
+                                                >
+                                                    {cellValue}
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 );
                             })
