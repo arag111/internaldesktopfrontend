@@ -177,6 +177,12 @@ const Attendance: React.FC<AttendanceProps> = ({
         );
     }, [allUserStats]);
 
+    // Memoize selected user objects to prevent Autocomplete input reset
+    const selectedUserObjects = useMemo(() =>
+        availableUsers.filter(user => selectedUsers.includes(user.id)),
+        [availableUsers, selectedUsers]
+    );
+
     // Filter and sort functionality
     const sortedAndFilteredData = useMemo(() => {
         let filtered = flattenedData;
@@ -554,12 +560,15 @@ const Attendance: React.FC<AttendanceProps> = ({
                             id="user-filter"
                             options={availableUsers}
                             getOptionLabel={(option) => option.name}
-                            value={availableUsers.filter(user => selectedUsers.includes(user.id))}
+                            value={selectedUserObjects}
                             onChange={(event, newValue) => {
                                 if (setSelectedUsers) {
                                     setSelectedUsers(newValue.map(user => user.id));
                                 }
                             }}
+                            isOptionEqualToValue={(option, value) => option.id === value.id}
+                            filterSelectedOptions={false}
+                            disableCloseOnSelect
                             renderInput={(params) => {
                                 const { InputProps, ...restParams } = params;
                                 return (
