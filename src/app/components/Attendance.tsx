@@ -224,12 +224,16 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Punching Time',
             tooltip: 'Employee First Login time',
-            render: (s: FlatAttendanceRecord) => s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-'
+            render: (s: FlatAttendanceRecord) => {
+                if (s.status === 'Weekend') return 'Weekend';
+                return s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-';
+            }
         },
         {
             label: 'Last Seen',
             tooltip: 'Last active timestamp',
             render: (s: FlatAttendanceRecord) => {
+                if (s.status === 'Weekend') return 'Weekend';
                 if (!s.lastSeen) return '-';
                 const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
                 const currentTime = moment().utcOffset('+05:30');
@@ -244,22 +248,32 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Working Hours',
             tooltip: 'Total punch In/Out time - Rejected idle time',
-            render: (s: FlatAttendanceRecord) => formatDuration((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0))
+            render: (s: FlatAttendanceRecord) => {
+                if (s.status === 'Weekend') return 'Weekend';
+                return formatDuration((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0));
+            }
         },
         {
             label: 'Break Hours',
             tooltip: 'Total break time taken',
-            render: (s: FlatAttendanceRecord) => formatDuration(s.breakTimeInSeconds || 0)
+            render: (s: FlatAttendanceRecord) => {
+                if (s.status === 'Weekend') return 'Weekend';
+                return formatDuration(s.breakTimeInSeconds || 0);
+            }
         },
         {
             label: 'Idle Hours',
             tooltip: 'Total idle time detected',
-            render: (s: FlatAttendanceRecord) => formatDuration(s.idleTimeInSeconds || 0)
+            render: (s: FlatAttendanceRecord) => {
+                if (s.status === 'Weekend') return 'Weekend';
+                return formatDuration(s.idleTimeInSeconds || 0);
+            }
         },
         {
             label: 'Productive Hours',
             tooltip: 'Working hours - Idle Time - Break Time',
             render: (s: FlatAttendanceRecord) => {
+                if (s.status === 'Weekend') return 'Weekend';
                 const working = s.workingTimeInSeconds || 0;
                 const idle = s.idleTimeInSeconds || 0;
                 const totalBreak = s.breakTimeInSeconds || 0;
@@ -776,25 +790,34 @@ const Attendance: React.FC<AttendanceProps> = ({
                                 </td>
                             </tr>
                         ) : (
-                            sortedAndFilteredData.map((s, i) => (
-                                <tr
-                                    key={`${s.userId}-${s.date}-${i}`}
-                                    className="border-b border-slate-100 hover:bg-slate-50 transition-colors duration-200"
-                                >
-                                    {columns.map(({ label, render }) => (
-                                        <td
-                                            key={label}
-                                            className={`px-4 py-3 ${
-                                                render(s) === 'Active Now'
-                                                    ? 'text-green-600 font-semibold'
-                                                    : 'text-slate-700'
-                                            }`}
-                                        >
-                                            {render(s)}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))
+                            sortedAndFilteredData.map((s, i) => {
+                                const isWeekend = s.status === 'Weekend';
+                                return (
+                                    <tr
+                                        key={`${s.userId}-${s.date}-${i}`}
+                                        className={`border-b border-slate-100 transition-colors duration-200 ${
+                                            isWeekend
+                                                ? 'bg-blue-50 hover:bg-blue-100'
+                                                : 'hover:bg-slate-50'
+                                        }`}
+                                    >
+                                        {columns.map(({ label, render }) => (
+                                            <td
+                                                key={label}
+                                                className={`px-4 py-3 ${
+                                                    isWeekend
+                                                        ? 'text-blue-700 font-semibold italic text-center'
+                                                        : render(s) === 'Active Now'
+                                                        ? 'text-green-600 font-semibold'
+                                                        : 'text-slate-700'
+                                                }`}
+                                            >
+                                                {render(s)}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                );
+                            })
                         )}
                     </tbody>
                 </table>
