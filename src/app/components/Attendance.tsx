@@ -560,30 +560,33 @@ const Attendance: React.FC<AttendanceProps> = ({
                                     setSelectedUsers(newValue.map(user => user.id));
                                 }
                             }}
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    size="small"
-                                    placeholder="Filter by users (type to search, select multiple)"
-                                    InputProps={{
-                                        ...params.InputProps,
-                                        startAdornment: (
-                                            <>
-                                                <InputAdornment position="start">
-                                                    <FilterListIcon sx={{ color: '#999' }} />
-                                                </InputAdornment>
-                                                {params.InputProps.startAdornment}
-                                            </>
-                                        ),
-                                    }}
-                                    sx={{
-                                        '& .MuiOutlinedInput-root': {
-                                            borderRadius: 2,
-                                            bgcolor: '#fafafa'
-                                        }
-                                    }}
-                                />
-                            )}
+                            renderInput={(params) => {
+                                const { InputProps, ...restParams } = params;
+                                return (
+                                    <TextField
+                                        {...restParams}
+                                        size="small"
+                                        placeholder="Filter by users (type to search, select multiple)"
+                                        InputProps={{
+                                            ...InputProps,
+                                            startAdornment: (
+                                                <>
+                                                    <InputAdornment position="start">
+                                                        <FilterListIcon sx={{ color: '#999' }} />
+                                                    </InputAdornment>
+                                                    {InputProps.startAdornment}
+                                                </>
+                                            ),
+                                        }}
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: 2,
+                                                bgcolor: '#fafafa'
+                                            }
+                                        }}
+                                    />
+                                );
+                            }}
                             renderTags={(value, getTagProps) =>
                                 value.map((option, index) => {
                                     const { key, ...tagProps } = getTagProps({ index });
