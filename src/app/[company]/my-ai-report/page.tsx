@@ -5,6 +5,8 @@ import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { Brain, Calendar, TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowLeft, User, Clock, Sparkles, Mail, ChevronRight } from 'lucide-react';
 import DateRangePickerComponent from '../../components/DateRangePicker2';
 import { rangePresets } from '../../utils/constants';
+import AIVerdictSummary from '@/components/AIVerdictSummary';
+import ScreenshotPreview from '@/components/ScreenshotPreview';
 
 interface UserSummary {
   user: {
@@ -33,6 +35,9 @@ interface Analysis {
   observations: string;
   recommendations: string[];
   category: string;
+  screenshotId?: number;
+  screenshotUrl?: string;
+  hasScreenshot?: boolean;
 }
 
 interface AIReport {
@@ -499,8 +504,48 @@ export default function MyAIReportPage() {
                 </div>
               </div>
 
+              {/* NEW: AI Verdict Summary Component */}
+              <AIVerdictSummary
+                userName={selectedReport.user.name}
+                jobRole={selectedReport.user.jobRole}
+                punchInTime={selectedReport.activity?.punchInTime}
+                officeHours={{ start: '10:00 AM', end: '7:00 PM' }}
+                summary={{
+                  ai_score: selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage,
+                  timeBasedScore: selectedReport.summary.timeBasedScore ?? 0,
+                  screenshotBasedScore: selectedReport.summary.screenshotBasedScore ?? 0,
+                  totalScreenshots: selectedReport.summary.totalScreenshots,
+                  productiveCount: selectedReport.summary.productiveCount,
+                  unproductiveCount: selectedReport.summary.unproductiveCount,
+                  topProductiveCategories: (() => {
+                    const productiveAnalyses = selectedReport.analyses.filter(a => a.isProductive);
+                    const categories = productiveAnalyses.reduce((acc: any, curr) => {
+                      acc[curr.category] = (acc[curr.category] || 0) + 1;
+                      return acc;
+                    }, {});
+                    return Object.entries(categories)
+                      .sort(([, a]: any, [, b]: any) => (b as number) - (a as number))
+                      .slice(0, 5)
+                      .map(([category, count]: any) => ({ category, count }));
+                  })(),
+                  topUnproductiveCategories: (() => {
+                    const unproductiveAnalyses = selectedReport.analyses.filter(a => !a.isProductive);
+                    const categories = unproductiveAnalyses.reduce((acc: any, curr) => {
+                      acc[curr.category] = (acc[curr.category] || 0) + 1;
+                      return acc;
+                    }, {});
+                    return Object.entries(categories)
+                      .sort(([, a]: any, [, b]: any) => (b as number) - (a as number))
+                      .slice(0, 5)
+                      .map(([category, count]: any) => ({ category, count }));
+                  })()
+                }}
+                analyses={selectedReport.analyses}
+                dateRange={selectedReport.period}
+              />
+
               {/* Verdict Summary */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="bg-white rounded-lg border border-gray-200 p-6" style={{display: 'none'}}>
                 <div className="flex items-start gap-3">
                   <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -639,54 +684,80 @@ export default function MyAIReportPage() {
                 </div>
               </div>
 
-              {/* Detailed Timeline */}
+              {/* Detailed Timeline with Screenshots */}
               <div className="bg-white rounded-lg border border-gray-200 p-6">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Detailed Activity Timeline</h3>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {selectedReport.analyses.map((analysis, idx) => (
                     <div
                       key={idx}
-                      className={`p-4 rounded-lg border-l-4 ${
+                      className={`p-6 rounded-lg border ${
                         analysis.isProductive
-                          ? 'bg-green-50 border-green-500'
-                          : 'bg-red-50 border-red-500'
+                          ? 'bg-green-50 border-green-200'
+                          : 'bg-red-50 border-red-200'
                       }`}
                     >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Clock className="w-4 h-4 text-gray-600" />
-                            <span className="text-sm font-medium text-gray-700">
-                              {format(new Date(analysis.timestamp), 'MMM d, yyyy hh:mm a')}
-                            </span>
-                            <span
-                              className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                analysis.isProductive
-                                  ? 'bg-green-200 text-green-800'
-                                  : 'bg-red-200 text-red-800'
-                              }`}
-                            >
-                              {analysis.category}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 font-medium mb-2">{analysis.activity}</p>
-                          <p className="text-xs text-gray-600">{analysis.observations}</p>
+                      {/* NEW: Two-column layout with screenshot */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left Column: Screenshot */}
+                        <div>
+                          <ScreenshotPreview
+                            screenshotId={analysis.screenshotId || 0}
+                            screenshotUrl={analysis.screenshotUrl || ''}
+                            timestamp={analysis.timestamp}
+                            activity={analysis.activity}
+                            isProductive={analysis.isProductive}
+                            hasScreenshot={analysis.hasScreenshot}
+                          />
                         </div>
-                        <div className="text-right">
-                          <div className="text-lg font-bold text-gray-900">{analysis.productivityScore}%</div>
-                          <div className="text-xs text-gray-500">Score</div>
+
+                        {/* Right Column: Analysis Details */}
+                        <div>
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Clock className="w-4 h-4 text-gray-600" />
+                                <span className="text-sm font-medium text-gray-700">
+                                  {format(new Date(analysis.timestamp), 'MMM d, yyyy hh:mm a')}
+                                </span>
+                              </div>
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                                  analysis.isProductive
+                                    ? 'bg-green-200 text-green-800'
+                                    : 'bg-red-200 text-red-800'
+                                }`}
+                              >
+                                {analysis.category}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-lg font-bold text-gray-900">{analysis.productivityScore}%</div>
+                              <div className="text-xs text-gray-500">Score</div>
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-gray-900 font-medium mb-2">{analysis.activity}</p>
+
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-xs font-medium text-gray-700 mb-1">🔍 Observations:</p>
+                              <p className="text-xs text-gray-600 leading-relaxed">{analysis.observations}</p>
+                            </div>
+
+                            {analysis.recommendations && analysis.recommendations.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-gray-700 mb-1">💡 Recommendations:</p>
+                                <ul className="list-disc list-inside text-xs text-gray-600 space-y-1">
+                                  {analysis.recommendations.map((rec, recIdx) => (
+                                    <li key={recIdx}>{rec}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      {analysis.recommendations && analysis.recommendations.length > 0 && (
-                        <div className="mt-2 pt-2 border-t border-gray-200">
-                          <p className="text-xs font-medium text-gray-700 mb-1">Recommendations:</p>
-                          <ul className="list-disc list-inside text-xs text-gray-600 space-y-1">
-                            {analysis.recommendations.map((rec, recIdx) => (
-                              <li key={recIdx}>{rec}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
