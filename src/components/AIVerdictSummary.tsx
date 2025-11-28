@@ -4,7 +4,6 @@ import { format } from 'date-fns';
 import MetricsOverviewCard from './MetricsOverviewCard';
 import ProductivityBreakdown from './ProductivityBreakdown';
 import TopActivitiesChart from './TopActivitiesChart';
-import RecommendationsPanel from './RecommendationsPanel';
 
 interface Analysis {
   activity: string;
@@ -80,9 +79,6 @@ export default function AIVerdictSummary({
   };
 
   const attendanceStatus = getAttendanceStatus();
-
-  // Collect all recommendations
-  const allRecommendations = analyses.flatMap(a => a.recommendations || []);
 
   // Get category icon
   const getCategoryIcon = (category: string) => {
@@ -216,8 +212,6 @@ export default function AIVerdictSummary({
         </div>
       </div>
 
-      {/* Recommendations */}
-      <RecommendationsPanel recommendations={allRecommendations} />
     </div>
   );
 }

@@ -738,31 +738,7 @@ export default function AIReportsPage() {
           {/* Detail View - Individual User Report */}
           {view === 'detail' && selectedReport && !loading && (
             <div className="space-y-6">
-              {/* User Header */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-normal text-gray-900">{selectedReport.user.name}</h2>
-                    <p className="text-gray-600">{selectedReport.user.jobRole}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-normal text-blue-600">
-                      {selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      {selectedReport.summary.aiScore !== undefined ? 'AI Score' : 'Productivity Score'}
-                    </p>
-                    {selectedReport.summary.aiScore !== undefined && (
-                      <div className="mt-2 text-xs text-gray-500 space-y-1">
-                        <div>Time: {selectedReport.summary.timeBasedScore}%</div>
-                        <div>Quality: {selectedReport.summary.screenshotBasedScore}%</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* NEW: AI Verdict Summary Component */}
+              {/* AI Verdict Summary Component */}
               <AIVerdictSummary
                 userName={selectedReport.user.name}
                 jobRole={selectedReport.user.jobRole}
