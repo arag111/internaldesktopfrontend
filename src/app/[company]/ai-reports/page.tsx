@@ -5,6 +5,8 @@ import { Brain, Calendar, TrendingUp, AlertCircle, CheckCircle, Loader2, ArrowLe
 import AttendanceReport from './AttendanceReport';
 import DateRangePickerComponent from '../../components/DateRangePicker2';
 import { rangePresets } from '../../utils/constants';
+import AIVerdictSummary from '@/components/AIVerdictSummary';
+import ScreenshotPreview from '@/components/ScreenshotPreview';
 
 interface UserSummary {
   user: {
@@ -39,6 +41,9 @@ interface Analysis {
   observations: string;
   recommendations: string[];
   category: string;
+  screenshotId?: number;
+  screenshotUrl?: string;
+  hasScreenshot?: boolean;
 }
 
 interface AIReport {
@@ -757,216 +762,57 @@ export default function AIReportsPage() {
                 </div>
               </div>
 
-              {/* Verdict Summary */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <div className="flex items-start gap-3">
-                  <Brain className="w-5 h-5 text-gray-700 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <h3 className="text-base font-medium text-gray-900 mb-4">AI Verdict Summary</h3>
+              {/* NEW: AI Verdict Summary Component */}
+              <AIVerdictSummary
+                userName={selectedReport.user.name}
+                jobRole={selectedReport.user.jobRole}
+                punchInTime={selectedReport.activity?.punchInTime}
+                officeHours={{ start: '10:00 AM', end: '7:00 PM' }}
+                summary={{
+                  ai_score: selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage,
+                  timeBasedScore: selectedReport.summary.timeBasedScore ?? 0,
+                  screenshotBasedScore: selectedReport.summary.screenshotBasedScore ?? 0,
+                  totalScreenshots: selectedReport.summary.totalScreenshots,
+                  productiveCount: selectedReport.summary.productiveCount,
+                  unproductiveCount: selectedReport.summary.unproductiveCount,
+                  topProductiveCategories: (() => {
+                    const productiveAnalyses = selectedReport.analyses.filter(a => a.isProductive);
+                    const categories = productiveAnalyses.reduce((acc: any, curr) => {
+                      acc[curr.category] = (acc[curr.category] || 0) + 1;
+                      return acc;
+                    }, {});
+                    return Object.entries(categories)
+                      .sort(([, a]: any, [, b]: any) => (b as number) - (a as number))
+                      .slice(0, 5)
+                      .map(([category, count]: any) => ({ category, count }));
+                  })(),
+                  topUnproductiveCategories: (() => {
+                    const unproductiveAnalyses = selectedReport.analyses.filter(a => !a.isProductive);
+                    const categories = unproductiveAnalyses.reduce((acc: any, curr) => {
+                      acc[curr.category] = (acc[curr.category] || 0) + 1;
+                      return acc;
+                    }, {});
+                    return Object.entries(categories)
+                      .sort(([, a]: any, [, b]: any) => (b as number) - (a as number))
+                      .slice(0, 5)
+                      .map(([category, count]: any) => ({ category, count }));
+                  })()
+                }}
+                analyses={selectedReport.analyses}
+                dateRange={selectedReport.period}
+              />
 
-                    <div className="space-y-4 text-gray-700">
-                      {/* Punch-in Time & Punctuality */}
-                      {selectedReport.activity?.punchInTime && (
-                        <div className="bg-white rounded-md p-4 border-l-2 border-blue-500">
-                          {(() => {
-                            const punchInTime = new Date(selectedReport.activity.punchInTime);
-                            const punchInHour = punchInTime.getHours();
-                            const punchInMinute = punchInTime.getMinutes();
-                            const officeStartHour = 10; // 10 AM
-                            const minutesFromStart = (punchInHour * 60 + punchInMinute) - (officeStartHour * 60);
-
-                            // Helper function to convert minutes to readable format
-                            const minutesToReadable = (minutes: number) => {
-                              const hours = Math.floor(Math.abs(minutes) / 60);
-                              const mins = Math.abs(minutes) % 60;
-                              if (hours > 0 && mins > 0) {
-                                return `${hours}hrs ${mins}min`;
-                              } else if (hours > 0) {
-                                return `${hours}hrs`;
-                              } else {
-                                return `${mins}min`;
-                              }
-                            };
-
-                            let punctualityIcon = '';
-                            let punctualityText = '';
-                            let punctualityColor = '';
-
-                            if (minutesFromStart < -30) {
-                              punctualityIcon = '✅';
-                              punctualityText = `Early Login - Early by ${minutesToReadable(minutesFromStart)}`;
-                              punctualityColor = 'text-green-700 bg-white border border-green-200';
-                            } else if (minutesFromStart <= 0) {
-                              punctualityIcon = '✅';
-                              punctualityText = 'On Time - Arrived on time';
-                              punctualityColor = 'text-green-700 bg-white border border-green-200';
-                            } else if (minutesFromStart <= 15) {
-                              punctualityIcon = '⚠️';
-                              punctualityText = `Slightly Late - Late by ${minutesToReadable(minutesFromStart)}`;
-                              punctualityColor = 'text-yellow-700 bg-white border border-yellow-200';
-                            } else {
-                              punctualityIcon = '❌';
-                              punctualityText = `Late Login - Late by ${minutesToReadable(minutesFromStart)}`;
-                              punctualityColor = 'text-red-700 bg-white border border-red-200';
-                            }
-
-                            return (
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Clock className="w-4 h-4 text-gray-600" />
-                                  <span className="font-medium text-gray-900 text-base">
-                                    {format(punchInTime, 'hh:mm a')}
-                                  </span>
-                                  <span className="text-xs text-gray-500">(Office: 10:00 AM - 7:00 PM)</span>
-                                </div>
-                                <div className={`${punctualityColor} rounded px-3 py-1.5 font-normal text-sm`}>
-                                  {punctualityIcon} {punctualityText}
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      {/* Productive Activities Summary */}
-                      <div className="bg-white rounded-md p-4 border-l-2 border-green-500">
-                        <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                          <span className="text-base">✅</span> Productive Work ({selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%)
-                        </h4>
-                        <div className="space-y-2 text-sm">
-                          {(() => {
-                            const productiveAnalyses = selectedReport.analyses.filter(a => a.isProductive);
-                            const productiveCategories = productiveAnalyses.reduce((acc: any, curr) => {
-                              acc[curr.category] = (acc[curr.category] || 0) + 1;
-                              return acc;
-                            }, {});
-                            const topProductive = Object.entries(productiveCategories)
-                              .sort(([, a]: any, [, b]: any) => b - a)
-                              .slice(0, 5);
-
-                            // Get sample activities for each category
-                            const categoryActivities: any = {};
-                            productiveAnalyses.forEach(a => {
-                              if (!categoryActivities[a.category]) {
-                                categoryActivities[a.category] = a.activity;
-                              }
-                            });
-
-                            return topProductive.length > 0 ? (
-                              <ul className="space-y-1.5">
-                                {topProductive.map(([category, count]: any) => (
-                                  <li key={category} className="flex items-start gap-2">
-                                    <span className="text-green-600 mt-0.5">•</span>
-                                    <span className="text-gray-800">
-                                      <strong>{category}</strong> - {count} times
-                                      <span className="text-gray-600 text-xs ml-2">
-                                        ({categoryActivities[category]})
-                                      </span>
-                                    </span>
-                                  </li>
-                                ))}
-                              </ul>
-                            ) : (
-                              <p className="text-gray-600 italic">No productive activities detected</p>
-                            );
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Unproductive Activities Summary */}
-                      {selectedReport.summary.unproductiveCount > 0 && (
-                        <div className="bg-white rounded-md p-4 border-l-2 border-red-500">
-                          <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
-                            <span className="text-base">❌</span> Unproductive Time ({Math.round((selectedReport.summary.unproductiveCount / selectedReport.summary.totalScreenshots) * 100)}%)
-                          </h4>
-                          <div className="space-y-2 text-sm">
-                            {(() => {
-                              const unproductiveAnalyses = selectedReport.analyses.filter(a => !a.isProductive);
-                              const unproductiveCategories = unproductiveAnalyses.reduce((acc: any, curr) => {
-                                acc[curr.category] = (acc[curr.category] || 0) + 1;
-                                return acc;
-                              }, {});
-                              const topUnproductive = Object.entries(unproductiveCategories)
-                                .sort(([, a]: any, [, b]: any) => b - a)
-                                .slice(0, 5);
-
-                              // Get sample activities for each category
-                              const categoryActivities: any = {};
-                              unproductiveAnalyses.forEach(a => {
-                                if (!categoryActivities[a.category]) {
-                                  categoryActivities[a.category] = a.activity;
-                                }
-                              });
-
-                              return (
-                                <ul className="space-y-1.5">
-                                  {topUnproductive.map(([category, count]: any) => (
-                                    <li key={category} className="flex items-start gap-2">
-                                      <span className="text-red-600 mt-0.5">•</span>
-                                      <span className="text-gray-800">
-                                        <strong>{category}</strong> - {count} times
-                                        <span className="text-gray-600 text-xs ml-2">
-                                          ({categoryActivities[category]})
-                                        </span>
-                                      </span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Quick Summary Stats */}
-                      <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-gray-200">
-                        <div>
-                          <p className="text-sm text-gray-600">Work Quality</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex-1 bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  selectedReport.summary.averageProductivity >= 70 ? 'bg-green-500' :
-                                  selectedReport.summary.averageProductivity >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                                }`}
-                                style={{ width: `${selectedReport.summary.averageProductivity}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium">{selectedReport.summary.averageProductivity}/100</span>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Focus Rate</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <div className="flex-1 bg-gray-200 rounded-full h-2">
-                              <div
-                                className={`h-2 rounded-full ${
-                                  (selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage) >= 70 ? 'bg-green-500' :
-                                  (selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage) >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                                }`}
-                                style={{ width: `${selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium">{selectedReport.summary.aiScore ?? selectedReport.summary.productivityPercentage}%</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Email Report Button */}
-                      <button
-                        onClick={() => {
-                          setEmailInput('');
-                          setShowEmailModal(true);
-                        }}
-                        className="w-full mt-6 text-blue-600 hover:bg-blue-50 text-sm font-medium py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors"
-                      >
-                        <Mail className="w-4 h-4" />
-                        Send Report to Email
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* Email Report Button */}
+              <button
+                onClick={() => {
+                  setEmailInput('');
+                  setShowEmailModal(true);
+                }}
+                className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-3 px-6 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md"
+              >
+                <Mail className="w-4 h-4" />
+                Send Report to Email
+              </button>
 
               {/* Summary Cards */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -1023,57 +869,72 @@ export default function AIReportsPage() {
               {/* Detailed Analysis */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <h2 className="text-xl font-normal text-gray-900 mb-4">Detailed Analysis</h2>
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {selectedReport.analyses.map((analysis, index) => (
                     <div
                       key={index}
-                      className={`border rounded-lg p-4 ${
+                      className={`border rounded-lg p-6 ${
                         analysis.isProductive
                           ? 'border-green-200 bg-green-50'
                           : 'border-red-200 bg-red-50'
                       }`}
                     >
-                      <div className="flex items-start justify-between mb-3">
+                      {/* NEW: Two-column layout with screenshot */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Left Column: Screenshot */}
                         <div>
-                          <p className="text-sm text-gray-500">
-                            {format(new Date(analysis.timestamp), 'PPpp')}
-                          </p>
-                          <p className="font-medium text-gray-900 mt-1">{analysis.activity}</p>
-                          <p className="text-sm text-gray-600 mt-1">Category: {analysis.category}</p>
+                          <ScreenshotPreview
+                            screenshotId={analysis.screenshotId || 0}
+                            screenshotUrl={analysis.screenshotUrl || ''}
+                            timestamp={analysis.timestamp}
+                            activity={analysis.activity}
+                            isProductive={analysis.isProductive}
+                            hasScreenshot={analysis.hasScreenshot}
+                          />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              analysis.isProductive
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}
-                          >
-                            {analysis.isProductive ? 'Productive' : 'Unproductive'}
-                          </span>
-                          <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
-                            Score: {analysis.productivityScore}
-                          </span>
+
+                        {/* Right Column: Analysis Details */}
+                        <div>
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <p className="text-sm text-gray-600">
+                                {format(new Date(analysis.timestamp), 'PPpp')}
+                              </p>
+                              <h4 className="font-semibold text-lg mt-1 text-gray-900">{analysis.activity}</h4>
+                              <p className="text-sm text-gray-600 mt-1">Category: {analysis.category}</p>
+                            </div>
+                            <span
+                              className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${
+                                analysis.isProductive
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-red-100 text-red-700'
+                              }`}
+                            >
+                              {analysis.isProductive ? '✅ Productive' : '❌ Unproductive'} ({analysis.productivityScore})
+                            </span>
+                          </div>
+
+                          <div className="space-y-3">
+                            <div>
+                              <h5 className="font-medium text-gray-700 mb-1">🔍 Observations:</h5>
+                              <p className="text-sm text-gray-600 leading-relaxed">{analysis.observations}</p>
+                            </div>
+
+                            {analysis.recommendations && analysis.recommendations.length > 0 && (
+                              <div>
+                                <h5 className="font-medium text-gray-700 mb-1">💡 Recommendations:</h5>
+                                <ul className="list-disc list-inside space-y-1">
+                                  {analysis.recommendations.map((rec, recIndex) => (
+                                    <li key={recIndex} className="text-sm text-gray-600">
+                                      {rec}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-
-                      <div className="mb-3">
-                        <p className="text-sm font-medium text-gray-700 mb-1">Observations:</p>
-                        <p className="text-sm text-gray-600">{analysis.observations}</p>
-                      </div>
-
-                      {analysis.recommendations && analysis.recommendations.length > 0 && (
-                        <div>
-                          <p className="text-sm font-medium text-gray-700 mb-1">Recommendations:</p>
-                          <ul className="list-disc list-inside space-y-1">
-                            {analysis.recommendations.map((rec, recIndex) => (
-                              <li key={recIndex} className="text-sm text-gray-600">
-                                {rec}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
