@@ -300,11 +300,12 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
 
             {/* Left Arrow - Previous */}
             <button
-              className={`absolute left-4 text-white p-3 rounded-full transition-all shadow-lg ${
+              className={`absolute left-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full transition-all shadow-lg ${
                 selectedImageIndex === 0
                   ? 'bg-gray-600/80 cursor-not-allowed border-2 border-gray-400'
                   : 'bg-black/60 hover:bg-black'
               }`}
+              style={{ zIndex: 20 }}
               onClick={() => selectedImageIndex > 0 && navigate('left')}
               disabled={selectedImageIndex === 0}
             >
@@ -333,11 +334,12 @@ const ScreenshotGallery: React.FC<ScreenshotGalleryProps> = ({ screenshots }) =>
 
             {/* Right Arrow - Next */}
             <button
-              className={`absolute right-4 text-white p-3 rounded-full transition-all shadow-lg ${
+              className={`absolute right-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full transition-all shadow-lg ${
                 selectedImageIndex === flat.length - 1
                   ? 'bg-gray-600/80 cursor-not-allowed border-2 border-gray-400'
                   : 'bg-black/60 hover:bg-black'
               }`}
+              style={{ zIndex: 20 }}
               onClick={() => selectedImageIndex < flat.length - 1 && navigate('right')}
               disabled={selectedImageIndex === flat.length - 1}
             >
