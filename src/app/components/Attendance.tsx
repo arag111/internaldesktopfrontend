@@ -349,14 +349,13 @@ const Attendance: React.FC<AttendanceProps> = ({
         },
         {
             label: 'Productive Hours',
-            tooltip: 'Working hours - Idle Time - Break Time',
+            tooltip: 'Working hours - Idle Time',
             render: (s: FlatAttendanceRecord) => {
                 if (s.status === 'Weekend') return 'Weekend';
                 const working = s.workingTimeInSeconds || 0;
                 const idle = s.idleTimeInSeconds || 0;
-                const totalBreak = s.breakTimeInSeconds || 0;
                 const displayWorking = working - s.rejectedIdleTimeInSeconds;
-                const productive = displayWorking - totalBreak - idle > 0 ? displayWorking - totalBreak - idle : 0;
+                const productive = displayWorking - idle > 0 ? displayWorking - idle : 0;
                 return formatDuration(productive);
             }
         }
@@ -400,9 +399,8 @@ const Attendance: React.FC<AttendanceProps> = ({
         sortedAndFilteredData.forEach((s) => {
             const working = s.workingTimeInSeconds || 0;
             const idle = s.idleTimeInSeconds || 0;
-            const totalBreak = s.breakTimeInSeconds || 0;
             const displayWorking = working - s.rejectedIdleTimeInSeconds;
-            const productive = displayWorking - totalBreak - idle > 0 ? displayWorking - totalBreak - idle : 0;
+            const productive = displayWorking - idle > 0 ? displayWorking - idle : 0;
 
             // Format date with day name: "DD-MMM-YYYY (Day)"
             const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
