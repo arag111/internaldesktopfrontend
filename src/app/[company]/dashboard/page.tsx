@@ -395,6 +395,8 @@ export default function DashboardPage() {
         return {
           totalHours: 0,
           totalSeconds: 0,
+          totalBreakSeconds: 0,
+          totalIdleSeconds: 0,
           avgProductivity: 0,
           activeDays: 0,
           peakHours: '0',
@@ -433,6 +435,8 @@ export default function DashboardPage() {
       return {
         totalHours,
         totalSeconds,
+        totalBreakSeconds,
+        totalIdleSeconds,
         avgProductivity: Math.max(0, Math.min(100, avgProductivity)), // Clamp between 0-100
         activeDays: totalActiveDays,
         peakHours: '0',
@@ -446,6 +450,8 @@ export default function DashboardPage() {
       return {
         totalHours: 0,
         totalSeconds: 0,
+        totalBreakSeconds: 0,
+        totalIdleSeconds: 0,
         avgProductivity: 0,
         activeDays: 0,
         peakHours: '0',
@@ -481,6 +487,8 @@ export default function DashboardPage() {
     return {
       totalHours,
       totalSeconds,
+      totalBreakSeconds,
+      totalIdleSeconds,
       avgProductivity: Math.max(0, Math.min(100, avgProductivity)),
       activeDays,
       peakHours,
@@ -680,42 +688,89 @@ export default function DashboardPage() {
 
               {/* Summary Stats */}
               <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                  <StatCard
-                    title="Active"
-                    value={teamStatus?.active || 0}
-                    icon={<CheckCircle sx={{ fontSize: 28 }} />}
-                    color="success"
-                    subtitle={`${teamStatus?.active || 0}/${teamStatus?.total || 0} members`}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                  <StatCard
-                    title="Idle"
-                    value={teamStatus?.idle || 0}
-                    icon={<AccessTime sx={{ fontSize: 28 }} />}
-                    color="warning"
-                    subtitle={`${teamStatus?.idle || 0}/${teamStatus?.total || 0} members`}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                  <StatCard
-                    title="Break"
-                    value={teamStatus?.onBreak || 0}
-                    icon={<Timer sx={{ fontSize: 28 }} />}
-                    color="warning"
-                    subtitle={`${teamStatus?.onBreak || 0}/${teamStatus?.total || 0} members`}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                  <StatCard
-                    title="Offline"
-                    value={teamStatus?.offline || 0}
-                    icon={<Cancel sx={{ fontSize: 28 }} />}
-                    color="secondary"
-                    subtitle={`${teamStatus?.offline || 0}/${teamStatus?.total || 0} members`}
-                  />
-                </Grid>
+                {/* Admin/Manager View: Show team status */}
+                {(role === 'admin' || role === 'manager') && (
+                  <>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Active"
+                        value={teamStatus?.active || 0}
+                        icon={<CheckCircle sx={{ fontSize: 28 }} />}
+                        color="success"
+                        subtitle={`${teamStatus?.active || 0}/${teamStatus?.total || 0} members`}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Idle"
+                        value={teamStatus?.idle || 0}
+                        icon={<AccessTime sx={{ fontSize: 28 }} />}
+                        color="warning"
+                        subtitle={`${teamStatus?.idle || 0}/${teamStatus?.total || 0} members`}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Break"
+                        value={teamStatus?.onBreak || 0}
+                        icon={<Timer sx={{ fontSize: 28 }} />}
+                        color="warning"
+                        subtitle={`${teamStatus?.onBreak || 0}/${teamStatus?.total || 0} members`}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Offline"
+                        value={teamStatus?.offline || 0}
+                        icon={<Cancel sx={{ fontSize: 28 }} />}
+                        color="secondary"
+                        subtitle={`${teamStatus?.offline || 0}/${teamStatus?.total || 0} members`}
+                      />
+                    </Grid>
+                  </>
+                )}
+
+                {/* Regular User View: Show personal metrics */}
+                {role !== 'admin' && role !== 'manager' && (
+                  <>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Working Hours"
+                        value={formatSecondsToTime(summaryStats.totalSeconds)}
+                        icon={<WorkHistory sx={{ fontSize: 28 }} />}
+                        color="success"
+                        subtitle={`${summaryStats.activeDays} active ${summaryStats.activeDays === 1 ? 'day' : 'days'}`}
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Productivity"
+                        value={`${summaryStats.avgProductivity}%`}
+                        icon={<Speed sx={{ fontSize: 28 }} />}
+                        color="primary"
+                        subtitle="Average score"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Idle Time"
+                        value={formatSecondsToTime(summaryStats.totalIdleSeconds)}
+                        icon={<AccessTime sx={{ fontSize: 28 }} />}
+                        color="warning"
+                        subtitle="Time inactive"
+                      />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                      <StatCard
+                        title="Break Time"
+                        value={formatSecondsToTime(summaryStats.totalBreakSeconds)}
+                        icon={<Timer sx={{ fontSize: 28 }} />}
+                        color="secondary"
+                        subtitle="Time on breaks"
+                      />
+                    </Grid>
+                  </>
+                )}
               </Grid>
 
               {/* Recent Time Claims Widget - Top Priority */}

@@ -109,6 +109,9 @@ export default function AttendancePage() {
             `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
+          // Backend now returns wrapped format: [{ user: {...}, stats: [...] }]
+          // Store in allUserStats for consistency with admin/manager flow
+          setAllUserStats(data);
           setStats(data);
         }
       } catch (error) {
