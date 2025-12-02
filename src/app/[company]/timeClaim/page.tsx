@@ -137,7 +137,44 @@ export default function ClaimsPage() {
     const handleSetSelectedRange = useCallback((range: [Date, Date]) => {
         setSelectedRange(range);
     }, []);
-    
+
+    // ✅ NEW: Create a callback to trigger immediate data refresh
+    const handleClaimUpdated = useCallback(async () => {
+        console.log('🔄 Claim updated - fetching fresh data immediately');
+        try {
+            const token = localStorage.getItem('token');
+            const storedRole = localStorage.getItem('role');
+            const [start, end] = selectedRange.map((date) =>
+                format(toISTDate(date), 'yyyy-MM-dd')
+            );
+            const userId = JSON.parse(atob(token!.split('.')[1])).id;
+            const url =
+                storedRole === 'admin' || storedRole === 'manager'
+                    ? `${baseUrl}/idle/all?start=${start}&end=${end}`
+                    : `${baseUrl}/idle/user/${userId}?start=${start}&end=${end}`;
+            const { data } = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (storedRole === 'admin' || storedRole === 'manager') {
+                setAllUserStats(data);
+                const filteredActivities = data.flatMap((userObj: { activities: any[]; user: any; }) => {
+                    return userObj.activities
+                        .filter(activity => activity.idleEvents && activity.idleEvents.length > 0)
+                        .map((activity: any) => ({
+                            ...activity,
+                            user: userObj.user
+                        }));
+                });
+                setClaims(filteredActivities || []);
+            } else {
+                setClaims(data || []);
+            }
+            console.log('✅ Fresh data loaded successfully');
+        } catch (error) {
+            console.error('❌ Error refreshing claims after update', error);
+        }
+    }, [selectedRange]);
+
     // Memoize summary calculation
     const summary = useMemo(() => {
         const filteredClaims = claims.filter((claim) => !selectedUserId || String(claim.userId) === selectedUserId);
@@ -163,6 +200,7 @@ export default function ClaimsPage() {
             allUserStats={allUserStats}
             userStatuses={userStatuses}
             summary={summary}
-            mlValue={mlValue} />
+            mlValue={mlValue}
+            onClaimUpdated={handleClaimUpdated} />
     );
 }
