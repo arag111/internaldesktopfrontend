@@ -324,11 +324,15 @@ const Attendance: React.FC<AttendanceProps> = ({
             }
         },
         {
-            label: 'Working Hours',
-            tooltip: 'Total punch In/Out time - Rejected idle time',
+            label: 'Productive Hours',
+            tooltip: 'Working hours - Idle Time',
             render: (s: FlatAttendanceRecord) => {
                 if (s.status === 'Weekend') return 'Weekend';
-                return formatDuration((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0));
+                const working = s.workingTimeInSeconds || 0;
+                const idle = s.idleTimeInSeconds || 0;
+                const displayWorking = working - s.rejectedIdleTimeInSeconds;
+                const productive = displayWorking - idle > 0 ? displayWorking - idle : 0;
+                return formatDuration(productive);
             }
         },
         {
@@ -348,16 +352,11 @@ const Attendance: React.FC<AttendanceProps> = ({
             }
         },
         {
-            label: 'Productive Hours',
-            tooltip: 'Working hours - Idle Time - Break Time',
+            label: 'Working Hours',
+            tooltip: 'Total punch In/Out time - Rejected idle time',
             render: (s: FlatAttendanceRecord) => {
                 if (s.status === 'Weekend') return 'Weekend';
-                const working = s.workingTimeInSeconds || 0;
-                const idle = s.idleTimeInSeconds || 0;
-                const totalBreak = s.breakTimeInSeconds || 0;
-                const displayWorking = working - s.rejectedIdleTimeInSeconds;
-                const productive = displayWorking - totalBreak - idle > 0 ? displayWorking - totalBreak - idle : 0;
-                return formatDuration(productive);
+                return formatDuration((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0));
             }
         }
     ];
@@ -378,10 +377,10 @@ const Attendance: React.FC<AttendanceProps> = ({
             { header: 'Attendance Status', key: 'status' },
             { header: 'Punch In', key: 'punchIn' },
             { header: 'Punch Out', key: 'punchOut' },
-            { header: 'Working Hours', key: 'workingHours' },
             { header: 'Productive Hours', key: 'productiveHours' },
+            { header: 'Break Hours', key: 'breakHours' },
             { header: 'Idle Hours', key: 'idleHours' },
-            { header: 'Break Hours', key: 'breakHours' }
+            { header: 'Working Hours', key: 'workingHours' }
         ];
 
         // Set columns
@@ -400,9 +399,8 @@ const Attendance: React.FC<AttendanceProps> = ({
         sortedAndFilteredData.forEach((s) => {
             const working = s.workingTimeInSeconds || 0;
             const idle = s.idleTimeInSeconds || 0;
-            const totalBreak = s.breakTimeInSeconds || 0;
             const displayWorking = working - s.rejectedIdleTimeInSeconds;
-            const productive = displayWorking - totalBreak - idle > 0 ? displayWorking - totalBreak - idle : 0;
+            const productive = displayWorking - idle > 0 ? displayWorking - idle : 0;
 
             // Format date with day name: "DD-MMM-YYYY (Day)"
             const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');

@@ -195,7 +195,7 @@ export default function ReportsPage() {
             productivityCount++;
           }
 
-          const productiveSeconds = workingSeconds - breakSeconds - idleSeconds;
+          const productiveSeconds = workingSeconds - idleSeconds;
 
           return {
             date: dateStr,
