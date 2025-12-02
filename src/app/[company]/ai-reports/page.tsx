@@ -35,6 +35,7 @@ interface UserSummary {
 
 interface Analysis {
   timestamp: string;
+  application?: string;
   activity: string;
   isProductive: boolean;
   productivityScore: number;
@@ -877,7 +878,17 @@ export default function AIReportsPage() {
                                 {format(new Date(analysis.timestamp), 'PPpp')}
                               </p>
                               <h4 className="font-semibold text-lg mt-1 text-gray-900">{analysis.activity}</h4>
-                              <p className="text-sm text-gray-600 mt-1">Category: {analysis.category}</p>
+                              <div className="flex items-center gap-3 mt-1 text-sm text-gray-600">
+                                {analysis.application && (
+                                  <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                                    </svg>
+                                    {analysis.application}
+                                  </span>
+                                )}
+                                <span>Category: {analysis.category}</span>
+                              </div>
                             </div>
                             <span
                               className={`px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap ${
@@ -893,7 +904,7 @@ export default function AIReportsPage() {
                           <div className="space-y-3">
                             <div>
                               <h5 className="font-medium text-gray-700 mb-1">🔍 Observations:</h5>
-                              <p className="text-sm text-gray-600 leading-relaxed">{analysis.observations}</p>
+                              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{analysis.observations}</p>
                             </div>
 
                             {analysis.recommendations && analysis.recommendations.length > 0 && (
