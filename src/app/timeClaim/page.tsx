@@ -66,6 +66,44 @@ export default function ClaimsPage() {
 
         fetchData();
     }, [router, selectedRange, selectedUserId]);
+
+    // ✅ NEW: Create a callback to trigger immediate data refresh
+    const handleClaimUpdated = async () => {
+        console.log('🔄 Claim updated - fetching fresh data immediately');
+        try {
+            const token = localStorage.getItem('token');
+            const storedRole = localStorage.getItem('role');
+            const [start, end] = selectedRange.map((date) =>
+                format(date, 'yyyy-MM-dd')
+            );
+            const userId = JSON.parse(atob(token!.split('.')[1])).id;
+            const url =
+                storedRole === 'admin' || storedRole === 'manager'
+                    ? `${baseUrl}/idle/all?start=${start}&end=${end}`
+                    : `${baseUrl}/idle/user/${userId}?start=${start}&end=${end}`;
+            const { data } = await axios.get(url, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (storedRole === 'admin' || storedRole === 'manager') {
+                setAllUserStats(data);
+                const filteredActivities = data.flatMap((userObj: { activities: any[]; user: any; }) => {
+                    return userObj.activities
+                        .filter(activity => activity.idleEvents && activity.idleEvents.length > 0)
+                        .map((activity: any) => ({
+                            ...activity,
+                            user: userObj.user
+                        }));
+                });
+                setClaims(filteredActivities || []);
+            } else {
+                setClaims(data || []);
+            }
+            console.log('✅ Fresh data loaded successfully');
+        } catch (error) {
+            console.error('❌ Error refreshing claims after update', error);
+        }
+    };
+
     const mlValue = role === 'admin' || role === 'manager' ? '32rem' : '16rem';
     return (
         <div className="w-full h-screen flex flex-col bg-gray-100 text-[#075a96]">
@@ -89,7 +127,8 @@ export default function ClaimsPage() {
                     setSelectedRange={setSelectedRange}
                     selectedRange={selectedRange}
                     rangePresets={rangePresets}
-                    mlValue={mlValue} />
+                    mlValue={mlValue}
+                    onClaimUpdated={handleClaimUpdated} />
 
             </div>
         </div>

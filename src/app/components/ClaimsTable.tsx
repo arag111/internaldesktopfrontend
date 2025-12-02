@@ -19,6 +19,7 @@ interface ClaimsTableProps {
     userStatuses?: Record<string, { status: string; timestamp: string }>;
     summary?: { total: number; pending: number; approved: number; rejected: number };
     mlValue: string;
+    onClaimUpdated?: () => void; // ✅ NEW: Callback to trigger immediate data refresh
 }
 
 const ClaimsTable: React.FC<ClaimsTableProps> = ({
@@ -33,7 +34,8 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
     allUserStats = [],
     userStatuses = {},
     summary = { total: 0, pending: 0, approved: 0, rejected: 0 },
-    mlValue
+    mlValue,
+    onClaimUpdated // ✅ NEW: Destructure callback
 }) => {
     const [showUserDropdown, setShowUserDropdown] = useState(false);
     const [localSearchTerm, setLocalSearchTerm] = useState('');
@@ -114,6 +116,12 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                     };
                 })
             );
+
+            // ✅ NEW: Trigger immediate refresh of parent data (working hours, etc.)
+            if (onClaimUpdated) {
+                console.log('🔄 Triggering immediate data refresh after claim status update');
+                onClaimUpdated();
+            }
         } catch (error: any) {
             console.error('Error updating claim status', error);
             if (error.response) {
