@@ -348,7 +348,7 @@ export default function DashboardPage() {
     () => {
       const result = role === 'admin' || role === 'manager'
         ? allUserStats.find((u) => u.user.id === selectedUserId)?.stats || []
-        : stats;
+        : (stats[0]?.stats || []);
 
       console.log('📈 [Current Stats]');
       console.log('   Role:', role);
