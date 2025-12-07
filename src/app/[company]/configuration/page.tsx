@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import { baseUrl } from '@/app/utils/config';
 import { Settings, Eye, EyeOff, Clock, Shield, Camera, Info, CheckCircle, X } from 'lucide-react';
 
 export default function ConfigurationPage() {
   const router = useRouter();
+  const params = useParams();
+  const companySlug = params.company as string;
 
   // Original values for dirty state tracking
   const [originalValues, setOriginalValues] = useState({
@@ -157,6 +159,7 @@ export default function ConfigurationPage() {
         screenshotIntervalMins,
         applicationPunchInTime,
         applicationPunchOutTime,
+        companySlug, // Include company slug for superadmin support
       };
 
       // ✅ SECURITY FIX: Only send password if user entered one
@@ -196,7 +199,7 @@ export default function ConfigurationPage() {
     } finally {
       setSaving(false);
     }
-  }, [applicationAdminPassword, confirmPassword, inactivityDurationMins, screenshotIntervalMins, applicationPunchInTime, applicationPunchOutTime]);
+  }, [applicationAdminPassword, confirmPassword, inactivityDurationMins, screenshotIntervalMins, applicationPunchInTime, applicationPunchOutTime, companySlug]);
 
   // Helper to get time ago string
   const getTimeAgo = (date: Date): string => {
