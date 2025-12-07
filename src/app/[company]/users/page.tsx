@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useParams } from 'next/navigation';
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
 import { Users, UserPlus, Edit, Trash2, Search, Save, X, CheckCircle, XCircle, AlertCircle, Shield, Clock, Brain, Mail, User, Lock, Building2, Sparkles, ChevronDown } from 'lucide-react';
@@ -35,6 +36,8 @@ interface CompanyInfo {
 
 
 export default function UserManagementPage() {
+  const params = useParams();
+  const companySlug = params.company as string;
   const [users, setUsers] = useState<User[]>([]);
   const [company, setCompany] = useState<CompanyInfo | null>(null);
   const [formData, setFormData] = useState<any>({
@@ -83,6 +86,7 @@ export default function UserManagementPage() {
     try {
       const res = await axios.get(`${baseUrl}/api/companies/current`, {
         headers: { Authorization: `Bearer ${token}` },
+        params: { slug: companySlug },
       });
       setCompany(res.data.company);
     } catch (err) {
