@@ -330,8 +330,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                 if (s.status === 'Weekend') return 'Weekend';
                 const working = s.workingTimeInSeconds || 0;
                 const idle = s.idleTimeInSeconds || 0;
-                const displayWorking = working - s.rejectedIdleTimeInSeconds;
-                const productive = displayWorking - idle > 0 ? displayWorking - idle : 0;
+                const productive = working - idle > 0 ? working - idle : 0;
                 return formatDuration(productive);
             }
         },
@@ -353,10 +352,10 @@ const Attendance: React.FC<AttendanceProps> = ({
         },
         {
             label: 'Working Hours',
-            tooltip: 'Total punch In/Out time - Rejected idle time',
+            tooltip: 'Total tracked working time',
             render: (s: FlatAttendanceRecord) => {
                 if (s.status === 'Weekend') return 'Weekend';
-                return formatDuration((s.workingTimeInSeconds || 0) - (s.rejectedIdleTimeInSeconds || 0));
+                return formatDuration(s.workingTimeInSeconds || 0);
             }
         }
     ];
@@ -399,8 +398,7 @@ const Attendance: React.FC<AttendanceProps> = ({
         sortedAndFilteredData.forEach((s) => {
             const working = s.workingTimeInSeconds || 0;
             const idle = s.idleTimeInSeconds || 0;
-            const displayWorking = working - s.rejectedIdleTimeInSeconds;
-            const productive = displayWorking - idle > 0 ? displayWorking - idle : 0;
+            const productive = working - idle > 0 ? working - idle : 0;
 
             // Format date with day name: "DD-MMM-YYYY (Day)"
             const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
@@ -432,7 +430,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                     status: s.status,
                     punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
                     punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
-                    workingHours: formatDuration(displayWorking),
+                    workingHours: formatDuration(working),
                     productiveHours: formatDuration(productive),
                     idleHours: formatDuration(s.idleTimeInSeconds || 0),
                     breakHours: formatDuration(s.breakTimeInSeconds || 0)
@@ -477,7 +475,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                 // ============================================
 
                 // Calculate working hours in hours (not seconds)
-                const workingHours = displayWorking / 3600;
+                const workingHours = working / 3600;
                 let fontColor;
 
                 // Determine color based on working hours
