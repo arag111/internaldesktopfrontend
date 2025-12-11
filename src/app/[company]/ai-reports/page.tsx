@@ -495,10 +495,8 @@ export default function AIReportsPage() {
             </div>
           )}
 
-          {/* Overview View - Classic Data Table */}
-          {view === 'overview' && !loading && filteredUsers.length > 0 && (
-            <>
-            {/* Search Filter */}
+          {/* Search Filter - Always visible when there's data (even if filtered results are empty) */}
+          {view === 'overview' && !loading && userSummaries.filter(u => u.hasData).length > 0 && (
             <div className="mb-6">
               <div className="relative">
                 <input
@@ -526,7 +524,11 @@ export default function AIReportsPage() {
                 )}
               </div>
             </div>
+          )}
 
+          {/* Overview View - Classic Data Table */}
+          {view === 'overview' && !loading && filteredUsers.length > 0 && (
+            <>
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
               <table className="w-full">
                 <thead>
@@ -734,6 +736,28 @@ export default function AIReportsPage() {
               </div>
             )}
             </>
+          )}
+
+          {/* No Search Results Message */}
+          {view === 'overview' && !loading && userSummaries.filter(u => u.hasData).length > 0 && filteredUsers.length === 0 && searchQuery.trim() && (
+            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                <Search className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-medium text-slate-900 mb-2">No results found</h3>
+              <p className="text-slate-500 mb-4">
+                No users found matching "<span className="font-medium">{searchQuery}</span>"
+              </p>
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2 text-sm font-medium text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+              >
+                Clear search
+              </button>
+            </div>
           )}
 
           {/* Detail View - Individual User Report */}
