@@ -693,8 +693,9 @@ const Attendance: React.FC<AttendanceProps> = ({
                                 }
                             }}
                             isOptionEqualToValue={(option, value) => option.id === value.id}
-                            filterSelectedOptions={false}
-                            disableCloseOnSelect
+                            filterSelectedOptions={true}
+                            blurOnSelect={true}
+                            clearOnBlur={false}
                             renderInput={(params) => {
                                 const { InputProps, ...restParams } = params;
                                 return (
