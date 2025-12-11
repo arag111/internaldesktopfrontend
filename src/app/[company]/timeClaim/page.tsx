@@ -78,8 +78,8 @@ export default function ClaimsPage() {
 
         fetchData();
 
-        // Auto-refresh every 5 seconds to show new idle claims
-        const intervalId = setInterval(fetchData, 5000);
+        // ✅ OPTIMIZED: Reduced polling from 5s to 30s (immediate refresh on claim update handles real-time needs)
+        const intervalId = setInterval(fetchData, 30000);
 
         return () => clearInterval(intervalId);
     }, [router, selectedRange]);
