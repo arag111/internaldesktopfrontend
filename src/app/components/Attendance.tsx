@@ -902,9 +902,9 @@ const Attendance: React.FC<AttendanceProps> = ({
 
             {/* Enhanced Data Table */}
             <div className="bg-white rounded-lg border border-slate-200 overflow-hidden mb-6">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
                     <table className="w-full min-w-[900px] border-collapse">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                        <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                         <tr>
                             {columns.map(({ label, tooltip }) => (
                                 <th
