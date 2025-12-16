@@ -47,7 +47,8 @@ interface FlatAttendanceRecord {
     idleTimeInSeconds: number;
     rejectedIdleTimeInSeconds: number;
     status: 'Absent' | 'Half Day' | 'Present' | 'Weekend';
-    aiScore: number | null;        // AI productivity score (0-100)
+    timeScore: number;             // Time Score: (productive hours / 8 hours) × 100
+    aiScore: number;               // AI Score: screenshot-based productivity (0-100)
     aiAnalyzedCount: number;       // Number of screenshots analyzed
 }
 
@@ -175,7 +176,8 @@ const Attendance: React.FC<AttendanceProps> = ({
                 idleTimeInSeconds: stat.idleTimeInSeconds || 0,
                 rejectedIdleTimeInSeconds: stat.rejectedIdleTimeInSeconds || 0,
                 status: stat.status || 'Absent',
-                aiScore: stat.aiScore ?? null,
+                timeScore: stat.timeScore ?? 0,
+                aiScore: stat.aiScore ?? 0,
                 aiAnalyzedCount: stat.aiAnalyzedCount || 0,
             }))
         );
@@ -360,15 +362,30 @@ const Attendance: React.FC<AttendanceProps> = ({
             }
         },
         {
-            label: 'AI Score',
-            tooltip: 'AI-based productivity score (0-100) calculated from screenshot analysis',
+            label: 'Time Score',
+            tooltip: 'Time-based score: (Productive Hours / 8 hours) × 100. Can exceed 100% for overtime.',
             render: (s: FlatAttendanceRecord) => {
                 if (s.status === 'Weekend') return 'Weekend';
-                if (s.aiScore === null) return '-';
+                return `${s.timeScore}%`;
+            }
+        },
+        {
+            label: 'AI Score',
+            tooltip: 'Screenshot-based productivity score (0-100) from AI analysis',
+            render: (s: FlatAttendanceRecord) => {
+                if (s.status === 'Weekend') return 'Weekend';
                 return `${s.aiScore}%`;
             }
         }
     ];
+
+    // Helper function to get Time Score color based on value
+    const getTimeScoreColor = (score: number): string => {
+        if (score >= 100) return 'text-green-600';  // Full day or overtime
+        if (score >= 50) return 'text-blue-600';    // Half day+
+        if (score >= 25) return 'text-yellow-600';  // Quarter day
+        return 'text-red-600';                       // Low
+    };
 
     // Helper function to get AI score color based on value
     const getAIScoreColor = (score: number): string => {
@@ -398,6 +415,7 @@ const Attendance: React.FC<AttendanceProps> = ({
             { header: 'Break Hours', key: 'breakHours' },
             { header: 'Idle Hours', key: 'idleHours' },
             { header: 'Working Hours', key: 'workingHours' },
+            { header: 'Time Score', key: 'timeScore' },
             { header: 'AI Score', key: 'aiScore' }
         ];
 
@@ -438,6 +456,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                     productiveHours: 'Weekend',
                     idleHours: 'Weekend',
                     breakHours: 'Weekend',
+                    timeScore: 'Weekend',
                     aiScore: 'Weekend'
                 };
             } else {
@@ -452,7 +471,8 @@ const Attendance: React.FC<AttendanceProps> = ({
                     productiveHours: formatDuration(working),
                     idleHours: formatDuration(s.idleTimeInSeconds || 0),
                     breakHours: formatDuration(s.breakTimeInSeconds || 0),
-                    aiScore: s.aiScore !== null ? `${s.aiScore}%` : '-'
+                    timeScore: `${s.timeScore}%`,
+                    aiScore: `${s.aiScore}%`
                 };
             }
 
@@ -521,25 +541,42 @@ const Attendance: React.FC<AttendanceProps> = ({
                 };
 
                 // ============================================
+                // TIME SCORE CELL STYLING (Independent color)
+                // ============================================
+                const timeScoreCell = row.getCell('timeScore');
+                let timeScoreColor;
+                if (s.timeScore >= 100) {
+                    timeScoreColor = 'FF16A34A'; // Green - Full day or overtime
+                } else if (s.timeScore >= 50) {
+                    timeScoreColor = 'FF2563EB'; // Blue - Half day+
+                } else if (s.timeScore >= 25) {
+                    timeScoreColor = 'FFCA8A04'; // Yellow - Quarter day
+                } else {
+                    timeScoreColor = 'FFDC2626'; // Red - Low
+                }
+                timeScoreCell.font = {
+                    color: { argb: timeScoreColor },
+                    bold: true
+                };
+
+                // ============================================
                 // AI SCORE CELL STYLING (Independent color)
                 // ============================================
                 const aiScoreCell = row.getCell('aiScore');
-                if (s.aiScore !== null) {
-                    let aiScoreColor;
-                    if (s.aiScore >= 80) {
-                        aiScoreColor = 'FF16A34A'; // Green - Excellent
-                    } else if (s.aiScore >= 60) {
-                        aiScoreColor = 'FF2563EB'; // Blue - Good
-                    } else if (s.aiScore >= 40) {
-                        aiScoreColor = 'FFCA8A04'; // Yellow - Average
-                    } else {
-                        aiScoreColor = 'FFDC2626'; // Red - Poor
-                    }
-                    aiScoreCell.font = {
-                        color: { argb: aiScoreColor },
-                        bold: true
-                    };
+                let aiScoreColor;
+                if (s.aiScore >= 80) {
+                    aiScoreColor = 'FF16A34A'; // Green - Excellent
+                } else if (s.aiScore >= 60) {
+                    aiScoreColor = 'FF2563EB'; // Blue - Good
+                } else if (s.aiScore >= 40) {
+                    aiScoreColor = 'FFCA8A04'; // Yellow - Average
+                } else {
+                    aiScoreColor = 'FFDC2626'; // Red - Poor
                 }
+                aiScoreCell.font = {
+                    color: { argb: aiScoreColor },
+                    bold: true
+                };
             }
         });
 
@@ -928,10 +965,10 @@ const Attendance: React.FC<AttendanceProps> = ({
                                                                 : cellValue === 'Weekend'
                                                                 ? 'text-blue-600 font-semibold'
                                                                 : 'text-slate-500'
+                                                            : label === 'Time Score'
+                                                            ? `${getTimeScoreColor(s.timeScore)} font-semibold`
                                                             : label === 'AI Score'
-                                                            ? s.aiScore !== null
-                                                                ? `${getAIScoreColor(s.aiScore)} font-semibold`
-                                                                : 'text-slate-400'
+                                                            ? `${getAIScoreColor(s.aiScore)} font-semibold`
                                                             : cellValue === 'Active Now'
                                                             ? 'text-green-600 font-semibold'
                                                             : 'text-slate-700'
