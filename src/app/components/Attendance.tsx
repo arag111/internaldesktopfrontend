@@ -29,11 +29,20 @@ import {
 import {
     CalendarToday as CalendarIcon,
     FileDownload as FileDownloadIcon,
-    FilterList as FilterListIcon
+    FilterList as FilterListIcon,
+    KeyboardArrowDown as ExpandMoreIcon,
+    KeyboardArrowRight as ExpandLessIcon
 } from '@mui/icons-material';
 import { format as formatDate } from 'date-fns';
 
 type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days';
+
+interface WorkSession {
+    id: number;
+    startTime: string;
+    endTime: string | null;
+    duration: number | null;  // Duration in seconds
+}
 
 interface FlatAttendanceRecord {
     userId: number;
@@ -50,6 +59,7 @@ interface FlatAttendanceRecord {
     timeScore: number;             // Time Score: (productive hours / 8 hours) × 100
     aiScore: number;               // AI Score: screenshot-based productivity (0-100)
     aiAnalyzedCount: number;       // Number of screenshots analyzed
+    workSessions: WorkSession[];   // Work sessions for timeline display
 }
 
 interface AttendanceProps {
@@ -92,7 +102,21 @@ const Attendance: React.FC<AttendanceProps> = ({
     const [showCustomDateDialog, setShowCustomDateDialog] = useState(false);
     const [tempStartDate, setTempStartDate] = useState('');
     const [tempEndDate, setTempEndDate] = useState('');
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const exportMenuOpen = Boolean(exportAnchorEl);
+
+    // Toggle row expansion for work sessions dropdown
+    const toggleRowExpansion = (rowKey: string) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(rowKey)) {
+                next.delete(rowKey);
+            } else {
+                next.add(rowKey);
+            }
+            return next;
+        });
+    };
 
 
     const handleDatePresetChange = (preset: DatePreset) => {
@@ -179,6 +203,7 @@ const Attendance: React.FC<AttendanceProps> = ({
                 timeScore: stat.timeScore ?? 0,
                 aiScore: stat.aiScore ?? 0,
                 aiAnalyzedCount: stat.aiAnalyzedCount || 0,
+                workSessions: stat.workSessions || [],
             }))
         );
     }, [allUserStats]);
@@ -906,6 +931,8 @@ const Attendance: React.FC<AttendanceProps> = ({
                     <table className="w-full min-w-[900px] border-collapse">
                         <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
                         <tr>
+                            {/* Expand column header */}
+                            <th className="w-10 px-2 py-3"></th>
                             {columns.map(({ label, tooltip }) => (
                                 <th
                                     key={label}
@@ -923,62 +950,210 @@ const Attendance: React.FC<AttendanceProps> = ({
                     <tbody className="bg-white text-slate-700 text-sm">
                         {sortedAndFilteredData.length === 0 ? (
                             <tr>
-                                <td colSpan={columns.length} className="px-4 py-8 text-center text-slate-500">
+                                <td colSpan={columns.length + 1} className="px-4 py-8 text-center text-slate-500">
                                     No attendance records found
                                 </td>
                             </tr>
                         ) : (
                             sortedAndFilteredData.map((s, i) => {
                                 const isWeekend = s.status === 'Weekend';
+                                const rowKey = `${s.userId}-${s.date}-${i}`;
+                                const isExpanded = expandedRows.has(rowKey);
+                                const hasWorkSessions = s.workSessions && s.workSessions.length > 0;
+
                                 return (
-                                    <tr
-                                        key={`${s.userId}-${s.date}-${i}`}
-                                        className={`border-b border-slate-100 transition-colors duration-200 ${
-                                            isWeekend
-                                                ? 'bg-blue-50 hover:bg-blue-100'
-                                                : 'hover:bg-slate-50'
-                                        }`}
-                                    >
-                                        {columns.map(({ label, render }) => {
-                                            const cellValue = render(s);
-                                            return (
-                                                <td
-                                                    key={label}
-                                                    className={`px-4 py-3 ${
-                                                        isWeekend
-                                                            ? 'text-blue-700 font-semibold italic text-center'
-                                                            : label === 'Current Status'
-                                                            ? cellValue === 'Working'
-                                                                ? 'text-green-600 font-bold'
-                                                                : cellValue === 'Inactive'
-                                                                ? 'text-red-600 font-semibold'
-                                                                : cellValue === 'Not Started'
-                                                                ? 'text-yellow-600 font-medium'
-                                                                : 'text-slate-500'
-                                                            : label === 'Attendance Status'
-                                                            ? cellValue === 'Present'
-                                                                ? 'text-green-600 font-bold'
-                                                                : cellValue === 'Half Day'
-                                                                ? 'text-yellow-600 font-semibold'
-                                                                : cellValue === 'Absent'
-                                                                ? 'text-red-600 font-semibold'
-                                                                : cellValue === 'Weekend'
-                                                                ? 'text-blue-600 font-semibold'
-                                                                : 'text-slate-500'
-                                                            : label === 'Time Score'
-                                                            ? `${getTimeScoreColor(s.timeScore)} font-semibold`
-                                                            : label === 'AI Score'
-                                                            ? `${getAIScoreColor(s.aiScore)} font-semibold`
-                                                            : cellValue === 'Active Now'
-                                                            ? 'text-green-600 font-semibold'
-                                                            : 'text-slate-700'
-                                                    }`}
-                                                >
-                                                    {cellValue}
+                                    <React.Fragment key={rowKey}>
+                                        {/* Main Row */}
+                                        <tr
+                                            className={`border-b border-slate-100 transition-colors duration-200 ${
+                                                isWeekend
+                                                    ? 'bg-blue-50 hover:bg-blue-100'
+                                                    : isExpanded
+                                                    ? 'bg-slate-100'
+                                                    : 'hover:bg-slate-50'
+                                            } ${!isWeekend && hasWorkSessions ? 'cursor-pointer' : ''}`}
+                                            onClick={() => !isWeekend && hasWorkSessions && toggleRowExpansion(rowKey)}
+                                        >
+                                            {/* Expand/Collapse Icon Cell */}
+                                            <td className="w-10 px-2 py-3 text-center">
+                                                {!isWeekend && hasWorkSessions ? (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleRowExpansion(rowKey);
+                                                        }}
+                                                        className="p-1 rounded hover:bg-slate-200 transition-colors"
+                                                    >
+                                                        {isExpanded ? (
+                                                            <ExpandMoreIcon className="text-slate-600" fontSize="small" />
+                                                        ) : (
+                                                            <ExpandLessIcon className="text-slate-400" fontSize="small" />
+                                                        )}
+                                                    </button>
+                                                ) : (
+                                                    <span className="w-6 h-6 inline-block"></span>
+                                                )}
+                                            </td>
+                                            {columns.map(({ label, render }) => {
+                                                const cellValue = render(s);
+                                                return (
+                                                    <td
+                                                        key={label}
+                                                        className={`px-4 py-3 ${
+                                                            isWeekend
+                                                                ? 'text-blue-700 font-semibold italic text-center'
+                                                                : label === 'Current Status'
+                                                                ? cellValue === 'Working'
+                                                                    ? 'text-green-600 font-bold'
+                                                                    : cellValue === 'Inactive'
+                                                                    ? 'text-red-600 font-semibold'
+                                                                    : cellValue === 'Not Started'
+                                                                    ? 'text-yellow-600 font-medium'
+                                                                    : 'text-slate-500'
+                                                                : label === 'Attendance Status'
+                                                                ? cellValue === 'Present'
+                                                                    ? 'text-green-600 font-bold'
+                                                                    : cellValue === 'Half Day'
+                                                                    ? 'text-yellow-600 font-semibold'
+                                                                    : cellValue === 'Absent'
+                                                                    ? 'text-red-600 font-semibold'
+                                                                    : cellValue === 'Weekend'
+                                                                    ? 'text-blue-600 font-semibold'
+                                                                    : 'text-slate-500'
+                                                                : label === 'Time Score'
+                                                                ? `${getTimeScoreColor(s.timeScore)} font-semibold`
+                                                                : label === 'AI Score'
+                                                                ? `${getAIScoreColor(s.aiScore)} font-semibold`
+                                                                : cellValue === 'Active Now'
+                                                                ? 'text-green-600 font-semibold'
+                                                                : 'text-slate-700'
+                                                        }`}
+                                                    >
+                                                        {cellValue}
+                                                    </td>
+                                                );
+                                            })}
+                                        </tr>
+
+                                        {/* Expanded Row - Work Sessions Timeline */}
+                                        {isExpanded && hasWorkSessions && (
+                                            <tr className="bg-slate-50">
+                                                <td colSpan={columns.length + 1} className="px-4 py-4">
+                                                    <div className="ml-8 p-4 bg-white rounded-lg border border-slate-200 shadow-sm">
+                                                        <div className="flex items-center justify-between mb-3">
+                                                            <h4 className="text-sm font-semibold text-slate-700">
+                                                                Work Sessions ({s.workSessions.length} total)
+                                                            </h4>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            {s.workSessions.map((session, sessionIndex) => {
+                                                                const startTime = moment(session.startTime).utcOffset('+05:30');
+                                                                const endTime = session.endTime
+                                                                    ? moment(session.endTime).utcOffset('+05:30')
+                                                                    : null;
+                                                                const isActive = !session.endTime;
+
+                                                                // Calculate duration
+                                                                let durationStr = '';
+                                                                if (session.duration) {
+                                                                    const hrs = Math.floor(session.duration / 3600);
+                                                                    const mins = Math.floor((session.duration % 3600) / 60);
+                                                                    durationStr = `${hrs}h ${mins}m`;
+                                                                } else if (isActive) {
+                                                                    // Calculate live duration for active session
+                                                                    const now = moment().utcOffset('+05:30');
+                                                                    const diffSeconds = now.diff(startTime, 'seconds');
+                                                                    const hrs = Math.floor(diffSeconds / 3600);
+                                                                    const mins = Math.floor((diffSeconds % 3600) / 60);
+                                                                    durationStr = `${hrs}h ${mins}m`;
+                                                                }
+
+                                                                // Calculate gap to next session
+                                                                let gapStr = '';
+                                                                if (sessionIndex < s.workSessions.length - 1 && endTime) {
+                                                                    const nextSession = s.workSessions[sessionIndex + 1];
+                                                                    const nextStart = moment(nextSession.startTime).utcOffset('+05:30');
+                                                                    const gapSeconds = nextStart.diff(endTime, 'seconds');
+                                                                    if (gapSeconds > 0) {
+                                                                        const gapHrs = Math.floor(gapSeconds / 3600);
+                                                                        const gapMins = Math.floor((gapSeconds % 3600) / 60);
+                                                                        if (gapHrs > 0) {
+                                                                            gapStr = `${gapHrs}h ${gapMins}m`;
+                                                                        } else {
+                                                                            gapStr = `${gapMins}m`;
+                                                                        }
+                                                                    }
+                                                                }
+
+                                                                return (
+                                                                    <div key={session.id}>
+                                                                        {/* Session Row */}
+                                                                        <div className="flex items-center gap-3 py-2">
+                                                                            <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></div>
+                                                                            <span className="text-sm text-slate-600 font-medium">
+                                                                                Session {sessionIndex + 1}:
+                                                                            </span>
+                                                                            <span className="text-sm text-slate-700">
+                                                                                {startTime.format('hh:mm A')}
+                                                                            </span>
+                                                                            <span className="text-slate-400">→</span>
+                                                                            <span className={`text-sm ${isActive ? 'text-green-600 font-semibold' : 'text-slate-700'}`}>
+                                                                                {isActive ? 'Active' : endTime?.format('hh:mm A')}
+                                                                            </span>
+                                                                            {isActive && (
+                                                                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                                                            )}
+                                                                            <span className="text-sm text-slate-500 ml-2">
+                                                                                ({durationStr})
+                                                                            </span>
+                                                                        </div>
+
+                                                                        {/* Gap Indicator */}
+                                                                        {gapStr && (
+                                                                            <div className="flex items-center gap-3 py-1 ml-5 text-xs text-orange-600">
+                                                                                <span className="text-orange-400">⏸</span>
+                                                                                <span>Gap: {gapStr}</span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        {/* Summary Footer */}
+                                                        <div className="mt-4 pt-3 border-t border-slate-200 flex items-center gap-6 text-xs text-slate-500">
+                                                            <span>
+                                                                <strong className="text-slate-700">Total Working:</strong> {formatDuration(s.workingTimeInSeconds)}
+                                                            </span>
+                                                            {(() => {
+                                                                // Calculate total gap time
+                                                                let totalGapSeconds = 0;
+                                                                for (let idx = 0; idx < s.workSessions.length - 1; idx++) {
+                                                                    const currentSession = s.workSessions[idx];
+                                                                    const nextSession = s.workSessions[idx + 1];
+                                                                    if (currentSession.endTime) {
+                                                                        const endTime = moment(currentSession.endTime).utcOffset('+05:30');
+                                                                        const nextStart = moment(nextSession.startTime).utcOffset('+05:30');
+                                                                        const gap = nextStart.diff(endTime, 'seconds');
+                                                                        if (gap > 0) totalGapSeconds += gap;
+                                                                    }
+                                                                }
+                                                                if (totalGapSeconds > 0) {
+                                                                    return (
+                                                                        <span>
+                                                                            <strong className="text-slate-700">Total Gaps:</strong> {formatDuration(totalGapSeconds)}
+                                                                        </span>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
+                                                        </div>
+                                                    </div>
                                                 </td>
-                                            );
-                                        })}
-                                    </tr>
+                                            </tr>
+                                        )}
+                                    </React.Fragment>
                                 );
                             })
                         )}
