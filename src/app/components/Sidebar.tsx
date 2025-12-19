@@ -1,6 +1,6 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, BarChart2, Settings, ChevronLeft, ChevronRight, Users, ClockPlus } from 'lucide-react';
+import { CalendarDays, BarChart2, Settings, ChevronLeft, ChevronRight, Users, ClockPlus, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 export default function Sidebar() {
   const router = useRouter();
@@ -15,6 +15,11 @@ export default function Sidebar() {
     { label: 'Attendance', icon: <CalendarDays size={20} />, route: '/dashboard' },
     { label: 'Time Claim', icon: <ClockPlus size={20} />, route: '/timeClaim' },
     { label: 'Monitoring', icon: <BarChart2 size={20} />, route: '/dashboard/monitoring' },
+    ...(role === 'admin' || role === 'manager'
+      ? [
+          { label: 'Activity Logs', icon: <Activity size={20} />, route: '/dashboard/logs' },
+        ]
+      : []),
     ...(role === 'admin'
       ? [
           { label: 'Configuration', icon: <Settings size={20} />, route: '/configuration' },

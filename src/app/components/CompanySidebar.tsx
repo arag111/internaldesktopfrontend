@@ -1,6 +1,6 @@
 'use client';
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import { CalendarDays, BarChart2, Settings, Users, ClockPlus, Home, LogOut, User, FileText, Brain } from 'lucide-react';
+import { CalendarDays, BarChart2, Settings, Users, ClockPlus, Home, LogOut, User, FileText, Brain, Activity } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
 export default function CompanySidebar() {
@@ -35,6 +35,7 @@ export default function CompanySidebar() {
     ...(role === 'admin' || role === 'manager'
       ? [
           { label: 'Reports', icon: <FileText size={20} />, route: `/${company}/reports` },
+          { label: 'Activity Logs', icon: <Activity size={20} />, route: `/${company}/logs` },
         ]
       : []),
     ...(role === 'admin'
