@@ -417,26 +417,29 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                                 </td>
                                                 {(role === 'admin' || role === 'manager') && (
                                                     <td className="px-6 py-4">
-                                                        {canAct(event.status) ? (
-                                                            <div className="flex gap-2 justify-center">
-                                                                <button
-                                                                    className="w-8 h-8 rounded-md bg-green-100 hover:bg-green-200 text-green-600 hover:text-green-700 flex items-center justify-center transition-colors duration-200"
-                                                                    title="Approve"
-                                                                    onClick={() => handleStatusUpdate(claim.id, event.id, 'approved')}
-                                                                >
-                                                                    <Check size={16} />
-                                                                </button>
+                                                        {/* ✅ FIX: Single toggle button based on status */}
+                                                        {/* pending/rejected → Accept button, approved → Reject button */}
+                                                        <div className="flex justify-center">
+                                                            {event.status === 'approved' ? (
+                                                                // Show Reject button for approved claims (to undo)
                                                                 <button
                                                                     className="w-8 h-8 rounded-md bg-red-100 hover:bg-red-200 text-red-600 hover:text-red-700 flex items-center justify-center transition-colors duration-200"
-                                                                    title="Reject"
+                                                                    title="Reject (Undo Approval)"
                                                                     onClick={() => handleStatusUpdate(claim.id, event.id, 'rejected')}
                                                                 >
                                                                     <X size={16} />
                                                                 </button>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-slate-400 italic text-xs">No Actions</span>
-                                                        )}
+                                                            ) : (
+                                                                // Show Accept button for pending/rejected claims
+                                                                <button
+                                                                    className="w-8 h-8 rounded-md bg-green-100 hover:bg-green-200 text-green-600 hover:text-green-700 flex items-center justify-center transition-colors duration-200"
+                                                                    title={event.status === 'rejected' ? 'Re-approve' : 'Approve'}
+                                                                    onClick={() => handleStatusUpdate(claim.id, event.id, 'approved')}
+                                                                >
+                                                                    <Check size={16} />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 )}
                                             </tr>
