@@ -57,11 +57,12 @@ export default function UserManagementPage() {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
   const [generatingActivities, setGeneratingActivities] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [filterRole, setFilterRole] = useState<string>('all');
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ show: boolean; userId: number | null; userName: string }>({ show: false, userId: null, userName: '' });
+  const [isDeleting, setIsDeleting] = useState(false);
   const formSectionRef = useRef<HTMLDivElement>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -336,32 +337,38 @@ export default function UserManagementPage() {
 
   const confirmDelete = async () => {
     if (!deleteConfirmation.userId) return;
+    setIsDeleting(true);
 
     try {
       await axios.delete(`${baseUrl}/api/users/${deleteConfirmation.userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setToastMessage({ message: 'User deleted successfully', type: 'success' });
-      setTimeout(() => setToastMessage(null), 3000);
-      fetchUsers();
-      // Close confirmation dialog
-      setDeleteConfirmation({ show: false, userId: null, userName: '' });
     } catch (err: any) {
       // Extract error message from response
       let errorMessage = 'Failed to delete user. Please try again.';
-      
+
       if (err.response?.data?.msg) {
         errorMessage = err.response.data.msg;
       } else if (err.response?.data?.message) {
         errorMessage = err.response.data.message;
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        // Timeout error - delete may have succeeded
+        errorMessage = 'Delete may have timed out. Refreshing list...';
+        setToastMessage({ message: errorMessage, type: 'warning' });
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
-      setToastMessage({ message: errorMessage, type: 'error' });
-      setTimeout(() => setToastMessage(null), 3000);
-      // Close confirmation dialog even on error
+
+      // Show error/warning but still refresh (delete might have succeeded)
+      if (!err.code?.includes('timeout') && !err.message?.includes('timeout')) {
+        setToastMessage({ message: errorMessage, type: 'error' });
+      }
+    } finally {
+      setIsDeleting(false);
       setDeleteConfirmation({ show: false, userId: null, userName: '' });
+      fetchUsers(); // Always refresh list
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -992,15 +999,24 @@ export default function UserManagementPage() {
             <div className="flex items-center justify-end gap-3">
               <button
                 onClick={cancelDelete}
-                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 transition-colors"
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-md hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 No
               </button>
               <button
                 onClick={confirmDelete}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Yes, Delete
+                {isDeleting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  'Yes, Delete'
+                )}
               </button>
             </div>
           </div>
@@ -1011,13 +1027,17 @@ export default function UserManagementPage() {
       {toastMessage && (
         <div className="fixed top-4 right-4 z-50 toast-slide-in">
           <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
-            toastMessage.type === 'success' 
-              ? 'bg-green-50 border-green-200' 
+            toastMessage.type === 'success'
+              ? 'bg-green-50 border-green-200'
+              : toastMessage.type === 'warning'
+              ? 'bg-yellow-50 border-yellow-200'
               : 'bg-red-50 border-red-200'
           }`}>
             <p className={`text-sm font-medium ${
-              toastMessage.type === 'success' 
-                ? 'text-green-900' 
+              toastMessage.type === 'success'
+                ? 'text-green-900'
+                : toastMessage.type === 'warning'
+                ? 'text-yellow-900'
                 : 'text-red-900'
             }`}>
               {toastMessage.message}
@@ -1025,8 +1045,10 @@ export default function UserManagementPage() {
             <button
               onClick={() => setToastMessage(null)}
               className={`hover:opacity-70 transition-colors flex-shrink-0 ${
-                toastMessage.type === 'success' 
-                  ? 'text-green-600' 
+                toastMessage.type === 'success'
+                  ? 'text-green-600'
+                  : toastMessage.type === 'warning'
+                  ? 'text-yellow-600'
                   : 'text-red-600'
               }`}
             >
