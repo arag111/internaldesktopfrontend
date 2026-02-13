@@ -17,22 +17,11 @@ export const verifyOTP = async (email: string, otp: string) => {
   return res.data;
 };
 
-export const logout = async (token: string) => {
-  await axios.post(`${baseUrl}/api/users/auth/logout`, {}, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+export const logout = async () => {
+  await axios.post(`${baseUrl}/api/users/auth/logout`, {}, { withCredentials: true });
 };
 
 export const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) {
-    throw new Error('No refresh token available');
-  }
-
-  const res = await axios.post(`${baseUrl}/api/users/auth/refresh-token`, { refreshToken });
-
-  // Store new access token
-  localStorage.setItem('token', res.data.token);
-
+  const res = await axios.post(`${baseUrl}/api/users/auth/refresh-token`, {}, { withCredentials: true });
   return res.data.token;
 };

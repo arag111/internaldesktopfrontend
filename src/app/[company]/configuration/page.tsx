@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter, useParams } from 'next/navigation';
 import { baseUrl } from '@/app/utils/config';
-import { Settings, Eye, EyeOff, Clock, Shield, Camera, Info, CheckCircle, X } from 'lucide-react';
+import { Settings, Eye, EyeOff, Clock, Shield, Camera, Info, CheckCircle, X, Mail, Plus, Trash2, Send, Calendar } from 'lucide-react';
 
 export default function ConfigurationPage() {
   const router = useRouter();
@@ -34,6 +34,19 @@ export default function ConfigurationPage() {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // Email scheduling state
+  const [dailyReportEnabled, setDailyReportEnabled] = useState(true);
+  const [dailyReportTime, setDailyReportTime] = useState('11:00');
+  const [weeklyReportEnabled, setWeeklyReportEnabled] = useState(true);
+  const [weeklyReportDay, setWeeklyReportDay] = useState(1);
+  const [weeklyReportTime, setWeeklyReportTime] = useState('09:00');
+  const [adminReportEmails, setAdminReportEmails] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [schedulerLoading, setSchedulerLoading] = useState(true);
+  const [schedulerSaving, setSchedulerSaving] = useState(false);
+  const [triggeringDaily, setTriggeringDaily] = useState(false);
+  const [triggeringWeekly, setTriggeringWeekly] = useState(false);
 
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -77,6 +90,113 @@ export default function ConfigurationPage() {
     };
     fetchConfig();
   }, []);
+
+  // Fetch email scheduler config
+  useEffect(() => {
+    const fetchSchedulerConfig = async () => {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      setSchedulerLoading(true);
+      try {
+        const res = await axios.get(`${baseUrl}/api/scheduler/config`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setDailyReportEnabled(res.data.dailyReportEnabled ?? true);
+        setDailyReportTime(res.data.dailyReportTime || '11:00');
+        setWeeklyReportEnabled(res.data.weeklyReportEnabled ?? true);
+        setWeeklyReportDay(res.data.weeklyReportDay ?? 1);
+        setWeeklyReportTime(res.data.weeklyReportTime || '09:00');
+        setAdminReportEmails(res.data.adminReportEmails || []);
+      } catch (err) {
+        // Non-critical — defaults are fine
+      } finally {
+        setSchedulerLoading(false);
+      }
+    };
+    fetchSchedulerConfig();
+  }, []);
+
+  const handleSaveScheduler = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    setSchedulerSaving(true);
+    try {
+      await axios.put(
+        `${baseUrl}/api/scheduler/config`,
+        { dailyReportEnabled, dailyReportTime, weeklyReportEnabled, weeklyReportDay, weeklyReportTime, adminReportEmails },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setToastMessage({ message: 'Email schedule saved successfully', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      setToastMessage({ message: err.response?.data?.msg || 'Failed to save email schedule', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setSchedulerSaving(false);
+    }
+  };
+
+  const handleTriggerDaily = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    setTriggeringDaily(true);
+    try {
+      await axios.post(`${baseUrl}/api/scheduler/trigger/daily-reports`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setToastMessage({ message: 'Daily reports triggered successfully', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      setToastMessage({ message: err.response?.data?.msg || 'Failed to trigger daily reports', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setTriggeringDaily(false);
+    }
+  };
+
+  const handleTriggerWeekly = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    setTriggeringWeekly(true);
+    try {
+      await axios.post(`${baseUrl}/api/scheduler/trigger/weekly-reports`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setToastMessage({ message: 'Weekly reports triggered successfully', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err: any) {
+      setToastMessage({ message: err.response?.data?.msg || 'Failed to trigger weekly reports', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+    } finally {
+      setTriggeringWeekly(false);
+    }
+  };
+
+  const handleAddEmail = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!newEmail || !emailRegex.test(newEmail)) {
+      setToastMessage({ message: 'Please enter a valid email address', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    if (adminReportEmails.includes(newEmail)) {
+      setToastMessage({ message: 'Email already added', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
+      return;
+    }
+    setAdminReportEmails([...adminReportEmails, newEmail]);
+    setNewEmail('');
+  };
+
+  const handleRemoveEmail = (email: string) => {
+    setAdminReportEmails(adminReportEmails.filter(e => e !== email));
+  };
+
+  const dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   // ✅ FEATURE: Dirty state tracking
   const isDirty = useCallback(() => {
@@ -515,6 +635,203 @@ export default function ConfigurationPage() {
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Email Scheduling Section */}
+              <div className="bg-slate-50 rounded-lg p-5 border border-slate-200">
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                    <Mail className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-medium text-slate-900">Email Scheduling</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Configure automated email reports for users and admins</p>
+                  </div>
+                </div>
+
+                {schedulerLoading ? (
+                  <div className="flex items-center justify-center h-24">
+                    <div className="w-6 h-6 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-6 mt-4">
+                    {/* Daily User Reports */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-900">Daily User Reports</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">Send daily activity reports to individual users</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDailyReportEnabled(!dailyReportEnabled)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                            dailyReportEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                          }`}
+                        >
+                          <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                            dailyReportEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`} />
+                        </button>
+                      </div>
+                      {dailyReportEnabled && (
+                        <div className="mt-3">
+                          <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 block">
+                            Send Time (HH:MM)
+                          </label>
+                          <input
+                            type="time"
+                            value={dailyReportTime}
+                            onChange={(e) => setDailyReportTime(e.target.value)}
+                            className="w-full max-w-xs px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:outline-none focus:border-blue-500 transition-colors duration-200 text-sm text-slate-900 h-[38px]"
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Weekly Admin Reports */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="text-sm font-medium text-slate-900">Weekly Admin Reports</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">Send weekly summary reports to administrators</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setWeeklyReportEnabled(!weeklyReportEnabled)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                            weeklyReportEnabled ? 'bg-blue-600' : 'bg-slate-300'
+                          }`}
+                        >
+                          <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform duration-200 ${
+                            weeklyReportEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`} />
+                        </button>
+                      </div>
+                      {weeklyReportEnabled && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                          <div>
+                            <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 block">
+                              Day of Week
+                            </label>
+                            <select
+                              value={weeklyReportDay}
+                              onChange={(e) => setWeeklyReportDay(Number(e.target.value))}
+                              className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:outline-none focus:border-blue-500 transition-colors duration-200 text-sm text-slate-900 h-[38px]"
+                            >
+                              {dayLabels.map((day, idx) => (
+                                <option key={idx} value={idx}>{day}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-1.5 block">
+                              Send Time (HH:MM)
+                            </label>
+                            <input
+                              type="time"
+                              value={weeklyReportTime}
+                              onChange={(e) => setWeeklyReportTime(e.target.value)}
+                              className="w-full px-3 py-2.5 border-b-2 border-slate-200 bg-transparent focus:outline-none focus:border-blue-500 transition-colors duration-200 text-sm text-slate-900 h-[38px]"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Admin Report Recipients */}
+                    <div className="bg-white rounded-lg p-4 border border-slate-200">
+                      <h4 className="text-sm font-medium text-slate-900 mb-1">Admin Report Recipients</h4>
+                      <p className="text-xs text-slate-500 mb-3">Email addresses that receive weekly admin reports</p>
+
+                      <div className="flex gap-2 mb-3">
+                        <input
+                          type="email"
+                          value={newEmail}
+                          onChange={(e) => setNewEmail(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddEmail(); }}}
+                          placeholder="admin@example.com"
+                          className="flex-1 px-3 py-2 border border-slate-200 rounded-lg bg-white focus:outline-none focus:border-blue-500 transition-colors duration-200 text-sm text-slate-900 placeholder:text-slate-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddEmail}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add
+                        </button>
+                      </div>
+
+                      {adminReportEmails.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {adminReportEmails.map((email) => (
+                            <div key={email} className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-lg border border-slate-200">
+                              <span className="text-sm text-slate-700">{email}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveEmail(email)}
+                                className="text-slate-400 hover:text-red-500 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No recipients added yet</p>
+                      )}
+                    </div>
+
+                    {/* Save & Test Send Buttons */}
+                    <div className="flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={handleSaveScheduler}
+                        disabled={schedulerSaving}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {schedulerSaving ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Settings className="w-4 h-4" />
+                            Save Schedule
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTriggerDaily}
+                        disabled={triggeringDaily}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {triggeringDaily ? (
+                          <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                        Test Daily Report
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleTriggerWeekly}
+                        disabled={triggeringWeekly}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-colors duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {triggeringWeekly ? (
+                          <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <Calendar className="w-4 h-4" />
+                        )}
+                        Test Weekly Report
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>

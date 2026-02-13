@@ -1,6 +1,32 @@
 'use client';
 import axios from 'axios';
 import { refreshAccessToken } from './authService';
+import { baseUrl } from '../utils/config';
+
+// Send cookies with every request (httpOnly auth cookies)
+axios.defaults.withCredentials = true;
+
+// CSRF token cache
+let csrfToken: string | null = null;
+
+// Request interceptor: attach CSRF token to state-changing requests
+axios.interceptors.request.use(async (config) => {
+  const method = (config.method || '').toLowerCase();
+  if (['post', 'put', 'delete', 'patch'].includes(method)) {
+    if (!csrfToken) {
+      try {
+        const { data } = await axios.get(`${baseUrl}/api/csrf-token`, { withCredentials: true });
+        csrfToken = data.csrfToken;
+      } catch {
+        // CSRF fetch failed — continue without (pre-auth endpoints skip CSRF)
+      }
+    }
+    if (csrfToken) {
+      config.headers['x-csrf-token'] = csrfToken;
+    }
+  }
+  return config;
+});
 
 let isRefreshing = false;
 let failedQueue: any[] = [];
@@ -54,13 +80,14 @@ axios.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
 
-        // Refresh failed - clear storage and redirect to login
+        // Refresh failed - clear non-sensitive display data and redirect to login
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('token');
-          localStorage.removeItem('refreshToken');
           localStorage.removeItem('role');
           localStorage.removeItem('userName');
           localStorage.removeItem('companyId');
+          localStorage.removeItem('userEmail');
+          localStorage.removeItem('username');
+          localStorage.removeItem('jobRole');
 
           // Only redirect if not already on login page
           if (!window.location.pathname.includes('/auth') && window.location.pathname !== '/') {

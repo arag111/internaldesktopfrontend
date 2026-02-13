@@ -1,11 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../lib/authService';
 import Image from 'next/image';
 import { LogOut, CloudDownload, Calendar } from 'lucide-react';
 import UserProfileDropdown from './UserProfileDropdown';
-export default function Navbar() {
+function Navbar() {
   const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<string>('');
@@ -100,3 +100,6 @@ export default function Navbar() {
     </nav>
   );
 }
+
+// ✅ FIX #24: Memoize to prevent unnecessary re-renders
+export default React.memo(Navbar);

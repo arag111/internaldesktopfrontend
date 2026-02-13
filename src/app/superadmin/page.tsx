@@ -20,6 +20,7 @@ interface Company {
     plan: string;
     userLimit: number;
     storageLimit: number;
+    validUntil?: string;
   };
   stats?: {
     currentUsers: number;
@@ -247,52 +248,6 @@ export default function SuperAdminDashboard() {
     });
   };
 
-  const handleLoginAsCompanyAdmin = async (company: Company) => {
-    // Debug log to see what admin data is available
-    console.log('Company admin data:', company.adminUser);
-    console.log('Full company data:', company);
-
-    try {
-      // Call backend API to get company admin login token
-      // Let backend handle finding the admin user for this company
-      const response = await fetch(`${baseUrl}/api/users/login-as-company`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          companyId: Number(company._id), // Ensure companyId is sent as a number
-          companySlug: company.slug,
-          companyName: company.name
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        // Store the company admin token and role
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('role', 'admin');
-        localStorage.setItem('companyId', company._id);
-        localStorage.setItem('companyName', company.name);
-        localStorage.setItem('username', data.adminUsername || 'admin'); // Use returned admin username
-
-        // Redirect to company admin dashboard
-        router.push(`/${company.slug}/dashboard`);
-      } else {
-        const error = await response.json();
-        // Backend returns 'msg' property, not 'message'
-        setToastMessage({ message: `Failed to login as company admin: ${error.msg || error.message || 'Unknown error'}`, type: 'error' });
-        setTimeout(() => setToastMessage(null), 3000);
-      }
-    } catch (error: any) {
-      const errorMessage = error.message || 'Error logging in as company admin';
-      setToastMessage({ message: errorMessage, type: 'error' });
-      setTimeout(() => setToastMessage(null), 3000);
-    }
-  };
-
   const handleLogout = () => {
     localStorage.clear();
     router.push('/');
@@ -404,12 +359,6 @@ export default function SuperAdminDashboard() {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex gap-2 flex-wrap">
-                            <button
-                              onClick={() => handleLoginAsCompanyAdmin(company)}
-                              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-900 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-xs font-medium"
-                            >
-                              Login as Admin
-                            </button>
                             <button
                               onClick={() => handleEditCompany(company)}
                               className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-900 rounded-lg border border-slate-200 hover:border-slate-300 transition-colors duration-200 text-xs font-medium"
@@ -975,6 +924,115 @@ export default function SuperAdminDashboard() {
                     }}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '5px',
+                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
+                }}>
+                  Subscription Valid Until
+                </label>
+                <input
+                  type="date"
+                  value={editingCompany.subscription?.validUntil ? new Date(editingCompany.subscription.validUntil).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setEditingCompany({
+                    ...editingCompany,
+                    subscription: {
+                      ...editingCompany.subscription,
+                      plan: editingCompany.subscription?.plan || 'free',
+                      userLimit: editingCompany.subscription?.userLimit || 10,
+                      storageLimit: editingCompany.subscription?.storageLimit || 1024,
+                      validUntil: e.target.value ? new Date(e.target.value).toISOString() : undefined
+                    }
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                  {[
+                    { label: '+30 Days', days: 30 },
+                    { label: '+90 Days', days: 90 },
+                    { label: '+1 Year', days: 365 },
+                  ].map(({ label, days }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => {
+                        const date = new Date();
+                        date.setDate(date.getDate() + days);
+                        setEditingCompany({
+                          ...editingCompany,
+                          subscription: {
+                            ...editingCompany.subscription,
+                            plan: editingCompany.subscription?.plan || 'free',
+                            userLimit: editingCompany.subscription?.userLimit || 10,
+                            storageLimit: editingCompany.subscription?.storageLimit || 1024,
+                            validUntil: date.toISOString()
+                          }
+                        });
+                      }}
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#667eea',
+                        background: '#eef2ff',
+                        border: '1px solid #c7d2fe',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '5px',
+                  fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
+                }}>
+                  Storage Limit (GB)
+                </label>
+                <input
+                  type="number"
+                  value={editingCompany.subscription?.storageLimit || 5}
+                  onChange={(e) => setEditingCompany({
+                    ...editingCompany,
+                    subscription: {
+                      ...editingCompany.subscription,
+                      plan: editingCompany.subscription?.plan || 'free',
+                      userLimit: editingCompany.subscription?.userLimit || 10,
+                      storageLimit: parseInt(e.target.value),
+                      validUntil: editingCompany.subscription?.validUntil
+                    }
+                  })}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '2px solid #e5e7eb',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
+                  }}
+                />
               </div>
 
               <div>

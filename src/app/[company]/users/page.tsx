@@ -68,29 +68,35 @@ export default function UserManagementPage() {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
-    fetchUsers();
-    fetchCompanyInfo();
+    const controller = new AbortController();
+    fetchUsers(controller.signal);
+    fetchCompanyInfo(controller.signal);
+    return () => controller.abort();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (signal?: AbortSignal) => {
     try {
       const res = await axios.get(`${baseUrl}/api/users`, {
         headers: { Authorization: `Bearer ${token}` },
+        signal,
       });
       setUsers(res.data);
     } catch (err) {
+      if (axios.isCancel(err)) return;
       console.error('Error fetching users:', err);
     }
   };
 
-  const fetchCompanyInfo = async () => {
+  const fetchCompanyInfo = async (signal?: AbortSignal) => {
     try {
       const res = await axios.get(`${baseUrl}/api/companies/current`, {
         headers: { Authorization: `Bearer ${token}` },
         params: { slug: companySlug },
+        signal,
       });
       setCompany(res.data.company);
     } catch (err) {
+      if (axios.isCancel(err)) return;
       console.error('Error fetching company info:', err);
     }
   };

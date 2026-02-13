@@ -100,14 +100,18 @@ export default function AIReportsPage() {
 
   useEffect(() => {
     // Load overview on mount
-    loadOverview();
+    const controller = new AbortController();
+    loadOverview(controller.signal);
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
     // Reload overview when date changes
     if (view === 'overview') {
-      loadOverview();
+      const controller = new AbortController();
+      loadOverview(controller.signal);
       setCurrentPage(1); // Reset to first page when data changes
+      return () => controller.abort();
     }
   }, [selectedRange]);
 
@@ -137,7 +141,7 @@ export default function AIReportsPage() {
     setSelectedRange(range);
   };
 
-  const loadOverview = async () => {
+  const loadOverview = async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
 
@@ -153,6 +157,7 @@ export default function AIReportsPage() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+          signal,
         }
       );
 
@@ -164,6 +169,7 @@ export default function AIReportsPage() {
       const data = await response.json();
       setUserSummaries(data.users);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       setError(err.message);
     } finally {
       setLoading(false);

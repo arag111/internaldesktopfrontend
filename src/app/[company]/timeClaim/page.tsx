@@ -43,6 +43,8 @@ export default function ClaimsPage() {
             return;
         }
 
+        const controller = new AbortController();
+
         const fetchData = async () => {
             try {
                 // FIXED: Apply IST timezone conversion before formatting dates
@@ -56,6 +58,7 @@ export default function ClaimsPage() {
                         : `${baseUrl}/idle/user/${userId}?start=${start}&end=${end}`;
                 const { data } = await axios.get(url, {
                     headers: { Authorization: `Bearer ${token}` },
+                    signal: controller.signal,
                 });
                 if (storedRole === 'admin' || storedRole === 'manager') {
                     setAllUserStats(data);
@@ -72,7 +75,9 @@ export default function ClaimsPage() {
                     setClaims(data || []);
                 }
             } catch (error) {
-                console.error('Error fetching claims', error);
+                if (!axios.isCancel(error)) {
+                    console.error('Error fetching claims', error);
+                }
             }
         };
 
@@ -81,7 +86,10 @@ export default function ClaimsPage() {
         // ✅ OPTIMIZED: Reduced polling from 5s to 30s (immediate refresh on claim update handles real-time needs)
         const intervalId = setInterval(fetchData, 30000);
 
-        return () => clearInterval(intervalId);
+        return () => {
+            controller.abort();
+            clearInterval(intervalId);
+        };
     }, [router, selectedRange]);
 
     // Socket connection management

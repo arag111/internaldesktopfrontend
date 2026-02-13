@@ -128,33 +128,38 @@ export default function MonitoringPage() {
 
   useEffect(() => {
     if (role) {
+      const controller = new AbortController();
       if (role === 'admin' || role === 'manager') {
-        fetchUsers(); // Fetch user list for dropdown
+        fetchUsers(controller.signal); // Fetch user list for dropdown
       }
       // Auto-fetch screenshots on initial load
-      fetchScreenshots(1);
+      fetchScreenshots(1, controller.signal);
+      return () => controller.abort();
     }
   }, [role]);
 
   // ✅ NEW: Auto-fetch when user selection or date range changes
   useEffect(() => {
     if (role && startDateTime && endDateTime) {
-      fetchScreenshots(1);
+      const controller = new AbortController();
+      fetchScreenshots(1, controller.signal);
+      return () => controller.abort();
     }
   }, [selectedUserId, startDateTime, endDateTime]);
 
   // ✅ NEW: Fetch users for dropdown
-  const fetchUsers = async () => {
+  const fetchUsers = async (signal?: AbortSignal) => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
     try {
       const { data } = await axios.get(
         `${baseUrl}/api/users/company-users`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, signal }
       );
       setUsers(data.users || []);
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error('Error fetching users:', error);
     }
   };
@@ -172,7 +177,7 @@ export default function MonitoringPage() {
   }, []);
 
   // ✅ NEW: Fetch with pagination
-  const fetchScreenshots = async (page: number = 1) => {
+  const fetchScreenshots = async (page: number = 1, signal?: AbortSignal) => {
     const token = localStorage.getItem('token');
     if (!token || !startDateTime || !endDateTime) return;
 
@@ -188,7 +193,7 @@ export default function MonitoringPage() {
         const userIdParam = selectedUserId ? `&userId=${selectedUserId}` : '';
         const { data } = await axios.get(
           `${baseUrl}/api/screenshots/all-in-range-paginated?startDate=${startISO}&endDate=${endISO}&page=${page}&limit=50${userIdParam}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, signal }
         );
 
         // Update screenshots and pagination
@@ -197,11 +202,12 @@ export default function MonitoringPage() {
       } else {
         const { data } = await axios.get(
           `${baseUrl}/api/screenshots/range?startDate=${startISO}&endDate=${endISO}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` }, signal }
         );
         setScreenshots(data.screenshots || []);
       }
     } catch (error) {
+      if (axios.isCancel(error)) return;
       console.error('Error fetching screenshots:', error);
     } finally {
       setLoading(false);
