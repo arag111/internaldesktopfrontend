@@ -224,7 +224,7 @@ export default function SignInPage() {
           </Box>
         </Box>
 
-        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+        <Box component="main" id="main-content" sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
           <Fade in timeout={500}>
             <Paper sx={{ width: '100%', maxWidth: 1000, borderRadius: 4, overflow: 'hidden', display: 'flex', minHeight: 600 }}>
               <Box sx={{ flex: 1, p: 5, bgcolor: 'primary.light', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
@@ -362,7 +362,7 @@ export default function SignInPage() {
 
       {/* Toast Popup */}
       {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 toast-slide-in">
+        <div className="fixed top-4 right-4 z-50 toast-slide-in" role="alert">
           <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
             toastMessage.type === 'success' 
               ? 'bg-green-50 border-green-200' 
@@ -377,13 +377,14 @@ export default function SignInPage() {
             </p>
             <button
               onClick={() => setToastMessage(null)}
+              aria-label="Dismiss notification"
               className={`hover:opacity-70 transition-colors flex-shrink-0 ${
-                toastMessage.type === 'success' 
-                  ? 'text-green-600' 
+                toastMessage.type === 'success'
+                  ? 'text-green-600'
                   : 'text-red-600'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

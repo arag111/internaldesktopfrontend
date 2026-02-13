@@ -21,6 +21,7 @@ interface User {
 
 export default function UserManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState<any>({
     name: '',
     username: '',
@@ -43,12 +44,15 @@ export default function UserManagementPage() {
 
   const fetchUsers = async () => {
     try {
+      setLoading(true);
       const res = await axios.get(`${baseUrl}/api/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUsers(res.data);
     } catch (err) {
       console.error('Error fetching users:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -115,29 +119,56 @@ export default function UserManagementPage() {
     <>
     <div className="w-full h-screen flex flex-col bg-gray-100 text-[#075a96]">
           <Navbar />
-    
+
           <div className="flex flex-1 overflow-hidden">
             <Sidebar />
-      <div className=" ml-60 mt-1 pt-20 px-6 pb-6 bg-gray-100 min-h-screen overflow-y-auto">
+      <main id="main-content" className=" ml-60 mt-1 pt-20 px-6 pb-6 bg-gray-100 min-h-screen overflow-y-auto">
         <h1 className="text-3xl font-bold text-[#075a96] mb-6">User Management</h1>
 
         <div className="bg-white rounded-xl p-6 shadow-md mb-6">
           <h2 className="text-xl font-semibold mb-4 text-[#075a96]">{selectedUser ? 'Edit User' : 'Add New User'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input type="text" name="name" placeholder="Name" value={formData.name} onChange={handleInputChange} className="p-2 border rounded-md" />
-            <input type="text" name="username" placeholder="Username *" value={formData.username} onChange={handleInputChange} className="p-2 border rounded-md" required />
-            <input type="email" name="email" placeholder="Email *" value={formData.email} onChange={handleInputChange} className="p-2 border rounded-md" required />
+            <div>
+              <label htmlFor="name" className="sr-only">Name</label>
+              <input id="name" type="text" name="name" placeholder="Name" value={formData.name} onChange={handleInputChange} className="p-2 border rounded-md w-full" />
+            </div>
+            <div>
+              <label htmlFor="username" className="sr-only">Username</label>
+              <input id="username" type="text" name="username" placeholder="Username *" value={formData.username} onChange={handleInputChange} className="p-2 border rounded-md w-full" required />
+            </div>
+            <div>
+              <label htmlFor="email" className="sr-only">Email</label>
+              <input id="email" type="email" name="email" placeholder="Email *" value={formData.email} onChange={handleInputChange} className="p-2 border rounded-md w-full" required />
+            </div>
             {!selectedUser && (
-              <input type="password" name="password" placeholder="Password *" value={formData.password} onChange={handleInputChange} className="p-2 border rounded-md" required />
+              <div>
+                <label htmlFor="password" className="sr-only">Password</label>
+                <input id="password" type="password" name="password" placeholder="Password *" value={formData.password} onChange={handleInputChange} className="p-2 border rounded-md w-full" required />
+              </div>
             )}
-            <input type="text" name="role" placeholder="Role *" value={formData.role} onChange={handleInputChange} className="p-2 border rounded-md" required />
-            <input type="text" name="manager" placeholder="Manager" value={formData.manager} onChange={handleInputChange} className="p-2 border rounded-md" />
-            <input type="text" name="desktop" placeholder="Desktop" value={formData.desktop} onChange={handleInputChange} className="p-2 border rounded-md" />
-            <input type="text" name="teams" placeholder="Teams (comma separated)" value={formData.teams} onChange={handleInputChange} className="p-2 border rounded-md" />
-            <select name="tracktype" value={formData.tracktype} onChange={handleInputChange} className="p-2 border rounded-md">
-              <option value="punchin-punchout">PunchIn-PunchOut</option>
-              <option value="24x7">24x7</option>
-            </select>
+            <div>
+              <label htmlFor="role" className="sr-only">Role</label>
+              <input id="role" type="text" name="role" placeholder="Role *" value={formData.role} onChange={handleInputChange} className="p-2 border rounded-md w-full" required />
+            </div>
+            <div>
+              <label htmlFor="manager" className="sr-only">Manager</label>
+              <input id="manager" type="text" name="manager" placeholder="Manager" value={formData.manager} onChange={handleInputChange} className="p-2 border rounded-md w-full" />
+            </div>
+            <div>
+              <label htmlFor="desktop" className="sr-only">Desktop</label>
+              <input id="desktop" type="text" name="desktop" placeholder="Desktop" value={formData.desktop} onChange={handleInputChange} className="p-2 border rounded-md w-full" />
+            </div>
+            <div>
+              <label htmlFor="teams" className="sr-only">Teams</label>
+              <input id="teams" type="text" name="teams" placeholder="Teams (comma separated)" value={formData.teams} onChange={handleInputChange} className="p-2 border rounded-md w-full" />
+            </div>
+            <div>
+              <label htmlFor="tracktype" className="sr-only">Track Type</label>
+              <select id="tracktype" name="tracktype" value={formData.tracktype} onChange={handleInputChange} className="p-2 border rounded-md w-full">
+                <option value="punchin-punchout">PunchIn-PunchOut</option>
+                <option value="24x7">24x7</option>
+              </select>
+            </div>
           </div>
           <button onClick={handleSubmit} className="mt-4 bg-[#075a96] text-white px-4 py-2 rounded-md shadow hover:bg-blue-700">
             {selectedUser ? 'Update User' : 'Add User'}
@@ -146,6 +177,12 @@ export default function UserManagementPage() {
 
         <div className="bg-white rounded-xl p-6 shadow-md">
           <h2 className="text-xl font-semibold mb-4 text-[#075a96]">User List</h2>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#096eb6] border-r-transparent" />
+              <span className="ml-3 text-sm text-gray-500">Loading users...</span>
+            </div>
+          ) : (
           <table className="w-full text-left border">
             <thead>
               <tr className="bg-gray-100 text-sm">
@@ -170,15 +207,16 @@ export default function UserManagementPage() {
                   <td className="p-2">{user.desktop}</td>
                   <td className="p-2">{user.teams.join(', ')}</td>
                   <td className="p-2 space-x-2">
-                    <button onClick={() => handleEdit(user)} className="text-blue-600 hover:underline mb-2">Edit</button>
-                    <button onClick={() => handleDelete(user._id)} className="text-red-600 hover:underline">Delete</button>
+                    <button onClick={() => handleEdit(user)} className="text-blue-600 hover:underline mb-2" aria-label={`Edit ${user.name || user.username}`}>Edit</button>
+                    <button onClick={() => handleDelete(user._id)} className="text-red-600 hover:underline" aria-label={`Delete ${user.name || user.username}`}>Delete</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          )}
         </div>
-      </div>
+      </main>
       </div>
     </div>
 

@@ -270,7 +270,8 @@ export default function DashboardPage() {
           // Set team status
           setTeamStatus(teamStatusResponse.data);
         } else {
-          const userId = JSON.parse(atob(token.split('.')[1])).id;
+          const { getUserIdFromToken } = await import('@/app/utils/jwt');
+          const userId = getUserIdFromToken(token);
           const apiUrl = `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`;
 
           console.log('🔍 [User Dashboard Debug]');

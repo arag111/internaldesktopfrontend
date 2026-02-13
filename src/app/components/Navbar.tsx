@@ -52,7 +52,7 @@ function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 backdrop-blur-xl bg-white/80 border-b border-gray-200/50 shadow-lg shadow-gray-900/5">
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 backdrop-blur-xl bg-white/80 border-b border-gray-200/50 shadow-lg shadow-gray-900/5" aria-label="Top navigation">
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/5 via-transparent to-[#075a96]/5 pointer-events-none" />
       

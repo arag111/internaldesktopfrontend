@@ -6,7 +6,6 @@ import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
 import { formatISTDateRange } from '@/app/utils/timezone';
 import Attendance from '@/app/components/Attendance';
-import moment from 'moment';
 import { io, Socket } from 'socket.io-client';
 import { format } from 'date-fns';
 import { rangePresets } from '@/app/utils/constants';
@@ -112,7 +111,8 @@ export default function AttendancePage() {
           );
           setAllUserStats(data);
         } else {
-          const userId = JSON.parse(atob(token.split('.')[1])).id;
+          const { getUserIdFromToken } = await import('@/app/utils/jwt');
+          const userId = getUserIdFromToken(token);
           const { data } = await axios.get(
             `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`,
             { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }

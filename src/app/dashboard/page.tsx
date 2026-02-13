@@ -31,8 +31,6 @@ import Navbar from '@/app/components/Navbar';
 import Sidebar from '@/app/components/Sidebar';
 import WhosInOutWidget from '@/app/components/WhosInOutWidget';
 
-const socket = io(baseUrl);
-
 const theme = createTheme({
   palette: {
     primary: {
@@ -170,7 +168,8 @@ export default function DashboardPage() {
             setSelectedUserId(data[0].user.id);
           }
         } else {
-          const userId = JSON.parse(atob(token.split('.')[1])).id;
+          const { getUserIdFromToken } = await import('@/app/utils/jwt');
+          const userId = getUserIdFromToken(token);
           const { data } = await axios.get(
             `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`,
             { headers: { Authorization: `Bearer ${token}` } }
@@ -193,17 +192,25 @@ export default function DashboardPage() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-  const handleStatusUpdate = ({ userId, status, timestamp }: { userId: number; status: string; timestamp: string }) => {
-    setUserStatuses((prev) => ({
-      ...prev,
-      [userId]: { status, timestamp },
-    }));
-  };
+      const socketInstance = io(baseUrl, {
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      });
 
-      socket.on('status:update', handleStatusUpdate);
+      const handleStatusUpdate = ({ userId, status, timestamp }: { userId: number; status: string; timestamp: string }) => {
+        setUserStatuses((prev) => ({
+          ...prev,
+          [userId]: { status, timestamp },
+        }));
+      };
+
+      socketInstance.on('status:update', handleStatusUpdate);
 
       return () => {
-        socket.off('status:update', handleStatusUpdate);
+        socketInstance.off('status:update', handleStatusUpdate);
+        socketInstance.disconnect();
       };
     }
   }, [role]);

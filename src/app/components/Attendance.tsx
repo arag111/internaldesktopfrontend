@@ -5,7 +5,12 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip,
     ResponsiveContainer, CartesianGrid, Legend
 } from 'recharts';
-import moment from 'moment';
+import { format, parseISO, differenceInMinutes, differenceInSeconds, isValid } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+
+const IST = 'Asia/Kolkata';
+const toIST = (dateStr: string) => toZonedTime(parseISO(dateStr), IST);
+const nowIST = () => toZonedTime(new Date(), IST);
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
@@ -217,15 +222,15 @@ const Attendance: React.FC<AttendanceProps> = ({
     // Helper: Check if user is currently active
     const isUserActive = (record: FlatAttendanceRecord): boolean => {
         if (!record.lastSeen || record.status === 'Weekend') return false;
-        const lastSeenTime = moment(record.lastSeen).utcOffset('+05:30');
-        const currentTime = moment().utcOffset('+05:30');
-        const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
+        const lastSeenTime = toIST(record.lastSeen);
+        const currentTime = nowIST();
+        const minutesDiff = differenceInMinutes(currentTime, lastSeenTime);
         return minutesDiff >= 0 && minutesDiff <= 5;
     };
 
     // Helper: Check if record is from today
     const isToday = (dateString: string): boolean => {
-        return moment(dateString).format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
+        return format(parseISO(dateString), 'yyyy-MM-dd') === format(nowIST(), 'yyyy-MM-dd');
     };
 
     // Helper: Get effective working time (working time - rejected idle)
@@ -291,7 +296,7 @@ const Attendance: React.FC<AttendanceProps> = ({
         {
             label: 'Date',
             tooltip: 'The date of the record',
-            render: (s: FlatAttendanceRecord) => moment(s.date).format('DD-MMM-YYYY')
+            render: (s: FlatAttendanceRecord) => format(parseISO(s.date), 'dd-MMM-yyyy')
         },
         {
             label: 'Current Status',
@@ -299,7 +304,7 @@ const Attendance: React.FC<AttendanceProps> = ({
             includeInExport: false,  // Exclude from exports (time-sensitive data)
             render: (s: FlatAttendanceRecord) => {
                 // Check if this record is from today
-                const recordIsToday = moment(s.date).format('YYYY-MM-DD') === moment().format('YYYY-MM-DD');
+                const recordIsToday = format(parseISO(s.date), 'yyyy-MM-dd') === format(nowIST(), 'yyyy-MM-dd');
 
                 if (!recordIsToday) {
                     return '-';  // Not today, no current status
@@ -314,9 +319,9 @@ const Attendance: React.FC<AttendanceProps> = ({
                     return 'Not Started';
                 }
 
-                const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
-                const currentTime = moment().utcOffset('+05:30');
-                const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
+                const lastSeenTime = toIST(s.lastSeen);
+                const currentTime = nowIST();
+                const minutesDiff = differenceInMinutes(currentTime, lastSeenTime);
 
                 if (minutesDiff >= 0 && minutesDiff <= 5) {
                     return 'Working';  // Active now
@@ -335,7 +340,7 @@ const Attendance: React.FC<AttendanceProps> = ({
             tooltip: 'Employee First Login time',
             render: (s: FlatAttendanceRecord) => {
                 if (s.status === 'Weekend') return 'Weekend';
-                return s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-';
+                return s.punchInTime ? format(toIST(s.punchInTime), 'hh:mm a') : '-';
             }
         },
         {
@@ -344,14 +349,13 @@ const Attendance: React.FC<AttendanceProps> = ({
             render: (s: FlatAttendanceRecord) => {
                 if (s.status === 'Weekend') return 'Weekend';
                 if (!s.lastSeen) return '-';
-                const lastSeenTime = moment(s.lastSeen).utcOffset('+05:30');
-                const currentTime = moment().utcOffset('+05:30');
-                // FIXED: Check if within last 5 minutes, not just same time
-                const minutesDiff = currentTime.diff(lastSeenTime, 'minutes');
+                const lastSeenTime = toIST(s.lastSeen);
+                const currentTime = nowIST();
+                const minutesDiff = differenceInMinutes(currentTime, lastSeenTime);
                 if (minutesDiff >= 0 && minutesDiff <= 5) {
                     return 'Active Now';
                 }
-                return lastSeenTime.format('hh:mm A');
+                return format(lastSeenTime, 'hh:mm a');
             }
         },
         {
@@ -461,7 +465,7 @@ const Attendance: React.FC<AttendanceProps> = ({
             const working = s.workingTimeInSeconds || 0;
 
             // Format date with day name: "DD-MMM-YYYY (Day)"
-            const dateFormatted = moment(s.date).format('DD-MMM-YYYY (ddd)');
+            const dateFormatted = format(parseISO(s.date), 'dd-MMM-yyyy (EEE)');
 
             // Detect if this is a weekend
             const isWeekend = s.status === 'Weekend';
@@ -490,8 +494,8 @@ const Attendance: React.FC<AttendanceProps> = ({
                     name: s.userName,
                     date: dateFormatted,
                     status: s.status,
-                    punchIn: s.punchInTime ? moment(s.punchInTime).utcOffset('+05:30').format('hh:mm A') : '-',
-                    punchOut: s.lastSeen ? moment(s.lastSeen).utcOffset('+05:30').format('hh:mm A') : '-',
+                    punchIn: s.punchInTime ? format(toIST(s.punchInTime), 'hh:mm a') : '-',
+                    punchOut: s.lastSeen ? format(toIST(s.lastSeen), 'hh:mm a') : '-',
                     workingHours: formatDuration(working),
                     productiveHours: formatDuration(working),
                     idleHours: formatDuration(s.idleTimeInSeconds || 0),
@@ -1048,9 +1052,9 @@ const Attendance: React.FC<AttendanceProps> = ({
 
                                                         <div className="space-y-2">
                                                             {s.workSessions.map((session, sessionIndex) => {
-                                                                const startTime = moment(session.startTime).utcOffset('+05:30');
+                                                                const startTime = toIST(session.startTime);
                                                                 const endTime = session.endTime
-                                                                    ? moment(session.endTime).utcOffset('+05:30')
+                                                                    ? toIST(session.endTime)
                                                                     : null;
                                                                 const isActive = !session.endTime;
 
@@ -1062,8 +1066,8 @@ const Attendance: React.FC<AttendanceProps> = ({
                                                                     durationStr = `${hrs}h ${mins}m`;
                                                                 } else if (isActive) {
                                                                     // Calculate live duration for active session
-                                                                    const now = moment().utcOffset('+05:30');
-                                                                    const diffSeconds = now.diff(startTime, 'seconds');
+                                                                    const now = nowIST();
+                                                                    const diffSeconds = differenceInSeconds(now, startTime);
                                                                     const hrs = Math.floor(diffSeconds / 3600);
                                                                     const mins = Math.floor((diffSeconds % 3600) / 60);
                                                                     durationStr = `${hrs}h ${mins}m`;
@@ -1073,8 +1077,8 @@ const Attendance: React.FC<AttendanceProps> = ({
                                                                 let gapStr = '';
                                                                 if (sessionIndex < s.workSessions.length - 1 && endTime) {
                                                                     const nextSession = s.workSessions[sessionIndex + 1];
-                                                                    const nextStart = moment(nextSession.startTime).utcOffset('+05:30');
-                                                                    const gapSeconds = nextStart.diff(endTime, 'seconds');
+                                                                    const nextStart = toIST(nextSession.startTime);
+                                                                    const gapSeconds = differenceInSeconds(nextStart, endTime);
                                                                     if (gapSeconds > 0) {
                                                                         const gapHrs = Math.floor(gapSeconds / 3600);
                                                                         const gapMins = Math.floor((gapSeconds % 3600) / 60);
@@ -1095,11 +1099,11 @@ const Attendance: React.FC<AttendanceProps> = ({
                                                                                 Session {sessionIndex + 1}:
                                                                             </span>
                                                                             <span className="text-sm text-slate-700">
-                                                                                {startTime.format('hh:mm A')}
+                                                                                {format(startTime, 'hh:mm a')}
                                                                             </span>
                                                                             <span className="text-slate-400">→</span>
                                                                             <span className={`text-sm ${isActive ? 'text-green-600 font-semibold' : 'text-slate-700'}`}>
-                                                                                {isActive ? 'Active' : endTime?.format('hh:mm A')}
+                                                                                {isActive ? 'Active' : endTime ? format(endTime, 'hh:mm a') : '-'}
                                                                             </span>
                                                                             {isActive && (
                                                                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -1133,9 +1137,9 @@ const Attendance: React.FC<AttendanceProps> = ({
                                                                     const currentSession = s.workSessions[idx];
                                                                     const nextSession = s.workSessions[idx + 1];
                                                                     if (currentSession.endTime) {
-                                                                        const endTime = moment(currentSession.endTime).utcOffset('+05:30');
-                                                                        const nextStart = moment(nextSession.startTime).utcOffset('+05:30');
-                                                                        const gap = nextStart.diff(endTime, 'seconds');
+                                                                        const gapEndTime = toIST(currentSession.endTime);
+                                                                        const nextStart = toIST(nextSession.startTime);
+                                                                        const gap = differenceInSeconds(nextStart, gapEndTime);
                                                                         if (gap > 0) totalGapSeconds += gap;
                                                                     }
                                                                 }

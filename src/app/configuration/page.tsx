@@ -10,6 +10,7 @@ import Sidebar from '../components/Sidebar';
 export default function ConfigurationPage() {
   const router = useRouter();
 
+  const [loading, setLoading] = useState(true);
   const [inactivityDurationMins, setInactivityDurationMins] = useState(0);
   const [screenshotIntervalMins, setScreenshotIntervalMins] = useState(0);
   const [applicationAdminPassword, setApplicationAdminPassword] = useState('');
@@ -22,7 +23,7 @@ export default function ConfigurationPage() {
   useEffect(() => {
     const fetchConfig = async () => {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) { setLoading(false); return; }
       try {
         const res = await axios.get(`${baseUrl}/api/config`, {
           headers: {
@@ -36,6 +37,8 @@ export default function ConfigurationPage() {
         setApplicationPunchOutTime(res.data.applicationPunchOutTime || '');
       } catch (err) {
         console.error('Failed to fetch config:', err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchConfig();
@@ -84,9 +87,15 @@ export default function ConfigurationPage() {
       <Navbar />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        <div className="ml-60 mt-10 w-full p-8">
+        <main id="main-content" className="ml-60 mt-10 w-full p-8">
           <div className="bg-white p-8 rounded-lg shadow w-full">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">Configuration Settings</h2>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#096eb6] border-r-transparent" />
+                <span className="ml-3 text-sm text-gray-500">Loading configuration...</span>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-700 font-medium">Inactivity Duration (mins)</label>
@@ -160,8 +169,9 @@ export default function ConfigurationPage() {
                 Save Configuration
               </button>
             </div>
+            )}
           </div>
-        </div>
+        </main>
       </div>
 
       {/* Toast Popup */}

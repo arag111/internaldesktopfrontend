@@ -6,6 +6,7 @@ import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { baseUrl } from '@/app/utils/config';
+import { getUserIdFromToken } from '@/app/utils/jwt';
 import DateRangePickerComponent from '@/app/components/DateRangePicker2';
 import ClaimsTable from '@/app/components/ClaimsTable';
 import { rangePresets } from '@/app/utils/constants';
@@ -51,7 +52,7 @@ export default function ClaimsPage() {
                 const [start, end] = selectedRange.map((date) =>
                     format(toISTDate(date), 'yyyy-MM-dd')
                 );
-                const userId = JSON.parse(atob(token.split('.')[1])).id;
+                const userId = getUserIdFromToken(token);
                 const url =
                     storedRole === 'admin' || storedRole === 'manager'
                         ? `${baseUrl}/idle/all?start=${start}&end=${end}`
@@ -155,7 +156,7 @@ export default function ClaimsPage() {
             const [start, end] = selectedRange.map((date) =>
                 format(toISTDate(date), 'yyyy-MM-dd')
             );
-            const userId = JSON.parse(atob(token!.split('.')[1])).id;
+            const userId = getUserIdFromToken(token!);
             const url =
                 storedRole === 'admin' || storedRole === 'manager'
                     ? `${baseUrl}/idle/all?start=${start}&end=${end}`
