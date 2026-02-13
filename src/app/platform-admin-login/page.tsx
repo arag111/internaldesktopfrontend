@@ -156,8 +156,10 @@ export default function PlatformAdminLoginPage() {
         localStorage.setItem('userEmail', data.user.email);
       }
 
+      // Validate redirect URL to prevent open redirect attacks
       const redirectUrl = data.redirectUrl || '/superadmin';
-      router.push(redirectUrl);
+      const isRelativePath = redirectUrl.startsWith('/') && !redirectUrl.startsWith('//');
+      router.push(isRelativePath ? redirectUrl : '/superadmin');
     } catch (err: any) {
       let errorMessage = 'Invalid OTP. Please try again.';
 

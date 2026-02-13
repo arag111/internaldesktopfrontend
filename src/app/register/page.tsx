@@ -85,9 +85,10 @@ export default function RegisterPage() {
 
       setToastMessage({ message: 'Company registered successfully!', type: 'success' });
 
-      // Redirect to company dashboard
+      // Validate redirect URL to prevent open redirect attacks
       const redirectUrl = data.redirectUrl || '/dashboard';
-      setTimeout(() => router.push(redirectUrl), 500);
+      const isRelativePath = redirectUrl.startsWith('/') && !redirectUrl.startsWith('//');
+      setTimeout(() => router.push(isRelativePath ? redirectUrl : '/dashboard'), 500);
     } catch (err: any) {
       const errorMessage = err.response?.data?.msg || 'Registration failed. Please try again.';
       setToastMessage({ message: errorMessage, type: 'error' });

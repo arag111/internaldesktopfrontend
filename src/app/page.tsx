@@ -157,9 +157,10 @@ export default function SignInPage() {
         localStorage.setItem('companyId', data.user.companyId);
       }
 
-      // Use the redirectUrl from backend
+      // Validate redirect URL to prevent open redirect attacks
       const redirectUrl = data.redirectUrl || '/dashboard';
-      router.push(redirectUrl);
+      const isRelativePath = redirectUrl.startsWith('/') && !redirectUrl.startsWith('//');
+      router.push(isRelativePath ? redirectUrl : '/dashboard');
     } catch (err: any) {
       let errorMessage = 'Invalid OTP. Please try again.';
       
