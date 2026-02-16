@@ -73,7 +73,7 @@ export default function ConfigurationPage() {
       setToastMessage({ message: 'Configuration updated successfully', type: 'success' });
       setTimeout(() => {
         setToastMessage(null);
-        router.push('/dashboard');
+        router.push(localStorage.getItem('dashboardUrl') || '/');
       }, 2000);
     } catch (err: any) {
       const errorMessage = err.response?.data?.msg || err.message || 'Failed to update configuration';

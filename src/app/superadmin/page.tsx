@@ -11,8 +11,6 @@ interface Company {
   email: string;
   slug: string;
   adminUser?: {
-    username: string;
-    password?: string;
     adminEmail: string;
     adminName: string;
   };
@@ -46,8 +44,6 @@ export default function SuperAdminDashboard() {
     email: '',
     slug: '',
     adminUser: {
-      username: '',
-      password: '',
       adminEmail: '',
       adminName: ''
     },
@@ -71,7 +67,7 @@ export default function SuperAdminDashboard() {
     const role = localStorage.getItem('role');
 
     if (!token || role !== 'superadmin') {
-      router.push('/');
+      router.replace('/');
       return;
     }
 
@@ -176,7 +172,7 @@ export default function SuperAdminDashboard() {
   };
 
   const handleSaveNewCompany = async () => {
-    if (!newCompany.name || !newCompany.email || !newCompany.slug || !newCompany.adminUser?.username || !newCompany.adminUser?.password || !newCompany.adminUser?.adminEmail || !newCompany.adminUser?.adminName) {
+    if (!newCompany.name || !newCompany.email || !newCompany.slug || !newCompany.adminUser?.adminEmail || !newCompany.adminUser?.adminName) {
       setToastMessage({ message: 'Please fill in all required fields', type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
       return;
@@ -199,8 +195,6 @@ export default function SuperAdminDashboard() {
           email: '',
           slug: '',
           adminUser: {
-            username: '',
-            password: '',
             adminEmail: '',
             adminName: ''
           },
@@ -234,8 +228,6 @@ export default function SuperAdminDashboard() {
       email: '',
       slug: '',
       adminUser: {
-        username: '',
-        password: '',
         adminEmail: '',
         adminName: ''
       },
@@ -250,7 +242,7 @@ export default function SuperAdminDashboard() {
 
   const handleLogout = () => {
     localStorage.clear();
-    router.push('/');
+    router.replace('/');
   };
 
   const getPlanColor = (plan?: string) => {
@@ -1251,9 +1243,7 @@ export default function SuperAdminDashboard() {
                       adminUser: {
                         ...newCompany.adminUser,
                         adminName: e.target.value,
-                        adminEmail: newCompany.adminUser?.adminEmail || '',
-                        username: newCompany.adminUser?.username || '',
-                        password: newCompany.adminUser?.password || ''
+                        adminEmail: newCompany.adminUser?.adminEmail || ''
                       }
                     })}
                     style={{
@@ -1287,83 +1277,7 @@ export default function SuperAdminDashboard() {
                       adminUser: {
                         ...newCompany.adminUser,
                         adminName: newCompany.adminUser?.adminName || '',
-                        adminEmail: e.target.value,
-                        username: newCompany.adminUser?.username || '',
-                        password: newCompany.adminUser?.password || ''
-                      }
-                    })}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                    }}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '5px',
-                    fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                  }}>
-                    Admin Username *
-                  </label>
-                  <input
-                    type="text"
-                    value={newCompany.adminUser?.username || ''}
-                    onChange={(e) => setNewCompany({
-                      ...newCompany,
-                      adminUser: {
-                        ...newCompany.adminUser,
-                        adminName: newCompany.adminUser?.adminName || '',
-                        adminEmail: newCompany.adminUser?.adminEmail || '',
-                        username: e.target.value,
-                        password: newCompany.adminUser?.password || ''
-                      }
-                    })}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      border: '2px solid #e5e7eb',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                    }}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '5px',
-                    fontFamily: 'Poppins, system-ui, -apple-system, sans-serif'
-                  }}>
-                    Admin Password *
-                  </label>
-                  <input
-                    type="password"
-                    value={newCompany.adminUser?.password || ''}
-                    onChange={(e) => setNewCompany({
-                      ...newCompany,
-                      adminUser: {
-                        ...newCompany.adminUser,
-                        adminName: newCompany.adminUser?.adminName || '',
-                        adminEmail: newCompany.adminUser?.adminEmail || '',
-                        username: newCompany.adminUser?.username || '',
-                        password: e.target.value
+                        adminEmail: e.target.value
                       }
                     })}
                     style={{

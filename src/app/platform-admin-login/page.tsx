@@ -62,7 +62,19 @@ export default function PlatformAdminLoginPage() {
   const [sendingOTP, setSendingOTP] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
+
+  // Redirect already-authenticated superadmin away from login page
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    if (token && role === 'superadmin') {
+      router.replace('/superadmin');
+      return;
+    }
+    setAuthChecked(true);
+  }, [router]);
 
   // OTP Timer countdown
   useEffect(() => {
@@ -77,6 +89,8 @@ export default function PlatformAdminLoginPage() {
     };
   }, [otpTimer]);
 
+  if (!authChecked) return null;
+
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -87,7 +101,7 @@ export default function PlatformAdminLoginPage() {
 
     setSendingOTP(true);
     try {
-      const data = await sendOTP(email);
+      const data = await sendOTP(email, 'platform-admin');
       setOtpSent(true);
       setOtpTimer(600); // 10 minutes in seconds
       setToastMessage({ message: data.msg || 'OTP sent successfully to your email', type: 'success' });
@@ -141,14 +155,8 @@ export default function PlatformAdminLoginPage() {
     try {
       const data = await verifyOTP(email, otp);
 
-      if (data.user.role !== 'superadmin') {
-        setToastMessage({ message: 'Platform admin access required', type: 'error' });
-        setTimeout(() => setToastMessage(null), 3000);
-        setLoading(false);
-        return;
-      }
-
-      // Tokens are now stored in httpOnly cookies by the server
+      // Store token and user info in localStorage
+      localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.user.role);
       localStorage.setItem('userName', data.user.name || data.user.username);
       localStorage.setItem('username', data.user.username);
@@ -159,7 +167,7 @@ export default function PlatformAdminLoginPage() {
       // Validate redirect URL to prevent open redirect attacks
       const redirectUrl = data.redirectUrl || '/superadmin';
       const isRelativePath = redirectUrl.startsWith('/') && !redirectUrl.startsWith('//');
-      router.push(isRelativePath ? redirectUrl : '/superadmin');
+      router.replace(isRelativePath ? redirectUrl : '/superadmin');
     } catch (err: any) {
       let errorMessage = 'Invalid OTP. Please try again.';
 

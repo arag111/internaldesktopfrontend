@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { sendOTP, verifyOTP } from '@/app/lib/authService';
 import {
   Box, Button, TextField, Typography, Paper, Divider, Link, InputAdornment,
-  ThemeProvider, createTheme, CssBaseline, Fade
+  ThemeProvider, createTheme, CssBaseline
 } from '@mui/material';
 import { EmailOutlined, LockOutlined, AccessTime, Analytics, Cloud } from '@mui/icons-material';
 
@@ -62,7 +62,24 @@ export default function SignInPage() {
   const [sendingOTP, setSendingOTP] = useState(false);
   const [otpTimer, setOtpTimer] = useState(0);
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
+
+  // Redirect already-authenticated users away from login page
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    if (token && role) {
+      if (role === 'superadmin') {
+        router.replace('/superadmin');
+      } else {
+        const savedDashboard = localStorage.getItem('dashboardUrl');
+        router.replace(savedDashboard || '/');
+      }
+      return;
+    }
+    setAuthChecked(true);
+  }, [router]);
 
   // OTP Timer countdown
   useEffect(() => {
@@ -77,6 +94,8 @@ export default function SignInPage() {
     };
   }, [otpTimer]);
 
+  if (!authChecked) return null;
+
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) {
@@ -87,7 +106,7 @@ export default function SignInPage() {
 
     setSendingOTP(true);
     try {
-      const data = await sendOTP(email);
+      const data = await sendOTP(email, 'main');
       setOtpSent(true);
       setOtpTimer(600); // 10 minutes in seconds
       setToastMessage({ message: data.msg || 'OTP sent successfully to your email', type: 'success' });
@@ -141,7 +160,8 @@ export default function SignInPage() {
     setLoading(true);
     try {
       const data = await verifyOTP(email, otp);
-      // Tokens are now stored in httpOnly cookies by the server
+      // Store token and user info in localStorage
+      localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.user.role);
       localStorage.setItem('userName', data.user.name || data.user.username);
 
@@ -158,9 +178,11 @@ export default function SignInPage() {
       }
 
       // Validate redirect URL to prevent open redirect attacks
-      const redirectUrl = data.redirectUrl || '/dashboard';
+      const redirectUrl = data.redirectUrl || '/';
       const isRelativePath = redirectUrl.startsWith('/') && !redirectUrl.startsWith('//');
-      router.push(isRelativePath ? redirectUrl : '/dashboard');
+      const safeUrl = isRelativePath ? redirectUrl : '/';
+      localStorage.setItem('dashboardUrl', safeUrl);
+      router.replace(safeUrl);
     } catch (err: any) {
       let errorMessage = 'Invalid OTP. Please try again.';
       
@@ -226,7 +248,6 @@ export default function SignInPage() {
         </Box>
 
         <Box component="main" id="main-content" sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-          <Fade in timeout={500}>
             <Paper sx={{ width: '100%', maxWidth: 1000, borderRadius: 4, overflow: 'hidden', display: 'flex', minHeight: 600 }}>
               <Box sx={{ flex: 1, p: 5, bgcolor: 'primary.light', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Typography variant="h5" color="text.primary" gutterBottom>
@@ -357,7 +378,6 @@ export default function SignInPage() {
                 )}
               </Box>
             </Paper>
-          </Fade>
         </Box>
       </Box>
 

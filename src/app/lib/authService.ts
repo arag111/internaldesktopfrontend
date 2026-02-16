@@ -7,8 +7,8 @@ export const login = async (username: string, password: string) => {
   return res.data;
 };
 
-export const sendOTP = async (email: string) => {
-  const res = await axios.post(`${baseUrl}/api/users/auth/send-otp`, { email });
+export const sendOTP = async (email: string, loginType?: 'main' | 'platform-admin') => {
+  const res = await axios.post(`${baseUrl}/api/users/auth/send-otp`, { email, loginType });
   return res.data;
 };
 

@@ -233,7 +233,7 @@ export default function DashboardPage() {
     const token = localStorage.getItem('token');
     const storedRole = localStorage.getItem('role');
     if (!token) {
-      router.push('/');
+      router.replace('/');
       return;
     }
 

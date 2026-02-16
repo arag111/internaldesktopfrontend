@@ -47,7 +47,8 @@ function Navbar() {
       localStorage.removeItem('jobRole');
       localStorage.removeItem('role');
       localStorage.removeItem('companyId');
-      router.push('/');
+      localStorage.removeItem('dashboardUrl');
+      router.replace('/');
     }
   };
 
