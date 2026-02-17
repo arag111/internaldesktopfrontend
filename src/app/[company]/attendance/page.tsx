@@ -6,7 +6,6 @@ import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
 import { formatISTDateRange } from '@/app/utils/timezone';
 import Attendance from '@/app/components/Attendance';
-import moment from 'moment';
 import { io, Socket } from 'socket.io-client';
 import { format } from 'date-fns';
 import { rangePresets } from '@/app/utils/constants';
@@ -57,20 +56,26 @@ export default function AttendancePage() {
 
     if (!token) return;
 
+    const controller = new AbortController();
+
     if (storedRole === 'admin' || storedRole === 'manager') {
       const fetchUsers = async () => {
         try {
           const { data } = await axios.get(
             `${baseUrl}/api/users/company-users`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
           );
           setAvailableUsers(data.users || []);
         } catch (error) {
-          console.error('Failed to fetch users for filtering:', error);
+          if (!axios.isCancel(error)) {
+            console.error('Failed to fetch users for filtering:', error);
+          }
         }
       };
       fetchUsers();
     }
+
+    return () => controller.abort();
   }, [role]);
 
   // Fetch data when range changes (not when selectedUserId changes)
@@ -84,13 +89,15 @@ export default function AttendancePage() {
 
     const [start, end] = selectedRange;
     const rangeKey = `${format(start, 'yyyy-MM-dd')}-${format(end, 'yyyy-MM-dd')}`;
-    
+
     // Skip if range hasn't changed (unless it's initial mount)
     if (!isInitialMount.current && prevRangeRef.current === rangeKey) {
       return;
     }
     prevRangeRef.current = rangeKey;
     isInitialMount.current = false;
+
+    const controller = new AbortController();
 
     // ✅ Use centralized IST utility instead of duplicate function
     const dateRange = formatISTDateRange(start, end);
@@ -100,14 +107,15 @@ export default function AttendancePage() {
         if (storedRole === 'admin' || storedRole === 'manager') {
           const { data } = await axios.get(
             `${baseUrl}/api/activity/all-users?start=${dateRange.start}&end=${dateRange.end}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
           );
           setAllUserStats(data);
         } else {
-          const userId = JSON.parse(atob(token.split('.')[1])).id;
+          const { getUserIdFromToken } = await import('@/app/utils/jwt');
+          const userId = getUserIdFromToken(token);
           const { data } = await axios.get(
             `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
           );
           // Backend now returns wrapped format: [{ user: {...}, stats: [...] }]
           // Store in allUserStats for consistency with admin/manager flow
@@ -115,11 +123,15 @@ export default function AttendancePage() {
           setStats(data);
         }
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        if (!axios.isCancel(error)) {
+          console.error('Failed to fetch data:', error);
+        }
       }
     };
 
     fetchData();
+
+    return () => controller.abort();
   }, [router, selectedRange]);
 
   // Socket connection management

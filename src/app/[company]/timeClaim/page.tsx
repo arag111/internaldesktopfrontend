@@ -6,6 +6,7 @@ import { io, Socket } from 'socket.io-client';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { baseUrl } from '@/app/utils/config';
+import { getUserIdFromToken } from '@/app/utils/jwt';
 import DateRangePickerComponent from '@/app/components/DateRangePicker2';
 import ClaimsTable from '@/app/components/ClaimsTable';
 import { rangePresets } from '@/app/utils/constants';
@@ -43,19 +44,22 @@ export default function ClaimsPage() {
             return;
         }
 
+        const controller = new AbortController();
+
         const fetchData = async () => {
             try {
                 // FIXED: Apply IST timezone conversion before formatting dates
                 const [start, end] = selectedRange.map((date) =>
                     format(toISTDate(date), 'yyyy-MM-dd')
                 );
-                const userId = JSON.parse(atob(token.split('.')[1])).id;
+                const userId = getUserIdFromToken(token);
                 const url =
                     storedRole === 'admin' || storedRole === 'manager'
                         ? `${baseUrl}/idle/all?start=${start}&end=${end}`
                         : `${baseUrl}/idle/user/${userId}?start=${start}&end=${end}`;
                 const { data } = await axios.get(url, {
                     headers: { Authorization: `Bearer ${token}` },
+                    signal: controller.signal,
                 });
                 if (storedRole === 'admin' || storedRole === 'manager') {
                     setAllUserStats(data);
@@ -72,7 +76,9 @@ export default function ClaimsPage() {
                     setClaims(data || []);
                 }
             } catch (error) {
-                console.error('Error fetching claims', error);
+                if (!axios.isCancel(error)) {
+                    console.error('Error fetching claims', error);
+                }
             }
         };
 
@@ -81,7 +87,10 @@ export default function ClaimsPage() {
         // ✅ OPTIMIZED: Reduced polling from 5s to 30s (immediate refresh on claim update handles real-time needs)
         const intervalId = setInterval(fetchData, 30000);
 
-        return () => clearInterval(intervalId);
+        return () => {
+            controller.abort();
+            clearInterval(intervalId);
+        };
     }, [router, selectedRange]);
 
     // Socket connection management
@@ -147,7 +156,7 @@ export default function ClaimsPage() {
             const [start, end] = selectedRange.map((date) =>
                 format(toISTDate(date), 'yyyy-MM-dd')
             );
-            const userId = JSON.parse(atob(token!.split('.')[1])).id;
+            const userId = getUserIdFromToken(token!);
             const url =
                 storedRole === 'admin' || storedRole === 'manager'
                     ? `${baseUrl}/idle/all?start=${start}&end=${end}`

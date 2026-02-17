@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
@@ -27,7 +27,7 @@ interface UserProfileDropdownProps {
   onLogout: () => void;
 }
 
-export default function UserProfileDropdown({ userName, onLogout }: UserProfileDropdownProps) {
+function UserProfileDropdown({ userName, onLogout }: UserProfileDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -279,3 +279,6 @@ export default function UserProfileDropdown({ userName, onLogout }: UserProfileD
     </div>
   );
 }
+
+// ✅ FIX #24: Memoize to prevent unnecessary re-renders
+export default React.memo(UserProfileDropdown);

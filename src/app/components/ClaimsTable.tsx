@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { baseUrl } from '@/app/utils/config';
 import DateRangePickerComponent from './DateRangePicker2';
-import moment from 'moment';
+import { format, parseISO, isBefore, isValid, differenceInSeconds } from 'date-fns';
 import { Check, X, ChevronDown, Search, Clock, AlertCircle, CheckCircle, XCircle, Calendar, Users } from 'lucide-react';
 
 interface ClaimsTableProps {
@@ -57,24 +57,21 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
         if (!startedAt) return 'Invalid start time';
         if (!endedAt) return 'Ongoing';
 
-        const start = moment(startedAt);
-        const end = moment(endedAt);
+        const start = parseISO(startedAt);
+        const end = parseISO(endedAt);
 
-        // Validate dates
-        if (!start.isValid() || !end.isValid()) {
+        if (!isValid(start) || !isValid(end)) {
             return 'Invalid time';
         }
 
-        // If end is before start, show error
-        if (end.isBefore(start)) {
+        if (isBefore(end, start)) {
             return 'Invalid duration';
         }
 
-        const duration = moment.duration(end.diff(start));
-
-        const hours = String(Math.floor(duration.asHours())).padStart(2, '0');
-        const minutes = String(duration.minutes()).padStart(2, '0');
-        const seconds = String(duration.seconds()).padStart(2, '0');
+        const totalSeconds = differenceInSeconds(end, start);
+        const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+        const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+        const seconds = String(totalSeconds % 60).padStart(2, '0');
 
         return `${hours}:${minutes}:${seconds}`;
     };
@@ -395,13 +392,13 @@ const ClaimsTable: React.FC<ClaimsTableProps> = ({
                                                     </td>
                                                 )}
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {moment(event.startedAt).format('DD-MMM-YYYY')}
+                                                    {format(parseISO(event.startedAt), 'dd-MMM-yyyy')}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {moment(event.startedAt).format('hh:mm A')}
+                                                    {format(parseISO(event.startedAt), 'hh:mm a')}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    {event.endedAt ? moment(event.endedAt).format('hh:mm A') : '-'}
+                                                    {event.endedAt ? format(parseISO(event.endedAt), 'hh:mm a') : '-'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap font-medium">
                                                     {formatDuration(event.startedAt, event.endedAt)}

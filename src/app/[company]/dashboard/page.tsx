@@ -233,9 +233,11 @@ export default function DashboardPage() {
     const token = localStorage.getItem('token');
     const storedRole = localStorage.getItem('role');
     if (!token) {
-      router.push('/');
+      router.replace('/');
       return;
     }
+
+    const controller = new AbortController();
 
     const [start, end] = selectedRange;
     // ✅ Use centralized IST utility instead of duplicate function
@@ -248,15 +250,15 @@ export default function DashboardPage() {
           const [statsResponse, statusesResponse, teamStatusResponse] = await Promise.all([
             axios.get(
               `${baseUrl}/api/activity/all-users?start=${dateRange.start}&end=${dateRange.end}`,
-              { headers: { Authorization: `Bearer ${token}` } }
+              { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
             ),
             axios.get(
               `${baseUrl}/api/activity/user-statuses`,
-              { headers: { Authorization: `Bearer ${token}` } }
+              { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
             ),
             axios.get(
               `${baseUrl}/api/activity/team-status`,
-              { headers: { Authorization: `Bearer ${token}` } }
+              { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }
             )
           ]);
           setAllUserStats(statsResponse.data);
@@ -268,7 +270,8 @@ export default function DashboardPage() {
           // Set team status
           setTeamStatus(teamStatusResponse.data);
         } else {
-          const userId = JSON.parse(atob(token.split('.')[1])).id;
+          const { getUserIdFromToken } = await import('@/app/utils/jwt');
+          const userId = getUserIdFromToken(token);
           const apiUrl = `${baseUrl}/api/activity/range/${userId}?start=${dateRange.start}&end=${dateRange.end}`;
 
           console.log('🔍 [User Dashboard Debug]');
@@ -277,7 +280,8 @@ export default function DashboardPage() {
           console.log('   Date Range:', dateRange.start, 'to', dateRange.end);
 
           const { data } = await axios.get(apiUrl, {
-            headers: { Authorization: `Bearer ${token}` }
+            headers: { Authorization: `Bearer ${token}` },
+            signal: controller.signal
           });
 
           console.log('📊 [API Response]');
@@ -288,6 +292,9 @@ export default function DashboardPage() {
           setStats(data);
         }
       } catch (error: any) {
+        if (axios.isCancel(error)) {
+          return;
+        }
         console.error('❌ [API Error]');
         console.error('   Message:', error.message);
         if (error.response) {
@@ -302,6 +309,8 @@ export default function DashboardPage() {
     };
 
     fetchData();
+
+    return () => controller.abort();
   }, [router, selectedRange]);
 
   // Initialize selectedUserId from allUserStats if needed (only if not restored from localStorage)

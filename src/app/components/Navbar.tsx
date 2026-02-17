@@ -1,11 +1,11 @@
 'use client';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { logout } from '../lib/authService';
 import Image from 'next/image';
 import { LogOut, CloudDownload, Calendar } from 'lucide-react';
 import UserProfileDropdown from './UserProfileDropdown';
-export default function Navbar() {
+function Navbar() {
   const router = useRouter();
   const [userName, setUserName] = useState<string | null>(null);
   const [currentDate, setCurrentDate] = useState<string>('');
@@ -47,12 +47,13 @@ export default function Navbar() {
       localStorage.removeItem('jobRole');
       localStorage.removeItem('role');
       localStorage.removeItem('companyId');
-      router.push('/');
+      localStorage.removeItem('dashboardUrl');
+      router.replace('/');
     }
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 backdrop-blur-xl bg-white/80 border-b border-gray-200/50 shadow-lg shadow-gray-900/5">
+    <nav className="fixed top-0 left-0 right-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 backdrop-blur-xl bg-white/80 border-b border-gray-200/50 shadow-lg shadow-gray-900/5" aria-label="Top navigation">
       {/* Background gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-r from-[#075a96]/5 via-transparent to-[#075a96]/5 pointer-events-none" />
       
@@ -100,3 +101,6 @@ export default function Navbar() {
     </nav>
   );
 }
+
+// ✅ FIX #24: Memoize to prevent unnecessary re-renders
+export default React.memo(Navbar);

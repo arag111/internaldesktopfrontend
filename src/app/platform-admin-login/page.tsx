@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { sendOTP, verifyOTP } from '@/app/lib/authService';
 import {
-  Box, Button, TextField, Typography, Paper, Divider, Link, InputAdornment,
-  ThemeProvider, createTheme, CssBaseline
+  Box, Button, TextField, Typography, Paper, Link, InputAdornment,
+  ThemeProvider, createTheme, CssBaseline, Fade
 } from '@mui/material';
-import { EmailOutlined, LockOutlined, AccessTime, Analytics, Cloud } from '@mui/icons-material';
+import { EmailOutlined, LockOutlined } from '@mui/icons-material';
 
 const theme = createTheme({
   palette: {
@@ -54,7 +54,7 @@ const theme = createTheme({
   },
 });
 
-export default function SignInPage() {
+export default function PlatformAdminLoginPage() {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -65,17 +65,12 @@ export default function SignInPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
 
-  // Redirect already-authenticated users away from login page
+  // Redirect already-authenticated superadmin away from login page
   useEffect(() => {
     const token = localStorage.getItem('token');
     const role = localStorage.getItem('role');
-    if (token && role) {
-      if (role === 'superadmin') {
-        router.replace('/superadmin');
-      } else {
-        const savedDashboard = localStorage.getItem('dashboardUrl');
-        router.replace(savedDashboard || '/');
-      }
+    if (token && role === 'superadmin') {
+      router.replace('/superadmin');
       return;
     }
     setAuthChecked(true);
@@ -106,19 +101,18 @@ export default function SignInPage() {
 
     setSendingOTP(true);
     try {
-      const data = await sendOTP(email, 'main');
+      const data = await sendOTP(email, 'platform-admin');
       setOtpSent(true);
       setOtpTimer(600); // 10 minutes in seconds
       setToastMessage({ message: data.msg || 'OTP sent successfully to your email', type: 'success' });
       setTimeout(() => setToastMessage(null), 3000);
     } catch (err: any) {
       let errorMessage = 'Failed to send OTP. Please try again.';
-      
-      // Check for specific HTTP status codes
+
       if (err.response) {
         const status = err.response.status;
         const data = err.response.data;
-        
+
         if (status === 404) {
           errorMessage = data?.msg || 'OTP endpoint not found. Please check server configuration.';
         } else if (status === 400) {
@@ -141,7 +135,7 @@ export default function SignInPage() {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setToastMessage({ message: errorMessage, type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
     } finally {
@@ -160,37 +154,27 @@ export default function SignInPage() {
     setLoading(true);
     try {
       const data = await verifyOTP(email, otp);
+
       // Store token and user info in localStorage
       localStorage.setItem('token', data.token);
       localStorage.setItem('role', data.user.role);
       localStorage.setItem('userName', data.user.name || data.user.username);
-
-      // Store additional user info for profile dropdown
-      localStorage.setItem('userEmail', data.user.email);
       localStorage.setItem('username', data.user.username);
-      if (data.user.jobRole) {
-        localStorage.setItem('jobRole', data.user.jobRole);
-      }
-
-      // Store company ID if present
-      if (data.user.companyId) {
-        localStorage.setItem('companyId', data.user.companyId);
+      if (data.user.email) {
+        localStorage.setItem('userEmail', data.user.email);
       }
 
       // Validate redirect URL to prevent open redirect attacks
-      const redirectUrl = data.redirectUrl || '/';
+      const redirectUrl = data.redirectUrl || '/superadmin';
       const isRelativePath = redirectUrl.startsWith('/') && !redirectUrl.startsWith('//');
-      const safeUrl = isRelativePath ? redirectUrl : '/';
-      localStorage.setItem('dashboardUrl', safeUrl);
-      router.replace(safeUrl);
+      router.replace(isRelativePath ? redirectUrl : '/superadmin');
     } catch (err: any) {
       let errorMessage = 'Invalid OTP. Please try again.';
-      
-      // Check for specific HTTP status codes
+
       if (err.response) {
         const status = err.response.status;
         const data = err.response.data;
-        
+
         if (status === 404) {
           errorMessage = 'OTP verification endpoint not found. Please check server configuration.';
         } else if (status === 400) {
@@ -213,7 +197,7 @@ export default function SignInPage() {
       } else if (err.message) {
         errorMessage = err.message;
       }
-      
+
       setToastMessage({ message: errorMessage, type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
     } finally {
@@ -236,51 +220,18 @@ export default function SignInPage() {
       }}>
         <Box sx={{ px: { xs: 2, md: 4 }, py: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Image src="/time_nexus_logo.png" alt="Time Nexus Logo" width={150} height={50} style={{ objectFit: 'contain' }} />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <Link href="/platform-admin-login" underline="none" color="primary.main"
-              sx={{ fontWeight: 600, fontSize: 14, display: { xs: 'none', sm: 'block' } }}>
-              Platform Admin
-            </Link>
-            <Link href="#" underline="none" color="primary.main" sx={{ fontWeight: 600, fontSize: 14, display: { xs: 'none', sm: 'block' } }}>
-              Need help? Contact Support
-            </Link>
-          </Box>
+          <Link href="/" underline="none" color="primary.main" sx={{ fontWeight: 600, fontSize: 14 }}>
+            Back to Login
+          </Link>
         </Box>
 
-        <Box component="main" id="main-content" sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
-            <Paper sx={{ width: '100%', maxWidth: 1000, borderRadius: 4, overflow: 'hidden', display: 'flex', minHeight: 600 }}>
-              <Box sx={{ flex: 1, p: 5, bgcolor: 'primary.light', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <Typography variant="h5" color="text.primary" gutterBottom>
-                  Optimize Your Productivity
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                  Track Nexus helps teams measure what matters with automatic time tracking and intelligent analytics.
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {[{
-                    icon: <AccessTime sx={{ color: 'primary.main' }} />, title: 'Automatic Tracking', text: 'Seamless time capture'
-                  }, {
-                    icon: <Analytics sx={{ color: 'primary.main' }} />, title: 'Smart Reports', text: 'Actionable insights'
-                  }, {
-                    icon: <Cloud sx={{ color: 'primary.main' }} />, title: 'Cloud Sync', text: 'Access data anywhere'
-                  }].map((item, index) => (
-                    <Box key={index} sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, p: 2, bgcolor: 'rgba(255,255,255,0.7)', borderRadius: 2 }}>
-                      {item.icon}
-                      <Box>
-                        <Typography variant="body1" fontWeight={600}>{item.title}</Typography>
-                        <Typography variant="body2" color="text.secondary">{item.text}</Typography>
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-
-              <Divider orientation="vertical" flexItem />
-
-              <Box component="form" onSubmit={otpSent ? handleVerifyOTP : handleSendOTP} sx={{ flex: 1, p: 5, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <Typography variant="h5" color="text.primary" gutterBottom>Welcome Back</Typography>
+        <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+          <Fade in timeout={500}>
+            <Paper sx={{ width: '100%', maxWidth: 460, borderRadius: 4, overflow: 'hidden' }}>
+              <Box component="form" onSubmit={otpSent ? handleVerifyOTP : handleSendOTP} sx={{ p: 5, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <Typography variant="h5" color="text.primary" gutterBottom>Platform Admin</Typography>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>Sign in with your email and OTP</Typography>
-                
+
                 <TextField
                   fullWidth
                   name="email"
@@ -299,6 +250,7 @@ export default function SignInPage() {
                   }}
                   sx={{ mb: 2 }}
                   required
+                  autoFocus
                 />
 
                 {otpSent && (
@@ -337,7 +289,7 @@ export default function SignInPage() {
                         type="button"
                         onClick={handleResendOTP}
                         disabled={sendingOTP || otpTimer > 0}
-                        sx={{ 
+                        sx={{
                           fontSize: '0.875rem',
                           textDecoration: 'none',
                           cursor: (sendingOTP || otpTimer > 0) ? 'not-allowed' : 'pointer',
@@ -361,7 +313,7 @@ export default function SignInPage() {
                   {loading ? 'Verifying...' : sendingOTP ? 'Sending OTP...' : otpSent ? 'Verify OTP' : 'Send OTP'}
                 </Button>
 
-                {otpSent && (
+                {otpSent ? (
                   <Button
                     type="button"
                     fullWidth
@@ -375,37 +327,46 @@ export default function SignInPage() {
                   >
                     Change Email
                   </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    fullWidth
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => router.push('/')}
+                  >
+                    Back to Login
+                  </Button>
                 )}
               </Box>
             </Paper>
+          </Fade>
         </Box>
       </Box>
 
-      {/* Toast Popup */}
       {toastMessage && (
-        <div className="fixed top-4 right-4 z-50 toast-slide-in" role="alert">
+        <div className="fixed top-4 right-4 z-50 toast-slide-in">
           <div className={`rounded-lg border shadow-lg px-4 py-3 min-w-[300px] flex items-center justify-between gap-4 ${
-            toastMessage.type === 'success' 
-              ? 'bg-green-50 border-green-200' 
+            toastMessage.type === 'success'
+              ? 'bg-green-50 border-green-200'
               : 'bg-red-50 border-red-200'
           }`}>
             <p className={`text-sm font-medium ${
-              toastMessage.type === 'success' 
-                ? 'text-green-900' 
+              toastMessage.type === 'success'
+                ? 'text-green-900'
                 : 'text-red-900'
             }`}>
               {toastMessage.message}
             </p>
             <button
               onClick={() => setToastMessage(null)}
-              aria-label="Dismiss notification"
               className={`hover:opacity-70 transition-colors flex-shrink-0 ${
                 toastMessage.type === 'success'
                   ? 'text-green-600'
                   : 'text-red-600'
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

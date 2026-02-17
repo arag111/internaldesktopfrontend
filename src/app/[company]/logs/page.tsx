@@ -170,7 +170,7 @@ export default function LogsPage() {
 
     // Only admin and manager can access logs
     if (userRole !== 'admin' && userRole !== 'manager' && userRole !== 'superadmin') {
-      router.push('/dashboard');
+      router.push(localStorage.getItem('dashboardUrl') || '/');
       return;
     }
     setRole(userRole);

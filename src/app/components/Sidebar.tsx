@@ -29,7 +29,7 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 shadow-sm p-6 flex flex-col z-10">
+    <aside className="w-64 fixed top-16 left-0 bottom-0 bg-white border-r border-gray-200 shadow-sm p-6 flex flex-col z-10" role="navigation" aria-label="Main navigation">
       <h2 className="text-xl font-semibold mb-4 text-[#075a96]">Navigation</h2>
       {/* <div className="flex justify-end pr-2 pb-4">
         <button
@@ -41,16 +41,17 @@ export default function Sidebar() {
         </button>
       </div> */}
 
-      <nav className="px-4 space-y-4 text-gray-700 font-medium">
+      <nav className="px-4 space-y-4 text-gray-700 font-medium" aria-label="Sidebar">
         {navItems.map(({ label, icon, route }) => (
-          <div
+          <button
             key={label}
             onClick={() => router.push(route)}
-            className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-[#075a96]/10 hover:text-[#075a96] cursor-pointer transition"
+            className="flex items-center gap-3 px-2 py-2 w-full text-left rounded-lg hover:bg-[#075a96]/10 hover:text-[#075a96] cursor-pointer transition bg-transparent border-none text-gray-700 font-medium"
+            aria-label={label}
           >
             {icon}
             {!collapsed && <span>{label}</span>}
-          </div>
+          </button>
         ))}
       </nav>
     </aside>

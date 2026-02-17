@@ -1,9 +1,10 @@
 'use client';
+import React from 'react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import { CalendarDays, BarChart2, Settings, Users, ClockPlus, Home, LogOut, User, FileText, Brain, Activity } from 'lucide-react';
+import { CalendarDays, BarChart2, Settings, Users, ClockPlus, Home, LogOut, User, FileText, Brain, Activity, CreditCard } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 
-export default function CompanySidebar() {
+function CompanySidebar() {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
@@ -42,6 +43,7 @@ export default function CompanySidebar() {
       ? [
           { label: 'Users', icon: <Users size={20} />, route: `/${company}/users` },
           { label: 'Configuration', icon: <Settings size={20} />, route: `/${company}/configuration` },
+          { label: 'Billing', icon: <CreditCard size={20} />, route: `/${company}/billing` },
         ]
       : []),
   ], [company, role]);
@@ -123,3 +125,6 @@ export default function CompanySidebar() {
     </aside>
   );
 }
+
+// ✅ FIX #24: Memoize to prevent unnecessary re-renders
+export default React.memo(CompanySidebar);
