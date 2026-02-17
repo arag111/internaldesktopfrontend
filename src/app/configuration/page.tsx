@@ -96,6 +96,7 @@ export default function ConfigurationPage() {
                 <span className="ml-3 text-sm text-gray-500">Loading configuration...</span>
               </div>
             ) : (
+            <>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-gray-700 font-medium">Inactivity Duration (mins)</label>
@@ -169,6 +170,7 @@ export default function ConfigurationPage() {
                 Save Configuration
               </button>
             </div>
+            </>
             )}
           </div>
         </main>
