@@ -2,6 +2,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { baseUrl } from '../utils/config';
+import axios from 'axios';
+import '../lib/axiosInterceptor';
 import { Home, Building2, Menu, X, BarChart3, Plus } from 'lucide-react';
 import Image from 'next/image';
 
@@ -110,18 +112,10 @@ export default function SuperAdminDashboard() {
 
   const handleSuspendCompany = async (companyId: string, suspend: boolean) => {
     try {
-      const response = await fetch(`${baseUrl}/api/companies/${companyId}/suspend`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({ suspend, reason: suspend ? 'Manual suspension' : null })
+      await axios.put(`${baseUrl}/api/companies/${companyId}/suspend`, {
+        suspend, reason: suspend ? 'Manual suspension' : null
       });
-
-      if (response.ok) {
-        fetchCompanies(); // Refresh the data
-      }
+      fetchCompanies();
     } catch (error) {
       console.error('Suspend company error:', error);
     }
@@ -136,27 +130,17 @@ export default function SuperAdminDashboard() {
     if (!editingCompany) return;
 
     try {
-      const response = await fetch(`${baseUrl}/api/companies/${editingCompany._id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          name: editingCompany.name,
-          email: editingCompany.email,
-          slug: editingCompany.slug,
-          adminUser: editingCompany.adminUser,
-          subscription: editingCompany.subscription,
-          isActive: editingCompany.isActive
-        })
+      await axios.put(`${baseUrl}/api/companies/${editingCompany._id}`, {
+        name: editingCompany.name,
+        email: editingCompany.email,
+        slug: editingCompany.slug,
+        adminUser: editingCompany.adminUser,
+        subscription: editingCompany.subscription,
+        isActive: editingCompany.isActive
       });
-
-      if (response.ok) {
-        setShowEditModal(false);
-        setEditingCompany(null);
-        fetchCompanies(); // Refresh the data
-      }
+      setShowEditModal(false);
+      setEditingCompany(null);
+      fetchCompanies();
     } catch (error) {
       console.error('Edit company error:', error);
     }
@@ -179,43 +163,28 @@ export default function SuperAdminDashboard() {
     }
 
     try {
-      const response = await fetch(`${baseUrl}/api/companies`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+      await axios.post(`${baseUrl}/api/companies`, newCompany);
+      setShowAddModal(false);
+      setNewCompany({
+        name: '',
+        email: '',
+        slug: '',
+        adminUser: {
+          adminEmail: '',
+          adminName: ''
         },
-        body: JSON.stringify(newCompany)
+        subscription: {
+          plan: 'free',
+          userLimit: 10,
+          storageLimit: 1024
+        },
+        isActive: true
       });
-
-      if (response.ok) {
-        setShowAddModal(false);
-        setNewCompany({
-          name: '',
-          email: '',
-          slug: '',
-          adminUser: {
-            adminEmail: '',
-            adminName: ''
-          },
-          subscription: {
-            plan: 'free',
-            userLimit: 10,
-            storageLimit: 1024
-          },
-          isActive: true
-        });
-        setToastMessage({ message: 'Company created successfully', type: 'success' });
-        setTimeout(() => setToastMessage(null), 3000);
-        fetchCompanies(); // Refresh the data
-      } else {
-        const error = await response.json();
-        // Backend returns 'msg' property, not 'message'
-        setToastMessage({ message: error.msg || error.message || 'Failed to create company', type: 'error' });
-        setTimeout(() => setToastMessage(null), 3000);
-      }
+      setToastMessage({ message: 'Company created successfully', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
+      fetchCompanies();
     } catch (error: any) {
-      const errorMessage = error.message || 'Error creating company';
+      const errorMessage = error.response?.data?.msg || error.response?.data?.message || error.message || 'Error creating company';
       setToastMessage({ message: errorMessage, type: 'error' });
       setTimeout(() => setToastMessage(null), 3000);
     }
