@@ -110,14 +110,21 @@ export default function SuperAdminDashboard() {
     }
   };
 
+  const getAuthHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem('token')}`
+  });
+
   const handleSuspendCompany = async (companyId: string, suspend: boolean) => {
     try {
-      await axios.put(`${baseUrl}/api/companies/${companyId}/suspend`, {
-        suspend, reason: suspend ? 'Manual suspension' : null
-      });
+      await axios.put(`${baseUrl}/api/companies/${companyId}/suspend`,
+        { suspend, reason: suspend ? 'Manual suspension' : null },
+        { headers: getAuthHeaders() }
+      );
       fetchCompanies();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Suspend company error:', error);
+      setToastMessage({ message: error.response?.data?.msg || 'Failed to update company status', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -134,15 +141,18 @@ export default function SuperAdminDashboard() {
         name: editingCompany.name,
         email: editingCompany.email,
         slug: editingCompany.slug,
-        adminUser: editingCompany.adminUser,
         subscription: editingCompany.subscription,
         isActive: editingCompany.isActive
-      });
+      }, { headers: getAuthHeaders() });
       setShowEditModal(false);
       setEditingCompany(null);
+      setToastMessage({ message: 'Company updated successfully', type: 'success' });
+      setTimeout(() => setToastMessage(null), 3000);
       fetchCompanies();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Edit company error:', error);
+      setToastMessage({ message: error.response?.data?.msg || 'Failed to update company', type: 'error' });
+      setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
@@ -163,7 +173,7 @@ export default function SuperAdminDashboard() {
     }
 
     try {
-      await axios.post(`${baseUrl}/api/companies`, newCompany);
+      await axios.post(`${baseUrl}/api/companies`, newCompany, { headers: getAuthHeaders() });
       setShowAddModal(false);
       setNewCompany({
         name: '',
